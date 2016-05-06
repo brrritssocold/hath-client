@@ -1,0 +1,3 @@
+Manifest-Version: 1.0
+Main-Class: org.hath.base.HentaiAtHomeClient
+Class-Path: sqlite-jdbc-3.7.2.jar
