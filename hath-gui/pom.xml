@@ -59,15 +59,6 @@
 						  <mainClass>org.hath.gui.HentaiAtHomeClientGUI</mainClass>
 						</transformer>
 					  </transformers>
-					  <artifactSet>
-						<excludes>
-						  <exclude>junit:*</exclude>
-						  <exclude>org.mockito:*</exclude>
-						  <exclude>org.hamcrest:*</exclude>
-						  <exclude>com.google.code.findbugs:*</exclude>
-						  <exclude>org.apache.maven.plugins:*</exclude>
-						</excludes>
-					  </artifactSet>
 					</configuration>
 				  </execution>
 				</executions>
