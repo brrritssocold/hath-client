@@ -61,7 +61,7 @@
     <appender-ref ref="STDOUT" />
 	</appender>
 
-  <root level="INFO">
+  <root level="DEBUG">
     <appender-ref ref="ASYNC_LOG_FILE" />
 	<appender-ref ref="ERR_FILE" />
 	<appender-ref ref="ASYNC_STDOUT" />
