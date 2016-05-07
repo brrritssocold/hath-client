@@ -48,9 +48,6 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
-import java.io.File;
-import java.lang.Thread;
-
 public class HentaiAtHomeClient implements Runnable {
 	private InputQueryHandler iqh;
 	private Out out;
@@ -86,12 +83,6 @@ public class HentaiAtHomeClient implements Runnable {
 		Out.info("Copyright (c) 2008-2014, E-Hentai.org - all rights reserved.");
 		Out.info("This software comes with ABSOLUTELY NO WARRANTY. This is free software, and you are welcome to modify and redistribute it under the GPL v3 license.");
 		Out.info("");
-		
-		String sqlitejdbc = "sqlite-jdbc-3.7.2.jar";
-		if(! (new File(sqlitejdbc)).canRead()) {
-			Out.error("Required library file " + sqlitejdbc + " could not be found. Please make sure you are starting the program from the H@H directory, and that all H@H files are present.");
-			System.exit(-1);
-		}
 		
 		System.setProperty("http.keepAlive", "false");
 
