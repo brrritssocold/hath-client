@@ -23,10 +23,6 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.OutputStream;
-import java.io.PrintStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -49,10 +45,6 @@ public class Out {
 
 	private static int suppressedOutput;
 	private static boolean overridden, writeLogs;
-	private static PrintStream def_out, def_err;
-	private static OutPrintStream or_out, or_err;
-	private static FileWriter logout, logerr;
-	private static int logout_count, logerr_count;
 
 	private static SimpleDateFormat sdf;
 
@@ -84,16 +76,6 @@ public class Out {
 
 		sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'"); // ISO 8601
 		sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
-		def_out = System.out;
-		def_err = System.err;
-		
-		or_out = new OutPrintStream(def_out, "out", INFO);
-		or_err = new OutPrintStream(def_err, "ERR", ERROR);
-		System.setOut(or_out);
-		System.setErr(or_err);
-
-		logout = startLogger(Settings.getOutputLogPath());
-		logerr = startLogger(Settings.getErrorLogPath());
 	}
 	
 	public static void addOutListener(OutListener listener) {
@@ -119,109 +101,27 @@ public class Out {
 	}
 	
 	public static void flushLogs() {
-		try {
-			logout.flush();
-		} catch(Exception e) {
-			
-		}					
-	}
-
-	private static FileWriter startLogger(String logfile) {
-		FileWriter writer = null;
-
-		if(logfile != null) {
-			// delete old log if present, and rotate
-			(new File(logfile + ".old")).delete();
-			(new File(logfile)).renameTo(new File(logfile + ".old"));
-		
-			if(logfile.length() > 0) {
-				try {
-					writer = new FileWriter(logfile, true);
-				} catch (java.io.IOException e) {
-				   e.printStackTrace();
-				   System.err.println("Failed to open log file " + logfile);
-				}
-			}
-		}
-
-		if(writer != null) {
-			log("\n" + sdf.format(new Date()) + " Logging started", writer, true);
-		}
-
-		return writer;
-	}
-	
-	private static boolean stopLogger(FileWriter logger) {
-		try {
-			logger.close();
-		} catch(Exception e) {
-			e.printStackTrace(def_err);
-			def_err.println("Unable to close file writer handle: Cannot rotate log.");
-			return false;
-		}
-		
-		return true;
+		// TODO add command from logback or slf4j
 	}
 
 	public static void debug(String x) {
 		logger.debug(x);
-		or_out.println(x, "debug", DEBUG);
+		notifyListeners(x, "debug", DEBUG);
 	}
 
 	public static void info(String x) {
 		logger.info(x);
-		or_out.println(x, "info", INFO);
+		notifyListeners(x, "info", INFO);
 	}
 
 	public static void warning(String x) {
 		logger.warn(x);
-		or_out.println(x, "WARN", WARNING);
+		notifyListeners(x, "WARN", WARNING);
 	}
 
 	public static void error(String x) {
 		logger.error(x);
-		or_out.println(x, "ERROR", ERROR);
-	}
-
-	private static synchronized void log(String data, int severity) {
-		if( ((severity & LOGOUT) > 0) && writeLogs ) {
-			log(data, logout, false);
-			if(++logout_count > 100000) {
-				logout_count = 0;
-				def_out.println("Rotating output logfile...");
-				if(stopLogger(logout)) {
-					logout = startLogger(Settings.getOutputLogPath());
-					def_out.println("Output logfile rotated.");
-				}
-			}
-		}
-		
-		if ((severity & LOGERR) > 0) {
-			log(data, logerr, true);
-			if(++logerr_count > 100000) {
-				logerr_count = 0;
-				def_out.println("Rotating error logfile...");
-				if(stopLogger(logerr)) {
-					logerr = startLogger(Settings.getErrorLogPath());
-					def_out.println("Error logfile rotated.");
-				}
-			}
-		}
-	}
-	
-	private static void log(String data, FileWriter writer, boolean flush) {
-		// note: unsynchronized. usage of this function for a specific writer must be serialized.
-		if(writer != null) {
-			try {
-				writer.write(data + "\n");
-				if(flush) {
-					writer.flush();
-				}
-			} catch (java.io.IOException ioe) {
-				// IMPORTANT: writes to the default System.err to prevent loops
-				ioe.printStackTrace(def_err);
-			}
-		}
+		notifyListeners(x, "ERROR", ERROR);
 	}
 
 	public static String verbose(int severity) {
@@ -250,88 +150,29 @@ public class Out {
 		}
 	}
 
-   private static class OutPrintStream extends PrintStream {
-		private PrintStream ps;
-		private String name;
-		private int severity;
-		private Out out;
-
-		public OutPrintStream(PrintStream ps, String name, int severity) {
-			super((OutputStream)ps);
-			this.ps = ps;
-			this.name = name;
-			this.severity = severity;
+	public static void notifyListeners(String x, String name, int severity) {
+		if (x == null) {
+			return;
 		}
 
-		public void println(String x) {
-			println(x, name, severity);
-		}
+		boolean output = (severity & Out.OUTPUT & ~Out.suppressedOutput) > 0;
+		boolean log = (severity & (Out.LOGOUT | Out.LOGERR)) > 0;
 
-		public void println(String x, String name) {
-			println(x, name, severity);
-		}
+		if (output || log) {
+			synchronized (outListeners) {
+				String v = Out.verbose(severity);
+				String[] split = x.split("\n");
+				for (String s : split) {
+					String data = sdf.format(new Date()) + " [" + name + "] " + v + s;
 
-		public void println(String x, String name, int severity) {
-			if(x == null) {
-				return;
-			}
-		
-			boolean output = (severity & Out.OUTPUT & ~Out.suppressedOutput) > 0;
-			boolean log = (severity & (Out.LOGOUT | Out.LOGERR)) > 0;
-			
-			if(output || log) {
-				synchronized (outListeners) {
-					String v = Out.verbose(severity);
-					String[] split = x.split("\n");
-					for (String s : split) {
-						String data = sdf.format(new Date()) + " [" + name + "] " + v + s;
-						
-						if(output) {
-							ps.println(data);
-							
-							for(OutListener listener : outListeners) {
-								listener.outputWritten(data);
-							}
-						}
+					if (output) {
 
-						if(log) {
-							Out.log(data, severity);
+						for (OutListener listener : outListeners) {
+							listener.outputWritten(data);
 						}
 					}
 				}
 			}
-		}
-
-		public void println(boolean x) {
-			println(String.valueOf(x));
-		}
-
-		public void println(char x) {
-			println(String.valueOf(x));
-		}
-
-		public void println(char[] x) {
-			println(new String(x));
-		}
-
-		public void println(double x) {
-			println(String.valueOf(x));
-		}
-
-		public void println(float x) {
-			println(String.valueOf(x));
-		}
-
-		public void println(int x) {
-			println(String.valueOf(x));
-		}
-
-		public void println(long x) {
-			println(String.valueOf(x));
-		}
-
-		public void println(Object x) {
-			println(String.valueOf(x));
 		}
 	}
 }
