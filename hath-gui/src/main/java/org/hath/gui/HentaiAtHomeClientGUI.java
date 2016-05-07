@@ -53,8 +53,8 @@ public class HentaiAtHomeClientGUI extends JFrame implements HathGUI, ActionList
 			System.exit(-1);
     	}
 
-		Image icon16 = Toolkit.getDefaultToolkit().getImage(getClass().getResource("/src/org/hath/gui/icon16.png"));
-		Image icon32 = Toolkit.getDefaultToolkit().getImage(getClass().getResource("/src/org/hath/gui/icon32.png"));
+		Image icon16 = Toolkit.getDefaultToolkit().getImage(getClass().getResource("/image/icon/icon16.png"));
+		Image icon32 = Toolkit.getDefaultToolkit().getImage(getClass().getResource("/image/icon/icon32.png"));
 
 		setTitle("Hentai@Home " + Settings.CLIENT_VERSION + " (Build " + Settings.CLIENT_BUILD + ")");
 		setIconImage(icon32);
