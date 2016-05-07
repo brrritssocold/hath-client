@@ -33,6 +33,9 @@ import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class Out {
 	public static final int DEBUG = 1;
 	public static final int INFO = 2;
@@ -54,6 +57,8 @@ public class Out {
 	private static SimpleDateFormat sdf;
 
 	private static List<OutListener> outListeners;
+
+	private static Logger logger = LoggerFactory.getLogger(Out.class);
 
 	static {
 		try {
@@ -159,18 +164,22 @@ public class Out {
 	}
 
 	public static void debug(String x) {
+		logger.debug(x);
 		or_out.println(x, "debug", DEBUG);
 	}
 
 	public static void info(String x) {
+		logger.info(x);
 		or_out.println(x, "info", INFO);
 	}
 
 	public static void warning(String x) {
+		logger.warn(x);
 		or_out.println(x, "WARN", WARNING);
 	}
 
 	public static void error(String x) {
+		logger.error(x);
 		or_out.println(x, "ERROR", ERROR);
 	}
 
