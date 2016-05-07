@@ -44,42 +44,34 @@
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-jar-plugin</artifactId>
-				<configuration>
-					<archive>
-						<index>true</index>
-						<manifest>
-							<addClasspath>true</addClasspath>
-							<mainClass>org.hath.gui.HentaiAtHomeClientGUI</mainClass>
-						</manifest>
-					</archive>
-				</configuration>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-dependency-plugin</artifactId>
-				<version>2.10</version>
+				<artifactId>maven-shade-plugin</artifactId>
+				<version>2.4.3</version>
 				<executions>
 				  <execution>
-					<id>copy</id>
 					<phase>package</phase>
 					<goals>
-					  <goal>copy</goal>
+					  <goal>shade</goal>
 					</goals>
 					<configuration>
-					  <artifactItems>
-						<artifactItem>
-						  <groupId>org.hath</groupId>
-						  <artifactId>hath-base</artifactId>
-						  <type>jar</type>
-						  <overWrite>false</overWrite>
-						  <outputDirectory>${project.build.directory}/</outputDirectory>
-						</artifactItem>
-					  </artifactItems>
+						<createDependencyReducedPom>false</createDependencyReducedPom>
+					  <transformers>
+						<transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+						  <mainClass>org.hath.gui.HentaiAtHomeClientGUI</mainClass>
+						</transformer>
+					  </transformers>
+					  <artifactSet>
+						<excludes>
+						  <exclude>junit:*</exclude>
+						  <exclude>org.mockito:*</exclude>
+						  <exclude>org.hamcrest:*</exclude>
+						  <exclude>com.google.code.findbugs:*</exclude>
+						  <exclude>org.apache.maven.plugins:*</exclude>
+						</excludes>
+					  </artifactSet>
 					</configuration>
 				  </execution>
 				</executions>
-			</plugin>
+			  </plugin>
 		</plugins>
 	</build>
 	

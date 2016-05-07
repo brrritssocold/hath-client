@@ -40,11 +40,6 @@ public class HentaiAtHomeClientGUI extends JFrame implements HathGUI, ActionList
 	private long lastSettingRefresh = 0;
 	
 	public HentaiAtHomeClientGUI(String[] args) {
-		String mainjar = "HentaiAtHome.jar";
-		if(! (new java.io.File(mainjar)).canRead()) {
-			Out.error("Required JAR file " + mainjar + " could not be found. Please re-download Hentai@Home.");
-			System.exit(-1);
-		}
 	
 		try {
     		UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
