@@ -7,17 +7,17 @@
 	<name>Hentai@Home Client</name>
 	<description>Client for the Hentai@Home content network</description>
 	<packaging>pom</packaging>
-	
+
 	<properties>
-    	<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    	<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 	</properties>
-	
+
 	<modules>
 		<module>hath-base</module>
 		<module>hath-gui</module>
 	</modules>
-	
+
 	<build>
 		<plugins>
 			<plugin>

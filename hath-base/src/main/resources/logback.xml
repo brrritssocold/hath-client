@@ -1,0 +1,58 @@
+<configuration>
+<shutdownHook class="ch.qos.logback.core.hook.DelayingShutdownHook"/>
+
+  <appender name="LOG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+      <file>data/log_out</file>
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <!-- daily rollover -->
+      <fileNamePattern>data/log_out.%d.gz</fileNamePattern>
+
+      <!-- keep 30 days' worth of history capped at 3GB total size -->
+      <maxHistory>30</maxHistory>
+
+    </rollingPolicy>
+		<filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>DEBUG</level>
+        </filter>
+    <!-- encoders are assigned the type
+         ch.qos.logback.classic.encoder.PatternLayoutEncoder by default -->
+    <encoder>
+	<!-- 2016-05-07T17:19:43Z -->
+      <pattern>%d{"yyyy-MM-dd'T'HH:mm:ss'Z'"} [%level] %msg%n</pattern>
+    </encoder>
+  </appender>
+  
+    <appender name="ERR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+      <file>data/err_out</file>
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <!-- daily rollover -->
+      <fileNamePattern>data/err_out.%d.gz</fileNamePattern>
+
+      <!-- keep 30 days' worth of history capped at 3GB total size -->
+      <maxHistory>30</maxHistory>
+
+    </rollingPolicy>
+		<filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>WARN</level>
+        </filter>
+    <!-- encoders are assigned the type
+         ch.qos.logback.classic.encoder.PatternLayoutEncoder by default -->
+    <encoder>
+      <pattern>%d{"yyyy-MM-dd'T'HH:mm:ss'Z'"} [%level] %msg%n</pattern>
+    </encoder>
+  </appender>
+  
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <!-- encoders are assigned the type
+         ch.qos.logback.classic.encoder.PatternLayoutEncoder by default -->
+    <encoder>
+      <pattern>%d{"yyyy-MM-dd'T'HH:mm:ss'Z'"} [%level] %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <root level="INFO">
+    <appender-ref ref="LOG_FILE" />
+	<appender-ref ref="ERR_FILE" />
+	<appender-ref ref="STDOUT" />
+  </root>
+</configuration>

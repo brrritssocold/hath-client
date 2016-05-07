@@ -7,12 +7,12 @@
 	<name>Hentai@Home Client GUI</name>
 	<description>Client for the Hentai@Home content network, GUI module</description>
 	<packaging>jar</packaging>
-	
+
 	<properties>
-    	<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    	<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 	</properties>
-	
+
 	<build>
 		<plugins>
 			<plugin>
@@ -47,25 +47,26 @@
 				<artifactId>maven-shade-plugin</artifactId>
 				<version>2.4.3</version>
 				<executions>
-				  <execution>
-					<phase>package</phase>
-					<goals>
-					  <goal>shade</goal>
-					</goals>
-					<configuration>
-						<createDependencyReducedPom>false</createDependencyReducedPom>
-					  <transformers>
-						<transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-						  <mainClass>org.hath.gui.HentaiAtHomeClientGUI</mainClass>
-						</transformer>
-					  </transformers>
-					</configuration>
-				  </execution>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>shade</goal>
+						</goals>
+						<configuration>
+							<createDependencyReducedPom>false</createDependencyReducedPom>
+							<transformers>
+								<transformer
+									implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+									<mainClass>org.hath.gui.HentaiAtHomeClientGUI</mainClass>
+								</transformer>
+							</transformers>
+						</configuration>
+					</execution>
 				</executions>
-			  </plugin>
+			</plugin>
 		</plugins>
 	</build>
-	
+
 	<dependencies>
 		<dependency>
 			<groupId>org.hath</groupId>
