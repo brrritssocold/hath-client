@@ -28,7 +28,7 @@ import java.util.LinkedList;
 public class HTTPResponseProcessorCachelist extends HTTPResponseProcessor {
 	private CacheHandler cacheHandler;
 	
-	private int cacheListWritten, segmentIndex, segmentCount;
+	private int segmentIndex, segmentCount;
 	private StringBuilder fileidBuffer;
 
 	public HTTPResponseProcessorCachelist(CacheHandler cacheHandler) {
@@ -39,7 +39,6 @@ public class HTTPResponseProcessorCachelist extends HTTPResponseProcessor {
 		// note: this class is only safe to use during startup while the client is still single-threaded
 		// any cache additions or deletions between the initial file length is calculated and this class is invoked will make things fail
 
-		cacheListWritten = 0;
 		segmentIndex = 0;
 		segmentCount = cacheHandler.getSegmentCount();
 		
@@ -59,8 +58,6 @@ public class HTTPResponseProcessorCachelist extends HTTPResponseProcessor {
 	}
 	
 	public byte[] getBytesRange(int len) {
-		//Out.debug("Before: cacheListWritten=" + cacheListWritten + ", fileidBuffer=" + fileidBuffer.length() +", len=" + len);
-
 		while( fileidBuffer.length() < len ) {
 			Out.info("Retrieving segment " + segmentIndex + " of " + segmentCount);
 		
@@ -86,11 +83,6 @@ public class HTTPResponseProcessorCachelist extends HTTPResponseProcessor {
 			HentaiAtHomeClient.dieWithError("Length of cache list buffer (" + returnBytes.length + ") does not match requested length (" + len + ")! Bad program!");
 		}
 		
-		cacheListWritten += returnBytes.length;
-		
-		//Out.debug("After: cacheListWritten=" + cacheListWritten + ", fileidBuffer=" + fileidBuffer.length() +", len=" + len);
-		
 		return returnBytes;
 	}
-	
 }
