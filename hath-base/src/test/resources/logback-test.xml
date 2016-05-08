@@ -12,6 +12,5 @@
 
   <root level="TRACE">
     <appender-ref ref="STDOUT" />
-	<appender-ref ref="ERR_FILE" />
   </root>
 </configuration>
