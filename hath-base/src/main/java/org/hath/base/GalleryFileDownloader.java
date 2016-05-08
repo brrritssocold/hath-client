@@ -23,13 +23,12 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
-import java.util.Arrays;
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.InputStream;
-import java.io.BufferedInputStream;
-import java.lang.Thread;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.Arrays;
 
 public class GalleryFileDownloader implements Runnable {
 	public static final int DOWNLOAD_PENDING = 0;
@@ -196,7 +195,7 @@ public class GalleryFileDownloader implements Runnable {
 						}
 
 						time += 5;
-						Thread.currentThread().sleep(5);
+						Thread.sleep(5);
 					}
 				}
 				
@@ -221,7 +220,7 @@ public class GalleryFileDownloader implements Runnable {
 		} else {
 			try {
 				CacheHandler cacheHandler = client.getCacheHandler();
-				File tmpfile = File.createTempFile("hathproxy_", "", cacheHandler.getTmpDir());
+				File tmpfile = File.createTempFile("hathproxy_", "", CacheHandler.getTmpDir());
 				FileTools.putFileContents(tmpfile, databuffer);
 				
 				if(cacheHandler.moveFileToCacheDir(tmpfile, requestedHVFile)) {

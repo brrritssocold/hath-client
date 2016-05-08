@@ -23,16 +23,15 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
-import java.net.URL;
+import java.io.BufferedReader;
 import java.io.File;
-import java.lang.StringBuffer;
+import java.io.InputStreamReader;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.List;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 
 public class ServerHandler {
 	public static final String ACT_SERVER_STAT = "server_stat";
@@ -166,7 +165,7 @@ public class ServerHandler {
 				Out.info("");
 
 				try {
-					java.lang.Thread.currentThread().sleep(90000);
+					Thread.sleep(90000);
 				} catch(Exception e) {}
 
 				return notifyStart();
@@ -180,7 +179,7 @@ public class ServerHandler {
 				Out.info("************************************************************************************************************************************");
 				Out.info("");
 
-				client.dieWithError("FAIL_OTHER_CLIENT_CONNECTED");
+				HentaiAtHomeClient.dieWithError("FAIL_OTHER_CLIENT_CONNECTED");
 			}
 			else if(failcode.startsWith("FAIL_CID_IN_USE")) {
 				Out.info("");
@@ -191,7 +190,7 @@ public class ServerHandler {
 				Out.info("************************************************************************************************************************************");
 				Out.info("");
 
-				client.dieWithError("FAIL_CID_IN_USE");
+				HentaiAtHomeClient.dieWithError("FAIL_CID_IN_USE");
 			}
 			else if(failcode.startsWith("FAIL_RESET_SUSPENDED")) {
 				Out.info("");
@@ -201,7 +200,7 @@ public class ServerHandler {
 				Out.info("************************************************************************************************************************************");
 				Out.info("");
 
-				client.dieWithError("FAIL_RESET_SUSPENDED");
+				HentaiAtHomeClient.dieWithError("FAIL_RESET_SUSPENDED");
 			}
 		}
 
@@ -539,7 +538,7 @@ public class ServerHandler {
 	private boolean downloadAndCacheFile(URL source, String fileid) {
 		if(HVFile.isValidHVFileid(fileid)) {
 			CacheHandler ch = client.getCacheHandler();
-			File tmpfile = new File(ch.getTmpDir(), fileid);
+			File tmpfile = new File(CacheHandler.getTmpDir(), fileid);
 
 			if(tmpfile.exists()) {
 				tmpfile.delete();

@@ -23,8 +23,12 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
-import java.net.*;
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.net.URL;
+import java.net.URLConnection;
 
 public class FileDownloader implements Runnable {
 	private int timeout = 30000, maxDLTime = Integer.MAX_VALUE, retries = 3;
@@ -207,7 +211,7 @@ public class FileDownloader implements Runnable {
 							}
 
 							time += 5;
-							Thread.currentThread().sleep(5);
+							Thread.sleep(5);
 						}
 					}
 					
