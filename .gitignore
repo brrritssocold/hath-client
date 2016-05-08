@@ -5,3 +5,7 @@ target/
 .project
 .classpath
 .settings/
+
+# HatH hardcoded data directory
+/hath-base/data
+/hath-gui/data
