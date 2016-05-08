@@ -22,13 +22,21 @@ along with Hentai@Home GUI.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 package org.hath.gui;
-import org.hath.base.*;
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.Font;
 
-import java.awt.*;
-import javax.swing.*;
+import javax.swing.BorderFactory;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+
+import org.hath.base.Out;
+import org.hath.base.OutListener;
+import org.hath.base.Settings;
 
 public class HHLogPane extends JPanel implements OutListener {
-	
+	private static final long serialVersionUID = 1228506033848759294L;
 	private JTextArea textArea;
 
 	public HHLogPane() {

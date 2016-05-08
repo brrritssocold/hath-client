@@ -51,6 +51,7 @@ import org.hath.base.Settings;
 import org.hath.base.Stats;
 
 public class HentaiAtHomeClientGUI extends JFrame implements HathGUI, ActionListener, WindowListener, MouseListener, Runnable {
+	private static final long serialVersionUID = 7281412170076686274L;
 	private HentaiAtHomeClient client;
 	private HHControlPane controlPane;
 	private HHLogPane logPane;
