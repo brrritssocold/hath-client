@@ -1,4 +1,4 @@
-<configuration>
+<configuration scan="true">
 <shutdownHook class="ch.qos.logback.core.hook.DelayingShutdownHook"/>
 
   <appender name="LOG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
