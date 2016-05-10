@@ -12,9 +12,6 @@
 			<maxHistory>30</maxHistory>
 
 		</rollingPolicy>
-		<filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-			<level>DEBUG</level>
-		</filter>
 		<!-- encoders are assigned the type ch.qos.logback.classic.encoder.PatternLayoutEncoder 
 			by default -->
 		<encoder>
@@ -25,6 +22,9 @@
 	<appender name="ASYNC_LOG_FILE" class="ch.qos.logback.classic.AsyncAppender">
 		<appender-ref ref="LOG_FILE" />
 		<queueSize>512</queueSize>
+		<filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+			<level>DEBUG</level>
+		</filter>
 	</appender>
 
 	<appender name="ERR_FILE"
