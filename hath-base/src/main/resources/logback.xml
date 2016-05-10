@@ -8,7 +8,7 @@
 			<!-- daily rollover -->
 			<fileNamePattern>data/log_out.%d.gz</fileNamePattern>
 
-			<!-- keep 30 days' worth of history capped at 3GB total size -->
+			<!-- keep 30 days' worth of history -->
 			<maxHistory>30</maxHistory>
 
 		</rollingPolicy>
@@ -18,7 +18,6 @@
 		<!-- encoders are assigned the type ch.qos.logback.classic.encoder.PatternLayoutEncoder 
 			by default -->
 		<encoder>
-			<!-- 2016-05-07T17:19:43Z -->
 			<pattern>%d{"yyyy-MM-dd'T'HH:mm:ss'Z'"} [%level] %msg%n</pattern>
 		</encoder>
 	</appender>
@@ -35,7 +34,7 @@
 			<!-- daily rollover -->
 			<fileNamePattern>data/err_out.%d.gz</fileNamePattern>
 
-			<!-- keep 30 days' worth of history capped at 3GB total size -->
+			<!-- keep 30 days' worth of history -->
 			<maxHistory>30</maxHistory>
 
 		</rollingPolicy>
