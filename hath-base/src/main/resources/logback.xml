@@ -1,0 +1,77 @@
+<configuration scan="true">
+	<!-- Ensure the logging framework is shutdown correctly -->
+	<shutdownHook class="ch.qos.logback.core.hook.DelayingShutdownHook" />
+
+	<!-- Log files -->
+	<appender name="LOG_FILE"
+		class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>data/log_out</file>
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<!-- daily rollover -->
+			<fileNamePattern>data/log_out.%d.gz</fileNamePattern>
+
+			<!-- keep 30 days' worth of history -->
+			<maxHistory>30</maxHistory>
+
+		</rollingPolicy>
+		<!-- encoders are assigned the type ch.qos.logback.classic.encoder.PatternLayoutEncoder 
+			by default -->
+		<encoder>
+			<pattern>%d{"yyyy-MM-dd'T'HH:mm:ss'Z'",UTC} [%level] %msg%n</pattern>
+		</encoder>
+	</appender>
+
+	<appender name="ERR_FILE"
+		class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>data/err_out</file>
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<!-- daily rollover -->
+			<fileNamePattern>data/err_out.%d.gz</fileNamePattern>
+
+			<!-- keep 30 days' worth of history -->
+			<maxHistory>30</maxHistory>
+
+		</rollingPolicy>
+		<!-- encoders are assigned the type ch.qos.logback.classic.encoder.PatternLayoutEncoder 
+			by default -->
+		<encoder>
+			<pattern>%d{"yyyy-MM-dd'T'HH:mm:ss'Z'",UTC} [%level] %msg%n</pattern>
+		</encoder>
+	</appender>
+
+	<!-- Console -->
+	<appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+		<!-- encoders are assigned the type ch.qos.logback.classic.encoder.PatternLayoutEncoder 
+			by default -->
+		<encoder>
+			<pattern>%d{"yyyy-MM-dd'T'HH:mm:ss'Z'",UTC} [%level] %msg%n</pattern>
+		</encoder>
+	</appender>
+
+	<!-- Async appenders -->
+	<appender name="ASYNC_LOG_FILE" class="ch.qos.logback.classic.AsyncAppender">
+		<appender-ref ref="LOG_FILE" />
+		<queueSize>512</queueSize>
+		<filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+			<level>DEBUG</level>
+		</filter>
+	</appender>
+	<appender name="ASYNC_ERR_FILE" class="ch.qos.logback.classic.AsyncAppender">
+		<appender-ref ref="ERR_FILE" />
+		<queueSize>512</queueSize>
+		<filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+			<level>WARN</level>
+		</filter>
+	</appender>
+
+	<appender name="ASYNC_STDOUT" class="ch.qos.logback.classic.AsyncAppender">
+		<appender-ref ref="STDOUT" />
+	</appender>
+
+	<!-- Logging root -->
+	<root level="DEBUG">
+		<appender-ref ref="ASYNC_LOG_FILE" />
+		<appender-ref ref="ASYNC_ERR_FILE" />
+		<appender-ref ref="ASYNC_STDOUT" />
+	</root>
+</configuration>

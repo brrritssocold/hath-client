@@ -50,7 +50,6 @@ package org.hath.base;
 
 public class HentaiAtHomeClient implements Runnable {
 	private InputQueryHandler iqh;
-	private Out out;
 	private ShutdownHook shutdownHook;
 	private boolean shutdown, reportShutdown, fastShutdown;
 	private HTTPServer httpServer;
@@ -76,8 +75,7 @@ public class HentaiAtHomeClient implements Runnable {
 	// master thread for all regularly scheduled tasks
 	// note that this function also does most of the program initialization, so that the GUI thread doesn't get locked up doing this when the program is launched through the GUI extension.
 	public void run() {
-		out = new Out();
-		out.overrideDefaultOutput();
+		Out.overrideDefaultOutput();
 		Out.info("Hentai@Home " + Settings.CLIENT_VERSION + " starting up");
 		Out.info("");
 		Out.info("Copyright (c) 2008-2014, E-Hentai.org - all rights reserved.");
@@ -186,7 +184,7 @@ public class HentaiAtHomeClient implements Runnable {
 
 		while(!shutdown) {
 			try {
-				myThread.sleep(Math.max(1000, 10000 - lastThreadTime));
+				Thread.sleep(Math.max(1000, 10000 - lastThreadTime));
 			} catch(java.lang.InterruptedException e) {
 				Out.debug("Master thread sleep interrupted");
 			}
@@ -295,10 +293,6 @@ public class HentaiAtHomeClient implements Runnable {
 		shutdown(false, null);
 	}
 	
-	private void shutdown(String error) {
-		shutdown(false, error);
-	}
-	
 	private void shutdown(boolean fromShutdownHook, String shutdownErrorMessage) {
 		Out.flushLogs();
 
@@ -315,7 +309,7 @@ public class HentaiAtHomeClient implements Runnable {
 				Out.info("Shutdown in progress - please wait 25 seconds");
 
 				try {
-					Thread.currentThread().sleep(25000);
+					Thread.sleep(25000);
 				} catch(java.lang.InterruptedException e) {}
 				
 				if(Stats.getOpenConnections() > 0) {

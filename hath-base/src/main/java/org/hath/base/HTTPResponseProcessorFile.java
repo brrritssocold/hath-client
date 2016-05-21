@@ -23,9 +23,9 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.BufferedInputStream;
 
 // this class provides provides a buffered interface to read a file in chunks
 
@@ -33,11 +33,9 @@ public class HTTPResponseProcessorFile extends HTTPResponseProcessor {
 
 	private HVFile requestedHVFile;
 	private BufferedInputStream bis;
-	private int off;
 
 	public HTTPResponseProcessorFile(HVFile requestedHVFile) {
 		this.requestedHVFile = requestedHVFile;
-		off = 0;
 	}
 
 	public int initialize() {
@@ -94,7 +92,6 @@ public class HTTPResponseProcessorFile extends HTTPResponseProcessor {
 			e.printStackTrace();
 		}
 
-		off += len;
 		return range;
 	}
 }

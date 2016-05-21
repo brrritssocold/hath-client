@@ -24,11 +24,17 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 package org.hath.base;
 
 import java.io.File;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
-import java.sql.*;
 
 public class CacheHandler {
 
@@ -89,7 +95,7 @@ public class CacheHandler {
 				Out.info("***************************************************************************************************************");
 				Out.info("");
 
-				client.dieWithError("Failed to load the database.");
+				HentaiAtHomeClient.dieWithError("Failed to load the database.");
 			}
 
 			if(quickStart) {
@@ -102,7 +108,7 @@ public class CacheHandler {
 		}
 		catch(Exception e) {
 			Out.error("CacheHandler: Failed to initialize SQLite database engine");
-			client.dieWithError(e);
+			HentaiAtHomeClient.dieWithError(e);
 		}
 	}
 
@@ -281,7 +287,7 @@ public class CacheHandler {
 				rs.close();
 			} catch(Exception e) {
 				Out.error("CacheHandler: Failed to perform database operation");
-				client.dieWithError(e);
+				HentaiAtHomeClient.dieWithError(e);
 			}
 
 			updateStats();
@@ -297,13 +303,17 @@ public class CacheHandler {
 		if( !Settings.isSkipFreeSpaceCheck() && (cachedir.getFreeSpace() < Settings.getDiskLimitBytes() - cacheSize) ) {
 			// note: if this check is removed and the client ends up being starved on disk space with static ranges assigned, it will cause a major loss of trust.
 			client.setFastShutdown();
-			client.dieWithError("The storage device does not have enough space available to hold the given cache size.\nFree up space, or reduce the cache size from the H@H settings page.\nhttp://g.e-hentai.org/hentaiathome.php?cid=" + Settings.getClientID());
+			HentaiAtHomeClient.dieWithError(
+					"The storage device does not have enough space available to hold the given cache size.\nFree up space, or reduce the cache size from the H@H settings page.\nhttp://g.e-hentai.org/hentaiathome.php?cid="
+							+ Settings.getClientID());
 		}
 
 		if( (cacheCount < 1) && (Settings.getStaticRangeCount() > 20) ) {
 			// note: if this check is removed and the client is started with an empty cache and several static ranges assigned, it will cause a major loss of trust.
 			client.setFastShutdown();
-			client.dieWithError("This client has static ranges assigned to it, but the cache is empty.\nCheck permissions and, if necessary, delete the file hath.db in the data directory to rebuild the cache database.\nIf the cache has been deleted or is otherwise lost, you have to manually reset your static ranges from the H@H settings page.\nhttp://g.e-hentai.org/hentaiathome.php?cid=" + Settings.getClientID());
+			HentaiAtHomeClient.dieWithError(
+					"This client has static ranges assigned to it, but the cache is empty.\nCheck permissions and, if necessary, delete the file hath.db in the data directory to rebuild the cache database.\nIf the cache has been deleted or is otherwise lost, you have to manually reset your static ranges from the H@H settings page.\nhttp://g.e-hentai.org/hentaiathome.php?cid="
+							+ Settings.getClientID());
 		}
 
 		if(!checkAndFreeDiskSpace(cachedir, true)) {
@@ -381,7 +391,7 @@ public class CacheHandler {
 			}
 		} catch(Exception e) {
 			Out.error("CacheHandler: Failed to perform database operation");
-			client.dieWithError(e);
+			HentaiAtHomeClient.dieWithError(e);
 		}
 
 		++cacheCount;
@@ -427,7 +437,7 @@ public class CacheHandler {
 			updateStats();
 		} catch(Exception e) {
 			Out.error("CacheHandler: Failed to perform database operation");
-			client.dieWithError(e);
+			HentaiAtHomeClient.dieWithError(e);
 		}
 	}
 
@@ -508,7 +518,7 @@ public class CacheHandler {
 				}
 			} catch(Exception e) {
 				Out.error("CacheHandler: Failed to perform database operation");
-				client.dieWithError(e);
+				HentaiAtHomeClient.dieWithError(e);
 			}
 
 			Out.info("CacheHandler: Loaded " + knownFiles + " known files.");
@@ -584,7 +594,7 @@ public class CacheHandler {
 			}
 			catch(Exception e) {
 				Out.error("CacheHandler: Failed to perform database operation");
-				client.dieWithError(e);
+				HentaiAtHomeClient.dieWithError(e);
 			}
 
 			if( !noServerDeleteNotify ) {
@@ -649,7 +659,7 @@ public class CacheHandler {
 		}
 		catch(Exception e) {
 			Out.error("CacheHandler: Failed to perform database operation");
-			client.dieWithError(e);
+			HentaiAtHomeClient.dieWithError(e);
 		}
 
 		client.getServerHandler().notifyUncachedFiles(deleteNotify);
@@ -698,7 +708,7 @@ public class CacheHandler {
 			}
 		} catch(Exception e) {
 			Out.error("CacheHandler: Failed to perform database operation");
-			client.dieWithError(e);
+			HentaiAtHomeClient.dieWithError(e);
 		}
 
 		if(!noServerDeleteNotify) {
@@ -765,7 +775,7 @@ public class CacheHandler {
 		}
 		catch(Exception e) {
 			Out.error("CacheHandler: Failed to perform database operation");
-			client.dieWithError(e);
+			HentaiAtHomeClient.dieWithError(e);
 		}
 
 		return fileList;
@@ -913,7 +923,7 @@ public class CacheHandler {
 				}
 			} catch(Exception e) {
 				Out.error("CacheHandler: Failed to perform database operation");
-				client.dieWithError(e);
+				HentaiAtHomeClient.dieWithError(e);
 			}
 		}
 	}

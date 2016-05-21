@@ -22,13 +22,23 @@ along with Hentai@Home GUI.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 package org.hath.gui;
-import org.hath.base.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 
-import java.awt.*;
-import javax.swing.*;
+import javax.swing.BorderFactory;
+import javax.swing.JPanel;
+
+import org.hath.base.Settings;
+import org.hath.base.StatListener;
+import org.hath.base.Stats;
 
 public class HHControlPane extends JPanel {
-	
+	private static final long serialVersionUID = 6414081823838202123L;
 	private HentaiAtHomeClientGUI clientGUI;
 	private StatPane statPane;
 	private GraphPane graphPane;
@@ -52,6 +62,7 @@ public class HHControlPane extends JPanel {
 	}
 	
 	private class StatPane extends JPanel implements StatListener {
+		private static final long serialVersionUID = -4597810266493308911L;
 		private Font myFont;
 	
 		public StatPane() {
@@ -194,6 +205,7 @@ public class HHControlPane extends JPanel {
 	}
 	
 	private class GraphPane extends JPanel implements StatListener {
+		private static final long serialVersionUID = 1328288714655544785L;
 		private int[] heights;
 		private long lastGraphRefresh = 0;
 		private long bytesLast10Sec = 0, bytesLastMin = 0, bytesLast15Min = 0, bytesLast60Min = 0;

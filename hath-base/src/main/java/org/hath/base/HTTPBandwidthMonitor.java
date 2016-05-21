@@ -23,8 +23,6 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
-import java.lang.Thread;
-
 public class HTTPBandwidthMonitor {
 	private int sleepTrigger;
 
@@ -44,7 +42,7 @@ public class HTTPBandwidthMonitor {
 			sleepTrigger = 0;
 			
 			try {
-				thread.sleep(sleepTime);
+				Thread.sleep(sleepTime);
 			} catch(Exception e) {
 				e.printStackTrace();
 			}

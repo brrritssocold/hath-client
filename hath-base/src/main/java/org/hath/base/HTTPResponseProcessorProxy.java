@@ -23,8 +23,6 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
-import java.lang.Thread;
-
 public class HTTPResponseProcessorProxy extends HTTPResponseProcessor {
 	private HTTPSession session;
 	private GalleryFileDownloader gdf;
@@ -63,7 +61,7 @@ public class HTTPResponseProcessorProxy extends HTTPResponseProcessor {
 		
 		while(endoff > gdf.getCurrentWriteoff()) {
 			try {
-				Thread.currentThread().sleep(10);
+				Thread.sleep(10);
 			} catch(Exception e) {}
 			
 			if( ++timeout > 30000 ) {

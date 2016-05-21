@@ -124,7 +124,7 @@ public class GalleryFile {
 			// we check every second, and give it max five minutes before moving on. if gfd finishes it after we give up, it will be caught on the next pass-through.
 			do {
 				try {
-					Thread.currentThread().sleep(sleepTime);
+					Thread.sleep(sleepTime);
 					runTime += sleepTime;
 				} catch(java.lang.InterruptedException e) {}
 			} while((gfd.getDownloadState() == GalleryFileDownloader.DOWNLOAD_PENDING) && (runTime < 300000));

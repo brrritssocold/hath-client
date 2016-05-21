@@ -23,11 +23,10 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
-import java.lang.Thread;
-import java.util.List;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Hashtable;
-import java.io.File;
+import java.util.List;
 
 public class GalleryDownloadManager implements Runnable {
 	protected HentaiAtHomeClient client;
@@ -225,7 +224,7 @@ public class GalleryDownloadManager implements Runnable {
 			}
 
 			try {
-				myThread.sleep(sleepTime);
+				Thread.sleep(sleepTime);
 			} catch(java.lang.InterruptedException e) {}
 		}
 		

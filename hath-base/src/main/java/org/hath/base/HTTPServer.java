@@ -23,15 +23,14 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
-import java.net.Socket;
-import java.net.ServerSocket;
 import java.net.InetAddress;
-import java.lang.Thread;
-import java.util.List;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Hashtable;
 import java.util.Enumeration;
+import java.util.Hashtable;
+import java.util.List;
 
 public class HTTPServer implements Runnable {
 	private HentaiAtHomeClient client;
@@ -178,7 +177,7 @@ public class HTTPServer implements Runnable {
 							synchronized(floodControlTable) {
 								fce = floodControlTable.get(addrString);
 								if(fce == null) {
-									fce = new FloodControlEntry(addr);
+									fce = new FloodControlEntry();
 									floodControlTable.put(addrString, fce);
 								}
 							}
@@ -239,13 +238,11 @@ public class HTTPServer implements Runnable {
 	}
 	
 	private class FloodControlEntry {
-		private InetAddress addr;
 		private int connectCount;
 		private long lastConnect;
 		private long blocktime;
 	
-		public FloodControlEntry(InetAddress addr) {
-			this.addr = addr;
+		public FloodControlEntry() {
 			this.connectCount = 0;
 			this.lastConnect = 0;
 			this.blocktime = 0;
