@@ -48,6 +48,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
+import org.hath.base.gallery.GalleryDownloadManager;
 import org.hath.base.http.HTTPServer;
 
 public class HentaiAtHomeClient implements Runnable {
