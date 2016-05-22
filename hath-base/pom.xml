@@ -106,5 +106,10 @@
 			<artifactId>slf4j-api</artifactId>
 			<version>1.7.21</version>
 		</dependency>
+		<dependency>
+			<groupId>org.eclipse.jetty</groupId>
+			<artifactId>jetty-server</artifactId>
+			<version>9.3.8.RC0</version>
+		</dependency>
 	</dependencies>
 </project>
