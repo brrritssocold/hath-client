@@ -44,7 +44,7 @@ public class HTTPSession implements Runnable {
 	private Socket mySocket;
 	private HTTPServer httpServer;
 	private int connId;
-	private Thread myThread;
+	private Thread httpSession;
 	private boolean localNetworkAccess;
 	private long sessionStartTime, lastPacketSend;
 	private HTTPResponse hr;
@@ -58,8 +58,8 @@ public class HTTPSession implements Runnable {
 	}
 
 	public void handleSession() {
-		myThread = new Thread(this);
-		myThread.start();
+		httpSession = new Thread(this);
+		httpSession.start();
 	}
 
 	private void connectionFinished() {
@@ -231,7 +231,7 @@ public class HTTPSession implements Runnable {
 							Stats.bytesSent(writeLen);
 							
 							if(!disableBWM) {
-								bwm.synchronizedWait(myThread);
+								bwm.synchronizedWait(httpSession);
 							}
 						}
 					}

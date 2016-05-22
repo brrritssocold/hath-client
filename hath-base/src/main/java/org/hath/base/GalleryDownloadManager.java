@@ -30,7 +30,7 @@ import java.util.List;
 
 public class GalleryDownloadManager implements Runnable {
 	protected HentaiAtHomeClient client;
-	private Thread myThread;
+	private Thread galleryDownloadManager;
 	
 	private File hhdldir, downloadeddir;
 	private List<File> processedHHDLFiles; // this is never cleared while the client is running
@@ -51,8 +51,8 @@ public class GalleryDownloadManager implements Runnable {
 			HentaiAtHomeClient.dieWithError(e);
 		}
 		
-		myThread = new Thread(this);
-		myThread.start();
+		galleryDownloadManager = new Thread(this);
+		galleryDownloadManager.start();
 	}
 
 	public void run() {
