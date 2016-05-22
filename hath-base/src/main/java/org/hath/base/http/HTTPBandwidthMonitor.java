@@ -21,7 +21,9 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base;
+package org.hath.base.http;
+
+import org.hath.base.Settings;
 
 public class HTTPBandwidthMonitor {
 	private int sleepTrigger;

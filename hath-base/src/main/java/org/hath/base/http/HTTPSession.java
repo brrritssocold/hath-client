@@ -21,7 +21,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base;
+package org.hath.base.http;
 
 import java.util.Date;
 import java.util.TimeZone;
@@ -34,6 +34,10 @@ import java.lang.StringBuilder;
 import java.nio.charset.Charset;
 import java.io.*;
 import java.util.regex.*;
+
+import org.hath.base.Out;
+import org.hath.base.Settings;
+import org.hath.base.Stats;
 
 public class HTTPSession implements Runnable {
 
