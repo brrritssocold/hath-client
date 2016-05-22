@@ -90,6 +90,8 @@ public class HTTPServer implements Runnable {
 	}
 	
 	public void stopConnectionListener() {
+		Out.info("Shutting down the internal HTTP Server...");
+
 		if(ss != null) {
 			try {
 				ss.close();	// will cause ss.accept() to throw an exception, terminating the accept thread
