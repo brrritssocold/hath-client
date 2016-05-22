@@ -46,6 +46,7 @@ public class HTTPServer implements Runnable {
 	private int currentConnId;	
 	private boolean allowNormalConnections;
 	private Hashtable<String,FloodControlEntry> floodControlTable;
+	private boolean testForceExternal = false;
 	
 	public HTTPServer(HentaiAtHomeClient client) {
 		this.client = client;
@@ -163,7 +164,7 @@ public class HTTPServer implements Runnable {
 					if(!apiServerAccess && !allowNormalConnections) {
 						Out.warning("Rejecting connection request during startup.");
 						forceClose = true;						
-					} else if(!apiServerAccess && !localNetworkAccess) {
+					} else if ((!apiServerAccess && !localNetworkAccess) || testForceExternal) {
 						// connections from the API Server and the local network are not subject to the max connection limit or the flood control
 						
 						int maxConnections = Settings.getMaxConnections();
@@ -225,6 +226,10 @@ public class HTTPServer implements Runnable {
 		}
 	}
 	
+	public void setTestForceExternal(boolean testForceExternal) {
+		this.testForceExternal = testForceExternal;
+	}
+
 	private synchronized int getNewConnId() {
 		return ++currentConnId;
 	}
