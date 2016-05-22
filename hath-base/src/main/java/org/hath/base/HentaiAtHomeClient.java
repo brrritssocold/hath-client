@@ -48,6 +48,9 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
+import org.hath.base.gallery.GalleryDownloadManager;
+import org.hath.base.http.HTTPServer;
+
 public class HentaiAtHomeClient implements Runnable {
 	private InputQueryHandler iqh;
 	private ShutdownHook shutdownHook;
@@ -57,7 +60,7 @@ public class HentaiAtHomeClient implements Runnable {
 	private CacheHandler cacheHandler;
 	private ServerHandler serverHandler;
 	private GalleryDownloadManager galleryDownloadManager;
-	private Thread myThread;
+	private Thread hentaiAtHomeClient;
 	private int threadSkipCounter;
 	private long suspendedUntil;
 	private String[] args;
@@ -68,8 +71,9 @@ public class HentaiAtHomeClient implements Runnable {
 		shutdown = false;
 		reportShutdown = false;
 		
-		myThread = new Thread(this);
-		myThread.start();
+		hentaiAtHomeClient = new Thread(this);
+		hentaiAtHomeClient.setName("Client Base");
+		hentaiAtHomeClient.start();
 	}
 
 	// master thread for all regularly scheduled tasks
@@ -323,8 +327,8 @@ public class HentaiAtHomeClient implements Runnable {
 				cacheHandler.terminateDatabase();
 			}
 			
-			if(myThread != null) {
-				myThread.interrupt();
+			if(hentaiAtHomeClient != null) {
+				hentaiAtHomeClient.interrupt();
 			}
 
 			if(Math.random() > 0.99) {

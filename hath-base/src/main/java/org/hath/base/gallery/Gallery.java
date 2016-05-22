@@ -21,10 +21,14 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base;
+package org.hath.base.gallery;
 
 import java.io.File;
 import java.util.List;
+
+import org.hath.base.FileTools;
+import org.hath.base.HentaiAtHomeClient;
+import org.hath.base.Out;
 
 public class Gallery {
 	public static final int STATE_PROCESSED_ERRORS = -1;

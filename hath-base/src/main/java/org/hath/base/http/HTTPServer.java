@@ -21,7 +21,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base;
+package org.hath.base.http;
 
 import java.net.InetAddress;
 import java.net.ServerSocket;
@@ -31,6 +31,13 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+
+import org.hath.base.HentaiAtHomeClient;
+import org.hath.base.Out;
+import org.hath.base.Settings;
+import org.hath.base.Stats;
 
 public class HTTPServer implements Runnable {
 	private HentaiAtHomeClient client;
@@ -41,6 +48,7 @@ public class HTTPServer implements Runnable {
 	private int currentConnId;	
 	private boolean allowNormalConnections;
 	private Hashtable<String,FloodControlEntry> floodControlTable;
+	private Executor sessionThreadPool;
 	
 	public HTTPServer(HentaiAtHomeClient client) {
 		this.client = client;
@@ -51,6 +59,7 @@ public class HTTPServer implements Runnable {
 		currentConnId = 0;
 		allowNormalConnections = false;
 		floodControlTable = new Hashtable<String,FloodControlEntry>();
+		sessionThreadPool = Executors.newCachedThreadPool();
 	}
 	
 	public boolean startConnectionListener(int port) {
@@ -135,6 +144,10 @@ public class HTTPServer implements Runnable {
 	
 	public void allowNormalConnections() {
 		allowNormalConnections = true;
+	}
+
+	public void executeSession(HTTPSession session) {
+		sessionThreadPool.execute(session);
 	}
 
 	public void run() {

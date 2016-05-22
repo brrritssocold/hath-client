@@ -55,7 +55,7 @@ public class HentaiAtHomeClientGUI extends JFrame implements HathGUI, ActionList
 	private HentaiAtHomeClient client;
 	private HHControlPane controlPane;
 	private HHLogPane logPane;
-	private Thread myThread;
+	private Thread hentaiAtHomeClientGUI;
 	private JMenuItem refresh_settings, suspend_resume, suspend_5min, suspend_15min, suspend_30min, suspend_1hr, suspend_2hr, suspend_4hr, suspend_8hr;
 	private SystemTray tray;
 	private TrayIcon trayIcon;
@@ -180,8 +180,9 @@ public class HentaiAtHomeClientGUI extends JFrame implements HathGUI, ActionList
 		
 		lastSettingRefresh = System.currentTimeMillis();
 
-		myThread = new Thread(this);
-		myThread.start();
+		hentaiAtHomeClientGUI = new Thread(this);
+		hentaiAtHomeClientGUI.setName("Client GUI");
+		hentaiAtHomeClientGUI.start();
 
 		try {
 			Thread.sleep(startVisible ? 2000 : 60000);

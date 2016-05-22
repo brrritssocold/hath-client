@@ -21,7 +21,10 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base;
+package org.hath.base.http;
+
+import org.hath.base.Out;
+import org.hath.base.gallery.GalleryFileDownloader;
 
 public class HTTPResponseProcessorProxy extends HTTPResponseProcessor {
 	private HTTPSession session;

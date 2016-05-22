@@ -21,7 +21,9 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base;
+package org.hath.base.http;
+
+import org.hath.base.Settings;
 
 public class HTTPBandwidthMonitor {
 	private int sleepTrigger;
@@ -34,7 +36,7 @@ public class HTTPBandwidthMonitor {
 		return Settings.getThrottleBytesPerSec() > 0 ? (1000.0 * getActualPacketSize() / (double) Settings.getThrottleBytesPerSec()) : 0.0;
 	}
 	
-	public synchronized void synchronizedWait(Thread thread) {		
+	public synchronized void synchronizedWait() {
 		long sleepTime = Math.round(getMinMillisPerPacket() * ++sleepTrigger + (Math.random() - 0.5));
 		//System.out.println(sleepTime);
 		

@@ -21,16 +21,21 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base;
+package org.hath.base.gallery;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.List;
 
+import org.hath.base.FileTools;
+import org.hath.base.HentaiAtHomeClient;
+import org.hath.base.Out;
+import org.hath.base.Settings;
+
 public class GalleryDownloadManager implements Runnable {
 	protected HentaiAtHomeClient client;
-	private Thread myThread;
+	private Thread galleryDownloadManager;
 	
 	private File hhdldir, downloadeddir;
 	private List<File> processedHHDLFiles; // this is never cleared while the client is running
@@ -51,8 +56,9 @@ public class GalleryDownloadManager implements Runnable {
 			HentaiAtHomeClient.dieWithError(e);
 		}
 		
-		myThread = new Thread(this);
-		myThread.start();
+		galleryDownloadManager = new Thread(this);
+		galleryDownloadManager.setName("Gallery Download Manager");
+		galleryDownloadManager.start();
 	}
 
 	public void run() {
