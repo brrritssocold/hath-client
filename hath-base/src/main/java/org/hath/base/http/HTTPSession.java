@@ -23,17 +23,18 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.http;
 
-import java.util.Date;
-import java.util.TimeZone;
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.InputStreamReader;
+import java.net.InetAddress;
+import java.net.Socket;
+import java.nio.charset.Charset;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
-import java.net.Socket;
-import java.net.InetAddress;
-import java.lang.Thread;
-import java.lang.StringBuilder;
-import java.nio.charset.Charset;
-import java.io.*;
-import java.util.regex.*;
+import java.util.Date;
+import java.util.TimeZone;
+import java.util.regex.Pattern;
 
 import org.hath.base.Out;
 import org.hath.base.Settings;
@@ -48,7 +49,6 @@ public class HTTPSession implements Runnable {
 	private Socket mySocket;
 	private HTTPServer httpServer;
 	private int connId;
-	private Thread httpSession;
 	private boolean localNetworkAccess;
 	private long sessionStartTime, lastPacketSend;
 	private HTTPResponse hr;
@@ -62,9 +62,7 @@ public class HTTPSession implements Runnable {
 	}
 
 	public void handleSession() {
-		httpSession = new Thread(this);
-		httpSession.setName("HTTP Session");
-		httpSession.start();
+		httpServer.executeSession(this);
 	}
 
 	private void connectionFinished() {
