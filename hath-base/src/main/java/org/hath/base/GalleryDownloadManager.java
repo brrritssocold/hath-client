@@ -52,6 +52,7 @@ public class GalleryDownloadManager implements Runnable {
 		}
 		
 		galleryDownloadManager = new Thread(this);
+		galleryDownloadManager.setName("Gallery Download Manager");
 		galleryDownloadManager.start();
 	}
 

@@ -181,6 +181,7 @@ public class HentaiAtHomeClientGUI extends JFrame implements HathGUI, ActionList
 		lastSettingRefresh = System.currentTimeMillis();
 
 		hentaiAtHomeClientGUI = new Thread(this);
+		hentaiAtHomeClientGUI.setName("Client GUI");
 		hentaiAtHomeClientGUI.start();
 
 		try {

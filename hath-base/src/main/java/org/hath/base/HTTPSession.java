@@ -59,6 +59,7 @@ public class HTTPSession implements Runnable {
 
 	public void handleSession() {
 		httpSession = new Thread(this);
+		httpSession.setName("HTTP Session");
 		httpSession.start();
 	}
 

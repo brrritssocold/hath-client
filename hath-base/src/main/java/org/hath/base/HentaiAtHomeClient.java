@@ -69,6 +69,7 @@ public class HentaiAtHomeClient implements Runnable {
 		reportShutdown = false;
 		
 		hentaiAtHomeClient = new Thread(this);
+		hentaiAtHomeClient.setName("Client Base");
 		hentaiAtHomeClient.start();
 	}
 
