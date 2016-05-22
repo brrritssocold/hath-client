@@ -34,7 +34,7 @@ public class HTTPBandwidthMonitor {
 		return Settings.getThrottleBytesPerSec() > 0 ? (1000.0 * getActualPacketSize() / (double) Settings.getThrottleBytesPerSec()) : 0.0;
 	}
 	
-	public synchronized void synchronizedWait(Thread thread) {		
+	public synchronized void synchronizedWait() {
 		long sleepTime = Math.round(getMinMillisPerPacket() * ++sleepTrigger + (Math.random() - 0.5));
 		//System.out.println(sleepTime);
 		

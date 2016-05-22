@@ -232,7 +232,7 @@ public class HTTPSession implements Runnable {
 							Stats.bytesSent(writeLen);
 							
 							if(!disableBWM) {
-								bwm.synchronizedWait(httpSession);
+								bwm.synchronizedWait();
 							}
 						}
 					}
