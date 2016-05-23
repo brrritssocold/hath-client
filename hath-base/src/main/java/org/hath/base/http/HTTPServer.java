@@ -28,8 +28,6 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Enumeration;
-import java.util.Hashtable;
 import java.util.List;
 
 import org.hath.base.HentaiAtHomeClient;
@@ -45,7 +43,7 @@ public class HTTPServer implements Runnable {
 	private List<HTTPSession> sessions;
 	private int currentConnId;	
 	private boolean allowNormalConnections;
-	private Hashtable<String,FloodControlEntry> floodControlTable;
+	private FloodControl floodControl;
 	private boolean testForceExternal = false;
 	
 	public HTTPServer(HentaiAtHomeClient client) {
@@ -56,7 +54,7 @@ public class HTTPServer implements Runnable {
 		myThread = null;
 		currentConnId = 0;
 		allowNormalConnections = false;
-		floodControlTable = new Hashtable<String,FloodControlEntry>();
+		floodControl = new FloodControl();
 	}
 	
 	public boolean startConnectionListener(int port) {
@@ -102,26 +100,7 @@ public class HTTPServer implements Runnable {
 	}
 	
 	public void pruneFloodControlTable() {
-		List<String> toPrune = Collections.checkedList(new ArrayList<String>(), String.class);
-
-		synchronized(floodControlTable) {
-			Enumeration<String> keys = floodControlTable.keys();
-			
-			while(keys.hasMoreElements()) {
-				String key = keys.nextElement();
-				if(floodControlTable.get(key).isStale()) {
-					toPrune.add(key);
-				}
-			}
-			
-			for(String key : toPrune) {
-				floodControlTable.remove(key);
-			}
-		}
-
-		toPrune.clear();
-		toPrune = null;
-		System.gc();
+		floodControl.pruneFloodControlTable();
 	}
 	
 	public void nukeOldConnections(boolean killall) {
@@ -180,25 +159,7 @@ public class HTTPServer implements Runnable {
 								client.getServerHandler().notifyOverload();
 							}
 						
-							// this flood control will stop clients from opening more than ten connections over a (roughly) five second floating window, and forcibly block them for 60 seconds if they do.
-							FloodControlEntry fce = null;						
-							synchronized(floodControlTable) {
-								fce = floodControlTable.get(addrString);
-								if(fce == null) {
-									fce = new FloodControlEntry();
-									floodControlTable.put(addrString, fce);
-								}
-							}
-						
-							if(!fce.isBlocked()) {
-								if(!fce.hit()) {
-									Out.warning("Flood control activated for  " + addrString + " (blocking for 60 seconds)");
-									forceClose = true;
-								}
-							}
-							else {
-								forceClose = true;
-							}
+							forceClose = floodControl.hasExceededConnectionLimit(addrString);
 						}
 					}
 
@@ -247,39 +208,5 @@ public class HTTPServer implements Runnable {
 
 	public HentaiAtHomeClient getHentaiAtHomeClient() {
 		return client;
-	}
-	
-	private class FloodControlEntry {
-		private int connectCount;
-		private long lastConnect;
-		private long blocktime;
-	
-		public FloodControlEntry() {
-			this.connectCount = 0;
-			this.lastConnect = 0;
-			this.blocktime = 0;
-		}
-		
-		public boolean isStale() {
-			return lastConnect < System.currentTimeMillis() - 60000;
-		}
-		
-		public boolean isBlocked() {
-			return blocktime > System.currentTimeMillis();
-		}
-		
-		public boolean hit() {
-			long nowtime = System.currentTimeMillis();
-			connectCount = Math.max(0, connectCount - (int) Math.floor((nowtime - lastConnect) / 1000)) + 1;
-			lastConnect = nowtime;
-			
-			if(connectCount > 10) {
-				blocktime = nowtime + 60000;	// block this client from connecting for 60 seconds
-				return false;
-			}
-			else {
-				return true;
-			}
-		}
 	}
 }
