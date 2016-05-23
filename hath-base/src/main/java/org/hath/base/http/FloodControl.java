@@ -38,9 +38,15 @@ import org.hath.base.Out;
  */
 public class FloodControl {
 	private Hashtable<String, FloodControlEntry> floodControlTable;
+	private FloodControlEntryFactory factory;
 
 	public FloodControl() {
+		this(new FloodControlEntryFactory());
+	}
+
+	public FloodControl(FloodControlEntryFactory factory) {
 		floodControlTable = new Hashtable<String, FloodControlEntry>();
+		this.factory = factory;
 	}
 
 	public void pruneFloodControlTable() {
@@ -81,7 +87,7 @@ public class FloodControl {
 	public void addAddress(String address) {
 		synchronized (floodControlTable) {
 			if(!floodControlTable.containsKey(address)) {
-				floodControlTable.put(address, new FloodControlEntry());
+				floodControlTable.put(address, factory.create());
 			}
 		}
 	}
