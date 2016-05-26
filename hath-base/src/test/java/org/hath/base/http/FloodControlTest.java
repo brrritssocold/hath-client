@@ -29,6 +29,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class FloodControlTest {
@@ -56,26 +57,30 @@ public class FloodControlTest {
 		cut = new FloodControl();
 	}
 
+	@Ignore("Add parameter to set timeout")
 	@Test
 	public void testPruneFloodControlTable() throws Exception {
 		FloodControlEntry mockEntry = setupMockedCutForPrune();
 		when(mockEntry.getLastConnect()).thenReturn(System.currentTimeMillis());
 
-		cut.addAddress(TEST_ADDRESS);
+		cut.hit(TEST_ADDRESS);
+		assertThat(cut.getTableSize(), is(1L));
 		cut.pruneFloodControlTable();
 
-		assertThat(cut.addAddress(TEST_ADDRESS), is(false));
+		assertThat(cut.getTableSize(), is(1L));
 	}
 
+	@Ignore("Add parameter to set timeout")
 	@Test
 	public void testPruneFloodControlTableStaleAddress() throws Exception {
 		FloodControlEntry mockEntry = setupMockedCutForPrune();
 		when(mockEntry.getLastConnect()).thenReturn(0L);
 
-		cut.addAddress(TEST_ADDRESS);
+		cut.hit(TEST_ADDRESS);
+		assertThat(cut.getTableSize(), is(1L));
 		cut.pruneFloodControlTable();
 
-		assertThat(cut.addAddress(TEST_ADDRESS), is(true));
+		assertThat(cut.getTableSize(), is(0L));
 	}
 
 	@Test
@@ -105,17 +110,6 @@ public class FloodControlTest {
 	public void testHitTwenty() throws Exception {
 		hitAddress(TEST_ADDRESS, 19);
 		assertThat(cut.hit(TEST_ADDRESS), is(false));
-	}
-
-	@Test
-	public void testAddAddressNew() throws Exception {
-		assertThat(cut.addAddress(TEST_ADDRESS), is(true));
-	}
-
-	@Test
-	public void testAddAddressExisting() throws Exception {
-		assertThat(cut.addAddress(TEST_ADDRESS), is(true));
-		assertThat(cut.addAddress(TEST_ADDRESS), is(false));
 	}
 
 	@Test

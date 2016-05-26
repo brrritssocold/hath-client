@@ -23,13 +23,13 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.http;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Enumeration;
-import java.util.Hashtable;
-import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.hath.base.Out;
+
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 
 /**
  * This flood control will stop clients from opening more than ten connections
@@ -40,51 +40,38 @@ public class FloodControl {
 	private static final int MAX_ENTRY_AGE_MILLI = 60000;
 	private static final int BLOCK_TIME_MILLI = 60000;
 
-	private Hashtable<String, FloodControlEntry> floodControlTable;
-	private FloodControlEntryFactory factory;
+	private LoadingCache<String, FloodControlEntry> floodControlTable;
 	private boolean senseFloodMessageTrigger = false;
+
+	private class EntryValueLoader extends CacheLoader<String, FloodControlEntry> {
+		private FloodControlEntryFactory factory;
+
+		public EntryValueLoader(FloodControlEntryFactory factory) {
+			super();
+			this.factory = factory;
+		}
+
+		@Override
+		public FloodControlEntry load(String key) {
+			return factory.create();
+		}
+	}
 
 	public FloodControl() {
 		this(new FloodControlEntryFactory());
 	}
 
 	public FloodControl(FloodControlEntryFactory factory) {
-		floodControlTable = new Hashtable<String, FloodControlEntry>();
-		this.factory = factory;
+		this.floodControlTable = CacheBuilder.newBuilder().expireAfterAccess(MAX_ENTRY_AGE_MILLI, TimeUnit.MILLISECONDS)
+				.build(new EntryValueLoader(factory));
 	}
 
 	public void pruneFloodControlTable() {
-		List<String> toPrune = Collections.checkedList(new ArrayList<String>(), String.class);
-
-		synchronized (floodControlTable) {
-			Enumeration<String> keys = floodControlTable.keys();
-
-			while (keys.hasMoreElements()) {
-				String key = keys.nextElement();
-				if (isStale(key)) {
-					toPrune.add(key);
-				}
-			}
-
-			for (String key : toPrune) {
-				floodControlTable.remove(key);
-			}
-		}
-
-		toPrune.clear();
-		toPrune = null;
-		System.gc();
-	}
-
-	private boolean isStale(String key) {
-		FloodControlEntry entry = floodControlTable.get(key);
-		return entry.getLastConnect() < System.currentTimeMillis() - MAX_ENTRY_AGE_MILLI;
+		floodControlTable.cleanUp();
 	}
 
 	public boolean isBlocked(String address) {
-		addAddress(address);
-
-		FloodControlEntry entry = floodControlTable.get(address);
+		FloodControlEntry entry = floodControlTable.getUnchecked(address);
 		return isBlocked(entry);
 	}
 
@@ -93,8 +80,7 @@ public class FloodControl {
 	}
 
 	public boolean hit(String address) {
-		addAddress(address);
-		FloodControlEntry entry = floodControlTable.get(address);
+		FloodControlEntry entry = floodControlTable.getUnchecked(address);
 		return hit(entry);
 	}
 
@@ -108,22 +94,9 @@ public class FloodControl {
 
 		if (connectCount > 10) {
 			entry.setBlocktime(nowtime + BLOCK_TIME_MILLI);
-			// block this client from connecting
-											// for 60 seconds
 			return false;
 		} else {
 			return true;
-		}
-	}
-
-	public boolean addAddress(String address) {
-		synchronized (floodControlTable) {
-			if(!floodControlTable.containsKey(address)) {
-				floodControlTable.put(address, factory.create());
-				return true;
-			}
-
-			return false;
 		}
 	}
 
@@ -131,8 +104,7 @@ public class FloodControl {
 		boolean forceClose = false;
 		senseFloodMessageTrigger = false;
 
-		addAddress(address);
-		FloodControlEntry fce = floodControlTable.get(address);
+		FloodControlEntry fce = floodControlTable.getUnchecked(address);
 
 		if (!isBlocked(fce)) {
 			if (!hit(fce)) {
@@ -154,5 +126,14 @@ public class FloodControl {
 	 */
 	public boolean isSenseFloodMessageTrigger() {
 		return senseFloodMessageTrigger;
+	}
+
+	/**
+	 * Returns the approximate size of the flood control table.
+	 * 
+	 * @return approximate table size
+	 */
+	public long getTableSize() {
+		return floodControlTable.size();
 	}
 }
