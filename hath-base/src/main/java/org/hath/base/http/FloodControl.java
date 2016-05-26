@@ -84,11 +84,14 @@ public class FloodControl {
 		return floodControlTable.get(address).hit();
 	}
 
-	public void addAddress(String address) {
+	public boolean addAddress(String address) {
 		synchronized (floodControlTable) {
 			if(!floodControlTable.containsKey(address)) {
 				floodControlTable.put(address, factory.create());
+				return true;
 			}
+
+			return false;
 		}
 	}
 
