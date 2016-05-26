@@ -29,6 +29,7 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.Out;
@@ -36,6 +37,8 @@ import org.hath.base.Settings;
 import org.hath.base.Stats;
 
 public class HTTPServer implements Runnable {
+	private static final int MAX_FLOOD_ENTRY_AGE_SECONDS = 60;
+
 	private HentaiAtHomeClient client;
 	private HTTPBandwidthMonitor bandwidthMonitor;
 	private ServerSocket ss;
@@ -54,7 +57,7 @@ public class HTTPServer implements Runnable {
 		myThread = null;
 		currentConnId = 0;
 		allowNormalConnections = false;
-		floodControl = new FloodControl();
+		floodControl = new FloodControl(MAX_FLOOD_ENTRY_AGE_SECONDS, TimeUnit.SECONDS);
 	}
 	
 	public boolean startConnectionListener(int port) {

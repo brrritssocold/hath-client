@@ -28,12 +28,15 @@ import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.concurrent.TimeUnit;
+
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class FloodControlTest {
 	private static final String TEST_ADDRESS = "foo";
+	private static final long CACHE_EXPIRY_TIME_SECONDS = 60;
+
 	private FloodControl cut;
 
 	private void hitAddress(String address, int hitNumber) {
@@ -45,42 +48,41 @@ public class FloodControlTest {
 	private FloodControlEntry setupMockedCutForPrune() {
 		FloodControlEntryFactory mockFactory = mock(FloodControlEntryFactory.class);
 		FloodControlEntry mockEntry = mock(FloodControlEntry.class);
+		FloodControlEntry mockEntry2 = mock(FloodControlEntry.class);
 
-		when(mockFactory.create()).thenReturn(mockEntry);
+		when(mockFactory.create()).thenReturn(mockEntry, mockEntry2);
+		when(mockEntry.getBlocktime()).thenReturn(System.currentTimeMillis() + 6000L);
+		when(mockEntry2.getBlocktime()).thenReturn(0L);
 
-		cut = new FloodControl(mockFactory);
+		cut = new FloodControl(mockFactory, 100, TimeUnit.MILLISECONDS);
 		return mockEntry;
 	}
 
 	@Before
 	public void createFloodControl() throws Exception {
-		cut = new FloodControl();
+		cut = new FloodControl(CACHE_EXPIRY_TIME_SECONDS, TimeUnit.SECONDS);
 	}
 
-	@Ignore("Add parameter to set timeout")
 	@Test
 	public void testPruneFloodControlTable() throws Exception {
 		FloodControlEntry mockEntry = setupMockedCutForPrune();
 		when(mockEntry.getLastConnect()).thenReturn(System.currentTimeMillis());
 
 		cut.hit(TEST_ADDRESS);
-		assertThat(cut.getTableSize(), is(1L));
-		cut.pruneFloodControlTable();
-
-		assertThat(cut.getTableSize(), is(1L));
+		assertThat(cut.isBlocked(TEST_ADDRESS), is(true));
+		Thread.sleep(10);
+		assertThat(cut.isBlocked(TEST_ADDRESS), is(true));
 	}
 
-	@Ignore("Add parameter to set timeout")
 	@Test
 	public void testPruneFloodControlTableStaleAddress() throws Exception {
 		FloodControlEntry mockEntry = setupMockedCutForPrune();
 		when(mockEntry.getLastConnect()).thenReturn(0L);
 
 		cut.hit(TEST_ADDRESS);
-		assertThat(cut.getTableSize(), is(1L));
-		cut.pruneFloodControlTable();
-
-		assertThat(cut.getTableSize(), is(0L));
+		assertThat(cut.isBlocked(TEST_ADDRESS), is(true));
+		Thread.sleep(150);
+		assertThat(cut.isBlocked(TEST_ADDRESS), is(false));
 	}
 
 	@Test

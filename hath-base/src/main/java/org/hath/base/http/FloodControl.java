@@ -37,7 +37,6 @@ import com.google.common.cache.LoadingCache;
  * seconds if they do.
  */
 public class FloodControl {
-	private static final int MAX_ENTRY_AGE_MILLI = 60000;
 	private static final int BLOCK_TIME_MILLI = 60000;
 
 	private LoadingCache<String, FloodControlEntry> floodControlTable;
@@ -57,12 +56,12 @@ public class FloodControl {
 		}
 	}
 
-	public FloodControl() {
-		this(new FloodControlEntryFactory());
+	public FloodControl(long expireDuration, TimeUnit timeUnit) {
+		this(new FloodControlEntryFactory(), expireDuration, timeUnit);
 	}
 
-	public FloodControl(FloodControlEntryFactory factory) {
-		this.floodControlTable = CacheBuilder.newBuilder().expireAfterAccess(MAX_ENTRY_AGE_MILLI, TimeUnit.MILLISECONDS)
+	public FloodControl(FloodControlEntryFactory factory, long expireDuration, TimeUnit timeUnit) {
+		this.floodControlTable = CacheBuilder.newBuilder().expireAfterAccess(expireDuration, timeUnit)
 				.build(new EntryValueLoader(factory));
 	}
 
