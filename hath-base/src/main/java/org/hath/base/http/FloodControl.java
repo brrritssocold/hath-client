@@ -65,10 +65,6 @@ public class FloodControl {
 				.build(new EntryValueLoader(factory));
 	}
 
-	public void pruneFloodControlTable() {
-		floodControlTable.cleanUp();
-	}
-
 	public boolean isBlocked(String address) {
 		FloodControlEntry entry = floodControlTable.getUnchecked(address);
 		return isBlocked(entry);

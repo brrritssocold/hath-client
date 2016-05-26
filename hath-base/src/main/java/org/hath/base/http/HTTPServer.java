@@ -102,10 +102,6 @@ public class HTTPServer implements Runnable {
 		}
 	}
 	
-	public void pruneFloodControlTable() {
-		floodControl.pruneFloodControlTable();
-	}
-	
 	public void nukeOldConnections(boolean killall) {
 		synchronized(sessions) {
 			// in some rare cases, the connection is unable to remove itself from the session list. if so, it will return true for doTimeoutCheck, meaning that we will have to clear it out from here instead

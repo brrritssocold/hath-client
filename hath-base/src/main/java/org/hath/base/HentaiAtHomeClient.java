@@ -206,10 +206,6 @@ public class HentaiAtHomeClient implements Runnable {
 					serverHandler.stillAliveTest();
 				}
 
-				if(threadSkipCounter % 6 == 2) {
-					httpServer.pruneFloodControlTable();
-				}
-
 				if(threadSkipCounter % 30 == 15) {
 					if( (int) (System.currentTimeMillis() / 1000) - Stats.getLastServerContact() < 360 ) {
 						cacheHandler.pruneOldFiles();
