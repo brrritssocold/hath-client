@@ -23,9 +23,9 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.http;
 
+import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.List;
-import java.util.ArrayList;
 import java.util.regex.Pattern;
 
 import org.hath.base.HVFile;
@@ -119,7 +119,7 @@ public class HTTPResponse {
 			String[] urlparts = requestParts[1].replace("%3d", "=").split("/");
 
 			if( (urlparts.length < 2) || !urlparts[0].equals("")) {
-				Out.warning(session + " The requested URL is invalid or not supported.");
+				Out.warning(session + " The requested URL is invalid or not supported. Request: " + request);
 			} else {
 				if(urlparts[1].equals("h")) {
 					if(urlparts.length < 4) {
