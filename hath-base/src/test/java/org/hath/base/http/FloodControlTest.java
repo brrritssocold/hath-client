@@ -59,7 +59,7 @@ public class FloodControlTest {
 	@Test
 	public void testPruneFloodControlTable() throws Exception {
 		FloodControlEntry mockEntry = setupMockedCutForPrune();
-		when(mockEntry.isStale()).thenReturn(false);
+		when(mockEntry.getLastConnect()).thenReturn(System.currentTimeMillis());
 
 		cut.addAddress(TEST_ADDRESS);
 		cut.pruneFloodControlTable();
@@ -70,7 +70,7 @@ public class FloodControlTest {
 	@Test
 	public void testPruneFloodControlTableStaleAddress() throws Exception {
 		FloodControlEntry mockEntry = setupMockedCutForPrune();
-		when(mockEntry.isStale()).thenReturn(true);
+		when(mockEntry.getLastConnect()).thenReturn(0L);
 
 		cut.addAddress(TEST_ADDRESS);
 		cut.pruneFloodControlTable();

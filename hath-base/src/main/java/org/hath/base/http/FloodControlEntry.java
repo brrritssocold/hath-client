@@ -34,25 +34,27 @@ public class FloodControlEntry {
 		this.blocktime = 0;
 	}
 
-	public boolean isStale() {
-		return lastConnect < System.currentTimeMillis() - 60000;
+	public int getConnectCount() {
+		return connectCount;
 	}
 
-	public boolean isBlocked() {
-		return blocktime > System.currentTimeMillis();
+	public void setConnectCount(int connectCount) {
+		this.connectCount = connectCount;
 	}
 
-	public boolean hit() {
-		long nowtime = System.currentTimeMillis();
-		connectCount = Math.max(0, connectCount - (int) Math.floor((nowtime - lastConnect) / 1000)) + 1;
-		lastConnect = nowtime;
+	public long getLastConnect() {
+		return lastConnect;
+	}
 
-		if (connectCount > 10) {
-			blocktime = nowtime + 60000; // block this client from connecting
-											// for 60 seconds
-			return false;
-		} else {
-			return true;
-		}
+	public void setLastConnect(long lastConnect) {
+		this.lastConnect = lastConnect;
+	}
+
+	public long getBlocktime() {
+		return blocktime;
+	}
+
+	public void setBlocktime(long blocktime) {
+		this.blocktime = blocktime;
 	}
 }

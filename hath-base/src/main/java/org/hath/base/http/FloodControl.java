@@ -37,6 +37,9 @@ import org.hath.base.Out;
  * seconds if they do.
  */
 public class FloodControl {
+	private static final int MAX_ENTRY_AGE_MILLI = 60000;
+	private static final int BLOCK_TIME_MILLI = 60000;
+
 	private Hashtable<String, FloodControlEntry> floodControlTable;
 	private FloodControlEntryFactory factory;
 	private boolean senseFloodMessageTrigger = false;
@@ -58,7 +61,7 @@ public class FloodControl {
 
 			while (keys.hasMoreElements()) {
 				String key = keys.nextElement();
-				if (floodControlTable.get(key).isStale()) {
+				if (isStale(key)) {
 					toPrune.add(key);
 				}
 			}
@@ -73,16 +76,44 @@ public class FloodControl {
 		System.gc();
 	}
 
+	private boolean isStale(String key) {
+		FloodControlEntry entry = floodControlTable.get(key);
+		return entry.getLastConnect() < System.currentTimeMillis() - MAX_ENTRY_AGE_MILLI;
+	}
+
 	public boolean isBlocked(String address) {
 		addAddress(address);
 
-		return floodControlTable.get(address).isBlocked();
+		FloodControlEntry entry = floodControlTable.get(address);
+		return isBlocked(entry);
+	}
+
+	private boolean isBlocked(FloodControlEntry entry) {
+		return entry.getBlocktime() > System.currentTimeMillis();
 	}
 
 	public boolean hit(String address) {
 		addAddress(address);
-		
-		return floodControlTable.get(address).hit();
+		FloodControlEntry entry = floodControlTable.get(address);
+		return hit(entry);
+	}
+
+	private boolean hit(FloodControlEntry entry) {
+		long nowtime = System.currentTimeMillis();
+		int connectCount = Math.max(0,
+				entry.getConnectCount() - (int) Math.floor((nowtime - entry.getLastConnect()) / 1000)) + 1;
+
+		entry.setConnectCount(connectCount);
+		entry.setLastConnect(nowtime);
+
+		if (connectCount > 10) {
+			entry.setBlocktime(nowtime + BLOCK_TIME_MILLI);
+			// block this client from connecting
+											// for 60 seconds
+			return false;
+		} else {
+			return true;
+		}
 	}
 
 	public boolean addAddress(String address) {
@@ -103,8 +134,8 @@ public class FloodControl {
 		addAddress(address);
 		FloodControlEntry fce = floodControlTable.get(address);
 
-		if (!fce.isBlocked()) {
-			if (!fce.hit()) {
+		if (!isBlocked(fce)) {
+			if (!hit(fce)) {
 				Out.warning("Flood control activated for  " + address + " (blocking for 60 seconds)");
 				forceClose = true;
 				senseFloodMessageTrigger = true;
