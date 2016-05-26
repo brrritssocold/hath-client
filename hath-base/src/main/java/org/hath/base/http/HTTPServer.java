@@ -48,9 +48,15 @@ public class HTTPServer implements Runnable {
 	private boolean allowNormalConnections;
 	private FloodControl floodControl;
 	private boolean testForceExternal = false;
+	private HTTPSessionFactory sessionFactory;
 	
 	public HTTPServer(HentaiAtHomeClient client) {
+		this(client, new HTTPSessionFactory());
+	}
+
+	public HTTPServer(HentaiAtHomeClient client, HTTPSessionFactory factory) {
 		this.client = client;
+		this.sessionFactory = factory;
 		bandwidthMonitor = new HTTPBandwidthMonitor();
 		sessions = Collections.checkedList(new ArrayList<HTTPSession>(), HTTPSession.class);
 		ss = null;
@@ -167,7 +173,7 @@ public class HTTPServer implements Runnable {
 					}
 					else {
 						// all is well. keep truckin'
-						HTTPSession hs = new HTTPSession(s, getNewConnId(), localNetworkAccess, this);
+						HTTPSession hs = sessionFactory.create(s, getNewConnId(), localNetworkAccess, this);
 						sessions.add(hs);
 						Stats.setOpenConnections(sessions.size());
 						hs.handleSession();											

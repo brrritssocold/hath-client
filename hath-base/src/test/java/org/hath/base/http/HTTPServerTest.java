@@ -105,12 +105,6 @@ public class HTTPServerTest {
 
 	@Ignore
 	@Test
-	public void testPruneFloodControlTable() throws Exception {
-		throw new RuntimeException("not yet implemented");
-	}
-
-	@Ignore
-	@Test
 	public void testNukeOldConnections() throws Exception {
 		throw new RuntimeException("not yet implemented");
 	}
