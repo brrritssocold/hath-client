@@ -39,6 +39,7 @@ import org.hath.base.Out;
 public class FloodControl {
 	private Hashtable<String, FloodControlEntry> floodControlTable;
 	private FloodControlEntryFactory factory;
+	private boolean senseFloodMessageTrigger = false;
 
 	public FloodControl() {
 		this(new FloodControlEntryFactory());
@@ -97,6 +98,8 @@ public class FloodControl {
 
 	public boolean hasExceededConnectionLimit(String address) {
 		boolean forceClose = false;
+		senseFloodMessageTrigger = false;
+
 		addAddress(address);
 		FloodControlEntry fce = floodControlTable.get(address);
 
@@ -104,11 +107,21 @@ public class FloodControl {
 			if (!fce.hit()) {
 				Out.warning("Flood control activated for  " + address + " (blocking for 60 seconds)");
 				forceClose = true;
+				senseFloodMessageTrigger = true;
 			}
 		} else {
 			forceClose = true;
 		}
 
 		return forceClose;
+	}
+
+	/**
+	 * Method for testing
+	 * 
+	 * @return true if the flood message has been triggered
+	 */
+	public boolean isSenseFloodMessageTrigger() {
+		return senseFloodMessageTrigger;
 	}
 }
