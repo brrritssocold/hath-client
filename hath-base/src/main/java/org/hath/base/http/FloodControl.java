@@ -42,7 +42,7 @@ public class FloodControl {
 	private LoadingCache<String, FloodControlEntry> floodControlTable;
 	private boolean senseFloodMessageTrigger = false;
 
-	private class EntryValueLoader extends CacheLoader<String, FloodControlEntry> {
+	private static class EntryValueLoader extends CacheLoader<String, FloodControlEntry> {
 		private FloodControlEntryFactory factory;
 
 		public EntryValueLoader(FloodControlEntryFactory factory) {
