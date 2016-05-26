@@ -126,13 +126,4 @@ public class FloodControl {
 	public boolean isSenseFloodMessageTrigger() {
 		return senseFloodMessageTrigger;
 	}
-
-	/**
-	 * Returns the approximate size of the flood control table.
-	 * 
-	 * @return approximate table size
-	 */
-	public long getTableSize() {
-		return floodControlTable.size();
-	}
 }
