@@ -81,7 +81,7 @@ public class FloodControl {
 	public boolean hit(String address) {
 		addAddress(address);
 		
-		return floodControlTable.get(floodControlTable).hit();
+		return floodControlTable.get(address).hit();
 	}
 
 	public void addAddress(String address) {
