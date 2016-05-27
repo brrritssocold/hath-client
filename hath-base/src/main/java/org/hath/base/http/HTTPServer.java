@@ -47,7 +47,6 @@ public class HTTPServer implements Runnable {
 	private int currentConnId;	
 	private boolean allowNormalConnections;
 	private FloodControl floodControl;
-	private boolean testForceExternal = false;
 	private HTTPSessionFactory sessionFactory;
 	
 	public HTTPServer(HentaiAtHomeClient client) {
@@ -133,52 +132,7 @@ public class HTTPServer implements Runnable {
 		try {
 			while(true) {
 				Socket s = ss.accept();
-				
-				synchronized(sessions) {
-					boolean forceClose = false;
-
-					//  private network: localhost, 127.x.y.z, 10.0.0.0 - 10.255.255.255, 172.16.0.0 - 172.31.255.255,  192.168.0.0 - 192.168.255.255, 169.254.0.0 -169.254.255.255
-					
-					InetAddress addr = s.getInetAddress();
-					String addrString = addr.toString();
-					String myInetAddr = Settings.getClientHost().replace("::ffff:", "");
-					boolean localNetworkAccess = java.util.regex.Pattern.matches("^((" + myInetAddr + ")|(localhost)|(127\\.)|(10\\.)|(192\\.168\\.)|(172\\.((1[6-9])|(2[0-9])|(3[0-1]))\\.)|(169\\.254\\.)|(::1)|(0:0:0:0:0:0:0:1)|(fc)|(fd)).*$", addr.getHostAddress());
-					boolean apiServerAccess = Settings.isValidRPCServer(addr);
-
-					if(!apiServerAccess && !allowNormalConnections) {
-						Out.warning("Rejecting connection request during startup.");
-						forceClose = true;						
-					} else if ((!apiServerAccess && !localNetworkAccess) || testForceExternal) {
-						// connections from the API Server and the local network are not subject to the max connection limit or the flood control
-						
-						int maxConnections = Settings.getMaxConnections();
-						int currentConnections = sessions.size();
-
-						if(currentConnections > maxConnections) {
-							Out.warning("Exceeded the maximum allowed number of incoming connections (" + maxConnections + ").");
-							forceClose = true;
-						}
-						else {
-							if(currentConnections > maxConnections * 0.8) {
-								// let the dispatcher know that we're close to the breaking point. this will make it back off for 30 sec, and temporarily turns down the dispatch rate to half.
-								client.getServerHandler().notifyOverload();
-							}
-						
-							forceClose = floodControl.hasExceededConnectionLimit(addrString);
-						}
-					}
-
-					if(forceClose) {
-						try { s.close(); } catch(Exception e) { /* LALALALALA */ }					
-					}
-					else {
-						// all is well. keep truckin'
-						HTTPSession hs = sessionFactory.create(s, getNewConnId(), localNetworkAccess, this);
-						sessions.add(hs);
-						Stats.setOpenConnections(sessions.size());
-						hs.handleSession();											
-					}
-				}
+				processConnection(s);
 			}
 		} catch(java.io.IOException e) {
 			if(!client.isShuttingDown()) {
@@ -191,11 +145,55 @@ public class HTTPServer implements Runnable {
 			ss = null;
 		}
 	}
-	
-	public void setTestForceExternal(boolean testForceExternal) {
-		this.testForceExternal = testForceExternal;
-	}
 
+	protected void processConnection(Socket socket) {
+		synchronized(sessions) {
+			boolean forceClose = false;
+
+			//  private network: localhost, 127.x.y.z, 10.0.0.0 - 10.255.255.255, 172.16.0.0 - 172.31.255.255,  192.168.0.0 - 192.168.255.255, 169.254.0.0 -169.254.255.255
+			
+			InetAddress addr = socket.getInetAddress();
+			String addrString = addr.toString();
+			String myInetAddr = Settings.getClientHost().replace("::ffff:", "");
+			boolean localNetworkAccess = java.util.regex.Pattern.matches("^((" + myInetAddr + ")|(localhost)|(127\\.)|(10\\.)|(192\\.168\\.)|(172\\.((1[6-9])|(2[0-9])|(3[0-1]))\\.)|(169\\.254\\.)|(::1)|(0:0:0:0:0:0:0:1)|(fc)|(fd)).*$", addr.getHostAddress());
+			boolean apiServerAccess = Settings.isValidRPCServer(addr);
+
+			if(!apiServerAccess && !allowNormalConnections) {
+				Out.warning("Rejecting connection request during startup.");
+				forceClose = true;						
+			} else if (!apiServerAccess && !localNetworkAccess) {
+				// connections from the API Server and the local network are not subject to the max connection limit or the flood control
+				
+				int maxConnections = Settings.getMaxConnections();
+				int currentConnections = sessions.size();
+
+				if(currentConnections > maxConnections) {
+					Out.warning("Exceeded the maximum allowed number of incoming connections (" + maxConnections + ").");
+					forceClose = true;
+				}
+				else {
+					if(currentConnections > maxConnections * 0.8) {
+						// let the dispatcher know that we're close to the breaking point. this will make it back off for 30 sec, and temporarily turns down the dispatch rate to half.
+						client.getServerHandler().notifyOverload();
+					}
+				
+					forceClose = floodControl.hasExceededConnectionLimit(addrString);
+				}
+			}
+
+			if(forceClose) {
+				try { socket.close(); } catch(Exception e) { /* LALALALALA */ }					
+			}
+			else {
+				// all is well. keep truckin'
+				HTTPSession hs = sessionFactory.create(socket, getNewConnId(), localNetworkAccess, this);
+				sessions.add(hs);
+				Stats.setOpenConnections(sessions.size());
+				hs.handleSession();											
+			}
+		}
+	}
+	
 	private synchronized int getNewConnId() {
 		return ++currentConnId;
 	}
