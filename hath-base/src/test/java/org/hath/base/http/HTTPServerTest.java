@@ -92,16 +92,28 @@ public class HTTPServerTest {
 
 	@After
 	public void tearDown() throws Exception {
-		// hTTPServer.stopConnectionListener();
+		hTTPServer.stopConnectionListener();
 	}
 
-	@Ignore("Do not want to open actual ports")
+	@Test
+	public void testStartConnectionListener() throws Exception {
+		boolean response = hTTPServer.startConnectionListener(SERVER_TEST_PORT);
+		assertThat(response, is(true));
+	}
+
+	@Test
+	public void testStartConnectionListenerFails() throws Exception {
+		boolean response = hTTPServer.startConnectionListener(-1);
+		assertThat(response, is(false));
+	}
+
 	@Test
 	public void testStartConnectionListenerWhenAlreadyRunning() throws Exception {
 		hTTPServer.startConnectionListener(SERVER_TEST_PORT);
+		boolean response = hTTPServer.startConnectionListener(SERVER_TEST_PORT);
+		assertThat(response, is(true));
 	}
 
-	@Ignore("Do not want to open actual ports")
 	@Test
 	public void testStopConnectionListener() throws Exception {
 		hTTPServer.stopConnectionListener();
