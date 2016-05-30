@@ -126,38 +126,8 @@ public class HTTPResponse {
 					return;
 				}
 				else if(urlparts[1].equals("servercmd")) {
-					// form: /servercmd/$command/$additional/$time/$key
-
-					if(!Settings.isValidRPCServer(session.getSocketInetAddress())) {
-						Out.warning(session + " Got a servercmd from an unauthorized IP address: Denied");
-						responseStatusCode = 403;
-						return;
-					}
-					else if(urlparts.length < 6) {
-						Out.warning(session + " Got a malformed servercmd: Denied");
-						responseStatusCode = 403;
-						return;
-					}
-					else {
-						String command = urlparts[2];
-						String additional = urlparts[3];
-						int commandTime = Integer.parseInt(urlparts[4]);
-						String key = urlparts[5];
-
-						int correctedTime = Settings.getServerTime();
-
-						if((Math.abs(commandTime - correctedTime) < Settings.MAX_KEY_TIME_DRIFT) && calculateServercmdKey(command, additional, commandTime).equals(key)) {
-							responseStatusCode = 200;
-							servercmd = true;
-							hpc = processRemoteAPICommand(command, additional);
-							return;
-						}
-						else {
-							Out.warning(session + " Got a servercmd with expired or incorrect key: Denied");
-							responseStatusCode = 403;
-							return;
-						}
-					}
+					processServerCommand(urlparts);
+					return;
 				}
 				else if(urlparts[1].equals("p")) {
 					// new proxy request type, used implicitly when the password field is set
@@ -293,6 +263,41 @@ public class HTTPResponse {
 
 		Out.warning(session + " Invalid HTTP request.");
 		responseStatusCode = 400;
+	}
+
+	protected void processServerCommand(String[] urlparts) {
+		// form: /servercmd/$command/$additional/$time/$key
+
+		if(!Settings.isValidRPCServer(session.getSocketInetAddress())) {
+			Out.warning(session + " Got a servercmd from an unauthorized IP address: Denied");
+			responseStatusCode = 403;
+			return;
+		}
+		else if(urlparts.length < 6) {
+			Out.warning(session + " Got a malformed servercmd: Denied");
+			responseStatusCode = 403;
+			return;
+		}
+		else {
+			String command = urlparts[2];
+			String additional = urlparts[3];
+			int commandTime = Integer.parseInt(urlparts[4]);
+			String key = urlparts[5];
+
+			int correctedTime = Settings.getServerTime();
+
+			if((Math.abs(commandTime - correctedTime) < Settings.MAX_KEY_TIME_DRIFT) && calculateServercmdKey(command, additional, commandTime).equals(key)) {
+				responseStatusCode = 200;
+				servercmd = true;
+				hpc = processRemoteAPICommand(command, additional);
+				return;
+			}
+			else {
+				Out.warning(session + " Got a servercmd with expired or incorrect key: Denied");
+				responseStatusCode = 403;
+				return;
+			}
+		}
 	}
 
 	protected String calculateServercmdKey(String command, String additional, int commandTime) {
