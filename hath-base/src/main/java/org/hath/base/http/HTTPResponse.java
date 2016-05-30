@@ -146,7 +146,7 @@ public class HTTPResponse {
 
 						int correctedTime = Settings.getServerTime();
 
-						if((Math.abs(commandTime - correctedTime) < Settings.MAX_KEY_TIME_DRIFT) && MiscTools.getSHAString("hentai@home-servercmd-" + command + "-" + additional + "-" + Settings.getClientID() + "-" + commandTime + "-" + Settings.getClientKey()).equals(key)) {
+						if((Math.abs(commandTime - correctedTime) < Settings.MAX_KEY_TIME_DRIFT) && calculateServercmdKey(command, additional, commandTime).equals(key)) {
 							responseStatusCode = 200;
 							servercmd = true;
 							hpc = processRemoteAPICommand(command, additional);
@@ -293,6 +293,10 @@ public class HTTPResponse {
 
 		Out.warning(session + " Invalid HTTP request.");
 		responseStatusCode = 400;
+	}
+
+	protected String calculateServercmdKey(String command, String additional, int commandTime) {
+		return MiscTools.getSHAString("hentai@home-servercmd-" + command + "-" + additional + "-" + Settings.getClientID() + "-" + commandTime + "-" + Settings.getClientKey());
 	}
 
 	protected void processFileRequest(String[] urlparts, boolean localNetworkAccess) {
