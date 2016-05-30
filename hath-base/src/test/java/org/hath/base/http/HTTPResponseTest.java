@@ -31,6 +31,7 @@ import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.net.InetAddress;
 import java.util.Hashtable;
 
 import org.hath.base.HVFile;
@@ -40,27 +41,42 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import com.google.common.net.InetAddresses;
+
 
 public class HTTPResponseTest {
 	private HTTPSession sessionMock;
 	private HVFile hvFileMock;
 	private HTTPResponse cut;
+	private InetAddress client_address;
+
+	private static final String CLIENT_IP = "110.120.130.140";
 
 	@Before
 	public void setUp() throws Exception {
-
+		client_address = InetAddresses.forString(CLIENT_IP);
 		hvFileMock = mock(HVFile.class, Mockito.RETURNS_DEEP_STUBS);
 
 		setUpMocks(hvFileMock);
+		addIpToRPC(client_address);
+	}
+
+	private void addIpToRPC(InetAddress ipAddress) {
+		Settings.updateSetting("rpc_server_ip", ipAddress.getHostAddress());
+	}
+
+	private void setUpMocks(HVFile hvFile, InetAddress ipAddress) {
+		sessionMock = mock(HTTPSession.class, Mockito.RETURNS_DEEP_STUBS);
+
+		when(sessionMock.getSocketInetAddress()).thenReturn(ipAddress);
+		when(sessionMock.getHTTPServer().getHentaiAtHomeClient().getCacheHandler().getHVFile(anyString(), anyBoolean()))
+				.thenReturn(hvFile);
+
+		cut = new HTTPResponse(sessionMock);
 	}
 
 	private void setUpMocks(HVFile hvFile) {
-		sessionMock = mock(HTTPSession.class, Mockito.RETURNS_DEEP_STUBS);
-
-		when(sessionMock.getHTTPServer().getHentaiAtHomeClient().getCacheHandler().getHVFile(anyString(),
-				anyBoolean())).thenReturn(hvFile);
-
-		cut = new HTTPResponse(sessionMock);
+		setUpMocks(hvFile, client_address);
 	}
 
 	private String generateKeystamp(String hvfile, int timeOffset) {
@@ -280,5 +296,105 @@ public class HTTPResponseTest {
 	@Test
 	public void testIsServercmdDefault() throws Exception {
 		assertThat(cut.isServercmd(), is(false));
+	}
+
+	@Test
+	public void testParseRequestServerCommandUnauthorizedIP() throws Exception {
+		Settings.clearRPCServers();
+		cut.parseRequest("GET /servercmd/foo HTTP/1.1", true);
+
+		assertThat(cut.getResponseStatusCode(), is(403));
+	}
+
+	@Test
+	public void testParseRequestServerCommandMalformed() throws Exception {
+		cut.parseRequest("GET /servercmd/foo HTTP/1.1", true);
+
+		assertThat(cut.getResponseStatusCode(), is(403));
+	}
+	
+	@Test
+	public void testParseRequestServerCommandInvalidKey() throws Exception {
+		cut.parseRequest("GET /servercmd/foo//1234/232434 HTTP/1.1", true);
+
+		assertThat(cut.getResponseStatusCode(), is(403));
+	}
+
+	protected String buildServercmdRequest(int commandTime, String command) {
+		StringBuilder sb = new StringBuilder();
+		sb.append("Get ");
+		sb.append("/servercmd");
+		sb.append("/");
+		sb.append(command);
+		sb.append("/");
+		sb.append("/");
+		sb.append(commandTime);
+		sb.append("/");
+		sb.append(cut.calculateServercmdKey("foo", "", commandTime));
+		sb.append(" HTTP/1.1");
+		return sb.toString();
+	}
+
+	@Test
+	public void testParseRequestServerCommandTimeDriftTooBig() throws Exception {
+		int commandTime = Settings.getServerTime() + 2000;
+		String command = "foo";
+
+		cut.parseRequest(buildServercmdRequest(commandTime, command), true);
+
+		assertThat(cut.getResponseStatusCode(), is(403));
+	}
+
+	@Test
+	public void testParseRequestServerCommandValid() throws Exception {
+		int commandTime = Settings.getServerTime();
+		String command = "foo";
+
+		cut.parseRequest(buildServercmdRequest(commandTime, command), true);
+
+		assertThat(cut.getResponseStatusCode(), is(200));
+	}
+
+	@Test
+	public void testParseRequestServerCommandIsServerCmd() throws Exception {
+		int commandTime = Settings.getServerTime();
+		String command = "foo";
+
+		cut.parseRequest(buildServercmdRequest(commandTime, command), true);
+
+		assertThat(cut.isServercmd(), is(true));
+	}
+
+	@Test
+	public void testParseRequestServerCommandIsValidRequest() throws Exception {
+		int commandTime = Settings.getServerTime();
+		String command = "foo";
+
+		cut.parseRequest(buildServercmdRequest(commandTime, command), true);
+
+		assertThat(cut.isValidRequest(), is(true));
+	}
+
+	@Test
+	public void testParseRequestServerCommandKeyInvalid() throws Exception {
+		int commandTime = Settings.getServerTime();
+		String command = "foo";
+
+		StringBuilder sb = new StringBuilder();
+		sb.append("Get ");
+		sb.append("/servercmd");
+		sb.append("/");
+		sb.append(command);
+		sb.append("/");
+		sb.append("/");
+		sb.append(commandTime);
+		sb.append("/");
+		sb.append(cut.calculateServercmdKey("foo", "", commandTime));
+		sb.append("bar");
+		sb.append(" HTTP/1.1");
+
+		cut.parseRequest(sb.toString(), true);
+
+		assertThat(cut.getResponseStatusCode(), is(403));
 	}
 }
