@@ -23,9 +23,9 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.http;
 
+import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.List;
-import java.util.ArrayList;
 import java.util.regex.Pattern;
 
 import org.hath.base.HVFile;
@@ -122,69 +122,7 @@ public class HTTPResponse {
 				Out.warning(session + " The requested URL is invalid or not supported.");
 			} else {
 				if(urlparts[1].equals("h")) {
-					if(urlparts.length < 4) {
-						responseStatusCode = 400;
-						return;
-					}
-
-					// new url type for H@H.. we don't really do anything new, but having the filename at the end will make browsers using this as filename per default.
-					// we also put in an extension that allows us to add additional arguments to the request url without messing with old clients.
-
-					String hvfile = urlparts[2];
-					Hashtable<String,String> additional = MiscTools.parseAdditional(urlparts[3]);
-					// urlparts[4] will contain the filename, but we don't actively use this
-
-					HVFile requestedHVFile = session.getHTTPServer().getHentaiAtHomeClient().getCacheHandler().getHVFile(hvfile, !localNetworkAccess);
-
-					boolean keystampRejected = true;
-					String[] keystampParts = additional.get("keystamp").split("-");
-
-					if(keystampParts.length == 2) {
-						try {
-							long keystampTime = Integer.parseInt(keystampParts[0]);
-
-							if(Math.abs(Settings.getServerTime() - keystampTime) < 900) {
-								if(keystampParts[1].equalsIgnoreCase( calculateKeystamp(hvfile, keystampTime) )) {
-									keystampRejected = false;
-								}
-							}
-						} catch(Exception e) {}
-					}
-
-					if(keystampRejected) {
-						responseStatusCode = 403;
-					}
-					else if(requestedHVFile == null) {
-						Out.warning(session + " The requested file was invalid or not found in cache.");
-						responseStatusCode = 404;
-					}
-					else {
-						String fileid = requestedHVFile.getFileid();
-						
-						if(requestedHVFile.getLocalFileRef().exists()) {					
-							hpc = new HTTPResponseProcessorFile(requestedHVFile);
-						}
-						else if(Settings.isStaticRange(fileid)) {
-							// non-existent file in a static range. do an on-demand request of the file from the image servers
-							List<String> requestTokens = new ArrayList<String>();
-							requestTokens.add(fileid);
-							
-							Hashtable<String, String> tokens = session.getHTTPServer().getHentaiAtHomeClient().getServerHandler().getFileTokens(requestTokens);
-							
-							if(tokens.containsKey(fileid)) {
-								hpc = new HTTPResponseProcessorProxy(session, fileid, tokens.get(fileid), 1, 1, "ondemand");
-							}
-							else {
-								responseStatusCode = 404;
-							}
-						}
-						else {
-							// file does not exist, and is not in one of the client's static ranges
-							responseStatusCode = 404;
-						}						
-
-					}
-
+					processFileRequest(urlparts, localNetworkAccess);
 					return;
 				}
 				else if(urlparts[1].equals("servercmd")) {
@@ -355,6 +293,71 @@ public class HTTPResponse {
 
 		Out.warning(session + " Invalid HTTP request.");
 		responseStatusCode = 400;
+	}
+
+	protected void processFileRequest(String[] urlparts, boolean localNetworkAccess) {
+		if(urlparts.length < 4) {
+			responseStatusCode = 400;
+			return;
+		}
+
+		// new url type for H@H.. we don't really do anything new, but having the filename at the end will make browsers using this as filename per default.
+		// we also put in an extension that allows us to add additional arguments to the request url without messing with old clients.
+
+		String hvfile = urlparts[2];
+		Hashtable<String,String> additional = MiscTools.parseAdditional(urlparts[3]);
+		// urlparts[4] will contain the filename, but we don't actively use this
+
+		HVFile requestedHVFile = session.getHTTPServer().getHentaiAtHomeClient().getCacheHandler().getHVFile(hvfile, !localNetworkAccess);
+
+		boolean keystampRejected = true;
+		String[] keystampParts = additional.get("keystamp").split("-");
+
+		if(keystampParts.length == 2) {
+			try {
+				long keystampTime = Integer.parseInt(keystampParts[0]);
+
+				if(Math.abs(Settings.getServerTime() - keystampTime) < 900) {
+					if(keystampParts[1].equalsIgnoreCase( calculateKeystamp(hvfile, keystampTime) )) {
+						keystampRejected = false;
+					}
+				}
+			} catch(Exception e) {}
+		}
+
+		if(keystampRejected) {
+			responseStatusCode = 403;
+		}
+		else if(requestedHVFile == null) {
+			Out.warning(session + " The requested file was invalid or not found in cache.");
+			responseStatusCode = 404;
+		}
+		else {
+			String fileid = requestedHVFile.getFileid();
+			
+			if(requestedHVFile.getLocalFileRef().exists()) {					
+				hpc = new HTTPResponseProcessorFile(requestedHVFile);
+			}
+			else if(Settings.isStaticRange(fileid)) {
+				// non-existent file in a static range. do an on-demand request of the file from the image servers
+				List<String> requestTokens = new ArrayList<String>();
+				requestTokens.add(fileid);
+				
+				Hashtable<String, String> tokens = session.getHTTPServer().getHentaiAtHomeClient().getServerHandler().getFileTokens(requestTokens);
+				
+				if(tokens.containsKey(fileid)) {
+					hpc = new HTTPResponseProcessorProxy(session, fileid, tokens.get(fileid), 1, 1, "ondemand");
+				}
+				else {
+					responseStatusCode = 404;
+				}
+			}
+			else {
+				// file does not exist, and is not in one of the client's static ranges
+				responseStatusCode = 404;
+			}						
+
+		}
 	}
 
 	protected String calculateKeystamp(String hvfile, long keystampTime) {
