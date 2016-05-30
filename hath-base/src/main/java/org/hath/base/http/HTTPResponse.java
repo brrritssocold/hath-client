@@ -144,7 +144,7 @@ public class HTTPResponse {
 							long keystampTime = Integer.parseInt(keystampParts[0]);
 
 							if(Math.abs(Settings.getServerTime() - keystampTime) < 900) {
-								if(keystampParts[1].equalsIgnoreCase( MiscTools.getSHAString(keystampTime + "-" + hvfile + "-" + Settings.getClientKey() + "-hotlinkthis").substring(0, 10) )) {
+								if(keystampParts[1].equalsIgnoreCase( calculateKeystamp(hvfile, keystampTime) )) {
 									keystampRejected = false;
 								}
 							}
@@ -355,6 +355,10 @@ public class HTTPResponse {
 
 		Out.warning(session + " Invalid HTTP request.");
 		responseStatusCode = 400;
+	}
+
+	protected String calculateKeystamp(String hvfile, long keystampTime) {
+		return MiscTools.getSHAString(keystampTime + "-" + hvfile + "-" + Settings.getClientKey() + "-hotlinkthis").substring(0, 10);
 	}
 
 	public HTTPResponseProcessor getHTTPResponseProcessor() {
