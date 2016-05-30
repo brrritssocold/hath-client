@@ -305,27 +305,13 @@ public class HTTPResponse {
 		// we also put in an extension that allows us to add additional arguments to the request url without messing with old clients.
 
 		String hvfile = urlparts[2];
+		HVFile requestedHVFile = session.getHTTPServer().getHentaiAtHomeClient().getCacheHandler().getHVFile(hvfile,
+				!localNetworkAccess);
+
 		Hashtable<String,String> additional = MiscTools.parseAdditional(urlparts[3]);
 		// urlparts[4] will contain the filename, but we don't actively use this
 
-		HVFile requestedHVFile = session.getHTTPServer().getHentaiAtHomeClient().getCacheHandler().getHVFile(hvfile, !localNetworkAccess);
-
-		boolean keystampRejected = true;
-		String[] keystampParts = additional.get("keystamp").split("-");
-
-		if(keystampParts.length == 2) {
-			try {
-				long keystampTime = Integer.parseInt(keystampParts[0]);
-
-				if(Math.abs(Settings.getServerTime() - keystampTime) < 900) {
-					if(keystampParts[1].equalsIgnoreCase( calculateKeystamp(hvfile, keystampTime) )) {
-						keystampRejected = false;
-					}
-				}
-			} catch(Exception e) {}
-		}
-
-		if(keystampRejected) {
+		if (!isKeystampValid(hvfile, additional)) {
 			responseStatusCode = 403;
 		}
 		else if(requestedHVFile == null) {
@@ -358,6 +344,24 @@ public class HTTPResponse {
 			}						
 
 		}
+	}
+
+	protected boolean isKeystampValid(String hvfile, Hashtable<String, String> additional) {
+		String[] keystampParts = additional.get("keystamp").split("-");
+
+		if (keystampParts.length == 2) {
+			try {
+				long keystampTime = Integer.parseInt(keystampParts[0]);
+
+				if (Math.abs(Settings.getServerTime() - keystampTime) < 900) {
+					if (keystampParts[1].equalsIgnoreCase(calculateKeystamp(hvfile, keystampTime))) {
+						return true;
+					}
+				}
+			} catch (Exception e) {
+			}
+		}
+		return false;
 	}
 
 	protected String calculateKeystamp(String hvfile, long keystampTime) {
