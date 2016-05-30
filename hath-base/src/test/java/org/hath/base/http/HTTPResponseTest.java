@@ -1,0 +1,284 @@
+/*
+
+Copyright 2008-2016 E-Hentai.org
+http://forums.e-hentai.org/
+ehentai@gmail.com
+
+This file is part of Hentai@Home.
+
+Hentai@Home is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Hentai@Home is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
+
+*/
+
+package org.hath.base.http;
+
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertThat;
+import static org.mockito.Matchers.anyBoolean;
+import static org.mockito.Matchers.anyListOf;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.util.Hashtable;
+
+import org.hath.base.HVFile;
+import org.hath.base.Settings;
+import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.mockito.Mockito;
+
+
+public class HTTPResponseTest {
+	private HTTPSession sessionMock;
+	private HVFile hvFileMock;
+	private HTTPResponse cut;
+
+	@Before
+	public void setUp() throws Exception {
+
+		hvFileMock = mock(HVFile.class, Mockito.RETURNS_DEEP_STUBS);
+
+		setUpMocks(hvFileMock);
+	}
+
+	private void setUpMocks(HVFile hvFile) {
+		sessionMock = mock(HTTPSession.class, Mockito.RETURNS_DEEP_STUBS);
+
+		when(sessionMock.getHTTPServer().getHentaiAtHomeClient().getCacheHandler().getHVFile(anyString(),
+				anyBoolean())).thenReturn(hvFile);
+
+		cut = new HTTPResponse(sessionMock);
+	}
+
+	private String generateKeystamp(String hvfile, int timeOffset) {
+		int currentTime = Settings.getServerTime() + timeOffset;
+		StringBuilder sb = new StringBuilder();
+
+		sb.append("keystamp=");
+		sb.append(currentTime);
+		sb.append("-");
+		sb.append(cut.calculateKeystamp(hvfile, currentTime));
+
+		return sb.toString();
+	}
+
+	private String generateKeystamp(String hvfile) {
+		return generateKeystamp(hvfile, 0);
+	}
+
+	private void addToStaticRange(String fileid) {
+		Settings.updateSetting("static_ranges", fileid.substring(0, 4));
+	}
+
+	@Test
+	public void testParseRequestInvalidRequest() throws Exception {
+		cut.parseRequest("foo", true);
+
+		assertThat(cut.getResponseStatusCode(), is(400));
+	}
+
+	@Test
+	public void testParseRequestInvalidGet() throws Exception {
+		cut.parseRequest("GET foo bar", true);
+
+		assertThat(cut.getResponseStatusCode(), is(405));
+	}
+
+	@Test
+	public void testParseRequestValidGetResponse() throws Exception {
+		cut.parseRequest("GET foo HTTP/1.1", true);
+
+		assertThat(cut.getResponseStatusCode(), is(404));
+	}
+
+	@Test
+	public void testParseRequestValidGet() throws Exception {
+		cut.parseRequest("GET foo HTTP/1.1", true);
+
+		assertThat(cut.isValidRequest(), is(true));
+	}
+
+	@Test
+	public void testParseRequestValidHead() throws Exception {
+		cut.parseRequest("HEAD foo HTTP/1.1", true);
+
+		assertThat(cut.isValidRequest(), is(true));
+	}
+
+	@Test
+	public void testParseRequestIsRequestHeadOnly() throws Exception {
+		cut.parseRequest("HEAD foo HTTP/1.1", true);
+
+		assertThat(cut.isRequestHeadOnly(), is(true));
+	}
+
+	@Test
+	public void testParseRequestGetFileRequestTooShort() throws Exception {
+		cut.parseRequest("GET /h/foo HTTP/1.1", true);
+
+		assertThat(cut.getResponseStatusCode(), is(400));
+	}
+
+	@Test
+	public void testParseRequestInvalidRequestType() throws Exception {
+		cut.parseRequest("GET /z/foo HTTP/1.1", true);
+
+		assertThat(cut.getResponseStatusCode(), is(404));
+	}
+
+	@Test
+	public void testParseRequestMalformedRequestLeading() throws Exception {
+		cut.parseRequest("GET _/h/foo HTTP/1.1", true);
+
+		assertThat(cut.getResponseStatusCode(), is(404));
+	}
+
+	@Test
+	public void testParseRequestMalformedRequestRequestType() throws Exception {
+		cut.parseRequest("POST /h/foo HTTP/1.1", true);
+
+		assertThat(cut.getResponseStatusCode(), is(405));
+	}
+
+	@Test
+	public void testParseRequestInvalidKeystamp() throws Exception {
+		cut.parseRequest("GET /h/foo/keystamp=derp/baz HTTP/1.1", true);
+
+		assertThat(cut.getResponseStatusCode(), is(403));
+	}
+
+	@Test
+	public void testParseRequestInvalidKeystampTimeDriftTooBig() throws Exception {
+		cut.parseRequest("GET /h/foo/" + generateKeystamp("foo", 2000) + "/baz HTTP/1.1", true);
+
+		assertThat(cut.getResponseStatusCode(), is(403));
+	}
+
+	@Test
+	public void testParseRequestInvalidKeystampHashMismatch() throws Exception {
+		cut.parseRequest("GET /h/foo/" + generateKeystamp("foo") + "a" + "/baz HTTP/1.1", true);
+
+		assertThat(cut.getResponseStatusCode(), is(403));
+	}
+
+	@Test
+	public void testParseRequestInvalidKeystampTimeTooLarge() throws Exception {
+		cut.parseRequest("GET /h/foo/keystamp=" + Long.MAX_VALUE + "-foobar/baz HTTP/1.1", true);
+
+		assertThat(cut.getResponseStatusCode(), is(403));
+	}
+
+	@Test
+	public void testParseRequestHVFileNull() throws Exception {
+		setUpMocks(null);
+
+		cut.parseRequest("GET /h/foo/" + generateKeystamp("foo") + "/baz HTTP/1.1", true);
+
+		assertThat(cut.getResponseStatusCode(), is(404));
+	}
+
+	@Test
+	public void testParseRequestHVFileExists() throws Exception {
+		when(hvFileMock.getLocalFileRef().exists()).thenReturn(true);
+		cut.parseRequest("GET /h/foo/" + generateKeystamp("foo") + "/baz HTTP/1.1", true);
+
+		assertThat(cut.getResponseStatusCode(), is(500));
+	}
+
+	@Test
+	public void testParseRequestHVFileExistsExternalRequest() throws Exception {
+		when(hvFileMock.getLocalFileRef().exists()).thenReturn(true);
+		cut.parseRequest("GET /h/foo/" + generateKeystamp("foo") + "/baz HTTP/1.1", false);
+
+		assertThat(cut.getResponseStatusCode(), is(500));
+	}
+
+	@Test
+	public void testParseRequestFileNotFound() throws Exception {
+		when(hvFileMock.getLocalFileRef().exists()).thenReturn(false);
+		when(hvFileMock.getFileid()).thenReturn("bazbaz");
+
+		cut.parseRequest("GET /h/bazbaz/" + generateKeystamp("bazbaz") + "/baz HTTP/1.1", true);
+
+		assertThat(cut.getResponseStatusCode(), is(404));
+	}
+
+	@Test
+	public void testParseRequestStaticRangeIdNotInTokens() throws Exception {
+		String fileid = "foobar";
+		when(hvFileMock.getLocalFileRef().exists()).thenReturn(false);
+		when(hvFileMock.getFileid()).thenReturn(fileid);
+
+		addToStaticRange(fileid);
+
+		cut.parseRequest("GET /h/" + fileid + "/" + generateKeystamp(fileid) + "/baz HTTP/1.1", true);
+
+		assertThat(cut.getResponseStatusCode(), is(404));
+	}
+
+	@Test
+	public void testParseRequestStaticRange() throws Exception {
+		String fileid = "foobar";
+
+		Hashtable<String, String> tokens = new Hashtable<>();
+		tokens.put(fileid, "1");
+
+		when(hvFileMock.getLocalFileRef().exists()).thenReturn(false);
+		when(hvFileMock.getFileid()).thenReturn(fileid);
+		when(sessionMock.getHTTPServer().getHentaiAtHomeClient().getServerHandler()
+				.getFileTokens(anyListOf(String.class)))
+						.thenReturn(tokens);
+
+		addToStaticRange(fileid);
+
+		cut.parseRequest("GET /h/" + fileid + "/" + generateKeystamp(fileid) + "/baz HTTP/1.1", true);
+
+		assertThat(cut.getResponseStatusCode(), is(500));
+	}
+
+	@Test
+	public void testParseRequestNull() throws Exception {
+		cut.parseRequest(null, true);
+
+		assertThat(cut.getResponseStatusCode(), is(400));
+	}
+
+	@Ignore
+	@Test
+	public void testGetHTTPResponseProcessor() throws Exception {
+		throw new RuntimeException("not yet implemented");
+	}
+
+	@Test
+	public void testGetResponseStatusCodeDefault() throws Exception {
+		assertThat(cut.getResponseStatusCode(), is(500));
+	}
+
+	@Test
+	public void testIsValidRequestDefault() throws Exception {
+		assertThat(cut.isValidRequest(), is(false));
+	}
+
+	@Test
+	public void testIsRequestHeadOnlyDefault() throws Exception {
+		assertThat(cut.isRequestHeadOnly(), is(false));
+	}
+
+	@Test
+	public void testIsServercmdDefault() throws Exception {
+		assertThat(cut.isServercmd(), is(false));
+	}
+}
