@@ -470,4 +470,11 @@ public class Settings {
 		
 		return 0;
 	}
+
+	/**
+	 * For testing purposes only!
+	 */
+	public static void clearRPCServers() {
+		rpcServers = null;
+	}
 }
