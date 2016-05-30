@@ -296,52 +296,53 @@ public class HTTPResponse {
 	}
 
 	protected void processFileRequest(String[] urlparts, boolean localNetworkAccess) {
-		if(urlparts.length < 4) {
+		if (urlparts.length < 4) {
 			responseStatusCode = 400;
 			return;
 		}
 
-		// new url type for H@H.. we don't really do anything new, but having the filename at the end will make browsers using this as filename per default.
-		// we also put in an extension that allows us to add additional arguments to the request url without messing with old clients.
+		// new url type for H@H.. we don't really do anything new, but having
+		// the filename at the end will make browsers using this as filename per
+		// default.
+		// we also put in an extension that allows us to add additional
+		// arguments to the request url without messing with old clients.
 
 		String hvfile = urlparts[2];
 		HVFile requestedHVFile = session.getHTTPServer().getHentaiAtHomeClient().getCacheHandler().getHVFile(hvfile,
 				!localNetworkAccess);
 
-		Hashtable<String,String> additional = MiscTools.parseAdditional(urlparts[3]);
+		Hashtable<String, String> additional = MiscTools.parseAdditional(urlparts[3]);
 		// urlparts[4] will contain the filename, but we don't actively use this
 
 		if (!isKeystampValid(hvfile, additional)) {
 			responseStatusCode = 403;
-		}
-		else if(requestedHVFile == null) {
+		} else if (requestedHVFile == null) {
 			Out.warning(session + " The requested file was invalid or not found in cache.");
 			responseStatusCode = 404;
-		}
-		else {
+		} else {
 			String fileid = requestedHVFile.getFileid();
-			
-			if(requestedHVFile.getLocalFileRef().exists()) {					
+
+			if (requestedHVFile.getLocalFileRef().exists()) {
 				hpc = new HTTPResponseProcessorFile(requestedHVFile);
-			}
-			else if(Settings.isStaticRange(fileid)) {
-				// non-existent file in a static range. do an on-demand request of the file from the image servers
+			} else if (Settings.isStaticRange(fileid)) {
+				// non-existent file in a static range. do an on-demand request
+				// of the file from the image servers
 				List<String> requestTokens = new ArrayList<String>();
 				requestTokens.add(fileid);
-				
-				Hashtable<String, String> tokens = session.getHTTPServer().getHentaiAtHomeClient().getServerHandler().getFileTokens(requestTokens);
-				
-				if(tokens.containsKey(fileid)) {
+
+				Hashtable<String, String> tokens = session.getHTTPServer().getHentaiAtHomeClient().getServerHandler()
+						.getFileTokens(requestTokens);
+
+				if (tokens.containsKey(fileid)) {
 					hpc = new HTTPResponseProcessorProxy(session, fileid, tokens.get(fileid), 1, 1, "ondemand");
-				}
-				else {
+				} else {
 					responseStatusCode = 404;
 				}
-			}
-			else {
-				// file does not exist, and is not in one of the client's static ranges
+			} else {
+				// file does not exist, and is not in one of the client's static
+				// ranges
 				responseStatusCode = 404;
-			}						
+			}
 
 		}
 	}
