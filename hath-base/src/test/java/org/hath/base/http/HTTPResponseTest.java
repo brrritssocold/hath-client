@@ -59,15 +59,21 @@ public class HTTPResponseTest {
 
 		setUpMocks(hvFileMock);
 		addIpToRPC(client_address);
+		setProxyMode(4);
 	}
 
 	private void addIpToRPC(InetAddress ipAddress) {
 		Settings.updateSetting("rpc_server_ip", ipAddress.getHostAddress());
 	}
 
-	private void setUpMocks(HVFile hvFile, InetAddress ipAddress) {
+	private void setProxyMode(int mode) {
+		Settings.updateSetting("request_proxy_mode", String.valueOf(mode));
+	}
+
+	private void setUpMocks(HVFile hvFile, InetAddress ipAddress, boolean localNetwork) {
 		sessionMock = mock(HTTPSession.class, Mockito.RETURNS_DEEP_STUBS);
 
+		when(sessionMock.isLocalNetworkAccess()).thenReturn(localNetwork);
 		when(sessionMock.getSocketInetAddress()).thenReturn(ipAddress);
 		when(sessionMock.getHTTPServer().getHentaiAtHomeClient().getCacheHandler().getHVFile(anyString(), anyBoolean()))
 				.thenReturn(hvFile);
@@ -76,7 +82,7 @@ public class HTTPResponseTest {
 	}
 
 	private void setUpMocks(HVFile hvFile) {
-		setUpMocks(hvFile, client_address);
+		setUpMocks(hvFile, client_address, true);
 	}
 
 	private String generateKeystamp(String hvfile, int timeOffset) {
@@ -396,5 +402,79 @@ public class HTTPResponseTest {
 		cut.parseRequest(sb.toString(), true);
 
 		assertThat(cut.getResponseStatusCode(), is(403));
+	}
+
+	@Test
+	public void testParseRequestProxyDisabled() throws Exception {
+		setProxyMode(0);
+		assertThat(Settings.getRequestProxyMode(), is(0));
+
+		cut.parseRequest("GET /p/ HTTP/1.1", true);
+
+		assertThat(cut.getResponseStatusCode(), is(404));
+	}
+
+	@Test
+	public void testParseRequestProxyValid() throws Exception {
+		setProxyMode(1);
+		assertThat(Settings.getRequestProxyMode(), is(1));
+
+		cut.parseRequest("GET /p/fileid=foobar/bazbaz HTTP/1.1", true);
+
+		assertThat(cut.getResponseStatusCode(), is(404));
+	}
+
+	@Test
+	public void testParseRequestProxyNotLocal() throws Exception {
+		setProxyMode(2);
+		assertThat(Settings.getRequestProxyMode(), is(2));
+		setUpMocks(hvFileMock, client_address, false);
+
+		cut.parseRequest("GET /p/fileid=foobar/bazbaz HTTP/1.1", true);
+
+		assertThat(cut.getResponseStatusCode(), is(404));
+	}
+
+	@Test
+	public void testParseRequestProxyNotLocalExternalAllowed() throws Exception {
+		setProxyMode(1);
+		assertThat(Settings.getRequestProxyMode(), is(1));
+		setUpMocks(hvFileMock, client_address, false);
+
+		cut.parseRequest("GET /p/ HTTP/1.1", true);
+
+		assertThat(cut.getResponseStatusCode(), is(404));
+	}
+
+	@Test
+	public void testParseRequestProxyInvalidPasskey() throws Exception {
+		setProxyMode(3);
+		assertThat(Settings.getRequestProxyMode(), is(3));
+
+		cut.parseRequest("GET /p/fileid=foobar;passkey=notAkey/bazbaz HTTP/1.1", true);
+
+		assertThat(cut.getResponseStatusCode(), is(404));
+	}
+
+	@Test
+	public void testParseRequestProxyNoPasskey() throws Exception {
+		setProxyMode(3);
+		assertThat(Settings.getRequestProxyMode(), is(3));
+
+		cut.parseRequest("GET /p/fileid=foobar/bazbaz HTTP/1.1", true);
+
+		assertThat(cut.getResponseStatusCode(), is(404));
+	}
+
+	@Test
+	public void testParseRequestProxyValidPasskey() throws Exception {
+		setProxyMode(3);
+		assertThat(Settings.getRequestProxyMode(), is(3));
+
+		String passkey = cut.calculateProxyKey("foobar");
+
+		cut.parseRequest("GET /p/fileid=foobar;passkey=" + passkey + "/bazbaz HTTP/1.1", true);
+
+		assertThat(cut.getResponseStatusCode(), is(404));
 	}
 }
