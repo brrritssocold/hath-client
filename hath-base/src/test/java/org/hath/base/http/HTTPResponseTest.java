@@ -624,4 +624,28 @@ public class HTTPResponseTest {
 		assertThat(cut.getResponseStatusCode(), is(200));
 		assertSensingPoint(Sensing.TEST_REQUEST_VALID);
 	}
+
+	@Test
+	public void testParseRequestFavicon() throws Exception {
+		cut.parseRequest("GET /favicon.ico HTTP/1.1", true);
+
+		assertThat(cut.getResponseStatusCode(), is(301));
+		assertSensingPoint(Sensing.FAVICON);
+	}
+
+	@Test
+	public void testParseRequestRobots() throws Exception {
+		cut.parseRequest("GET /robots.txt HTTP/1.1", true);
+
+		assertThat(cut.getResponseStatusCode(), is(200));
+		assertSensingPoint(Sensing.ROBOTS);
+	}
+
+	@Test
+	public void testParseRequestInvalid() throws Exception {
+		cut.parseRequest("GET /foo HTTP/1.1", true);
+
+		assertThat(cut.getResponseStatusCode(), is(404));
+		assertSensingPoint(Sensing.INVALID_REQUEST_LEN2);
+	}
 }
