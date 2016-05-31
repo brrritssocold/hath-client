@@ -327,6 +327,7 @@ public class HTTPResponseTest {
 		cut.parseRequest("GET /servercmd/foo HTTP/1.1", true);
 
 		assertThat(cut.getResponseStatusCode(), is(403));
+		assertSensingPoint(Sensing.SERVER_CMD_INVALID_RPC_SERVER);
 	}
 
 	@Test
@@ -334,6 +335,7 @@ public class HTTPResponseTest {
 		cut.parseRequest("GET /servercmd/foo HTTP/1.1", true);
 
 		assertThat(cut.getResponseStatusCode(), is(403));
+		assertSensingPoint(Sensing.SERVER_CMD_MALFORMED_COMMAND);
 	}
 	
 	@Test
@@ -341,6 +343,7 @@ public class HTTPResponseTest {
 		cut.parseRequest("GET /servercmd/foo//1234/232434 HTTP/1.1", true);
 
 		assertThat(cut.getResponseStatusCode(), is(403));
+		assertSensingPoint(Sensing.SERVER_CMD_KEY_INVALID);
 	}
 
 	protected String buildServercmdRequest(int commandTime, String command) {
@@ -366,6 +369,7 @@ public class HTTPResponseTest {
 		cut.parseRequest(buildServercmdRequest(commandTime, command), true);
 
 		assertThat(cut.getResponseStatusCode(), is(403));
+		assertSensingPoint(Sensing.SERVER_CMD_KEY_INVALID);
 	}
 
 	@Test
@@ -376,6 +380,7 @@ public class HTTPResponseTest {
 		cut.parseRequest(buildServercmdRequest(commandTime, command), true);
 
 		assertThat(cut.getResponseStatusCode(), is(200));
+		assertSensingPoint(Sensing.SERVER_CMD_KEY_VALID);
 	}
 
 	@Test
@@ -419,6 +424,7 @@ public class HTTPResponseTest {
 		cut.parseRequest(sb.toString(), true);
 
 		assertThat(cut.getResponseStatusCode(), is(403));
+		assertSensingPoint(Sensing.SERVER_CMD_KEY_INVALID);
 	}
 
 	@Test

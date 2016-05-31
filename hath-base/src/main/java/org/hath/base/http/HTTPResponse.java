@@ -48,7 +48,7 @@ public class HTTPResponse {
 	private HTTPResponseProcessor hpc;
 
 	public enum Sensing {
-		FILE_REQUEST_TOO_SHORT, FILE_REQUEST_INVALID_KEY, FILE_REQUEST_FILE_NOT_FOUND, FILE_REQUEST_FILE_LOCAL, FILE_REQUEST_FILE_STATIC, FILE_REQUEST_VALID_FILE_TOKEN, FILE_REQUEST_INVALID_FILE_TOKEN, FILE_REQUEST_FILE_NOT_LOCAL_OR_STATIC
+		FILE_REQUEST_TOO_SHORT, FILE_REQUEST_INVALID_KEY, FILE_REQUEST_FILE_NOT_FOUND, FILE_REQUEST_FILE_LOCAL, FILE_REQUEST_FILE_STATIC, FILE_REQUEST_VALID_FILE_TOKEN, FILE_REQUEST_INVALID_FILE_TOKEN, FILE_REQUEST_FILE_NOT_LOCAL_OR_STATIC, SERVER_CMD_INVALID_RPC_SERVER, SERVER_CMD_MALFORMED_COMMAND, SERVER_CMD_KEY_INVALID, SERVER_CMD_KEY_VALID
 	}
 
 	public LinkedList<Sensing> sensingPointsHit = new LinkedList<>();
@@ -286,11 +286,13 @@ public class HTTPResponse {
 		if(!Settings.isValidRPCServer(session.getSocketInetAddress())) {
 			Out.warning(session + " Got a servercmd from an unauthorized IP address: Denied");
 			responseStatusCode = 403;
+			hitSensingPoint(Sensing.SERVER_CMD_INVALID_RPC_SERVER);
 			return;
 		}
 		else if(urlparts.length < 6) {
 			Out.warning(session + " Got a malformed servercmd: Denied");
 			responseStatusCode = 403;
+			hitSensingPoint(Sensing.SERVER_CMD_MALFORMED_COMMAND);
 			return;
 		}
 		else {
@@ -305,11 +307,13 @@ public class HTTPResponse {
 				responseStatusCode = 200;
 				servercmd = true;
 				hpc = processRemoteAPICommand(command, additional);
+				hitSensingPoint(Sensing.SERVER_CMD_KEY_VALID);
 				return;
 			}
 			else {
 				Out.warning(session + " Got a servercmd with expired or incorrect key: Denied");
 				responseStatusCode = 403;
+				hitSensingPoint(Sensing.SERVER_CMD_KEY_INVALID);
 				return;
 			}
 		}
