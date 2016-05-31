@@ -165,7 +165,7 @@ public class HTTPResponse {
 							responseStatusCode = 403;
 							return;
 						}
-						else if(!MiscTools.getSHAString("hentai@home-speedtest-" + testsize + "-" + testtime + "-" + Settings.getClientID() + "-" + Settings.getClientKey()).equals(testkey)) {
+						else if(!calculateTestKey(testsize, testtime).equals(testkey)) {
 							Out.warning(session + " Got a speedtest request with invalid key");
 							responseStatusCode = 403;
 							return;
@@ -206,6 +206,10 @@ public class HTTPResponse {
 
 		Out.warning(session + " Invalid HTTP request.");
 		responseStatusCode = 400;
+	}
+
+	protected String calculateTestKey(int testsize, int testtime) {
+		return MiscTools.getSHAString("hentai@home-speedtest-" + testsize + "-" + testtime + "-" + Settings.getClientID() + "-" + Settings.getClientKey());
 	}
 
 	protected boolean processProxyRequest(String[] urlparts) {
