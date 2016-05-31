@@ -118,6 +118,7 @@ public class HTTPResponseTest {
 		cut.parseRequest("foo", true);
 
 		assertThat(cut.getResponseStatusCode(), is(400));
+		assertSensingPoint(Sensing.HTTP_REQUEST_INVALID_LENGTH);
 	}
 
 	@Test
@@ -125,6 +126,7 @@ public class HTTPResponseTest {
 		cut.parseRequest("GET foo bar", true);
 
 		assertThat(cut.getResponseStatusCode(), is(405));
+		assertSensingPoint(Sensing.HTTP_REQUEST_TYPE_AND_FORM_INVALID);
 	}
 
 	@Test
@@ -132,6 +134,7 @@ public class HTTPResponseTest {
 		cut.parseRequest("GET foo HTTP/1.1", true);
 
 		assertThat(cut.getResponseStatusCode(), is(404));
+		assertSensingPoint(Sensing.HTTP_REQUEST_INVALID_URL);
 	}
 
 	@Test
@@ -295,6 +298,7 @@ public class HTTPResponseTest {
 		cut.parseRequest(null, true);
 
 		assertThat(cut.getResponseStatusCode(), is(400));
+		assertSensingPoint(Sensing.HTTP_REQUEST_NULL);
 	}
 
 	@Ignore
