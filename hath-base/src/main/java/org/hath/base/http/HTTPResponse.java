@@ -25,6 +25,7 @@ package org.hath.base.http;
 
 import java.util.ArrayList;
 import java.util.Hashtable;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -46,6 +47,12 @@ public class HTTPResponse {
 
 	private HTTPResponseProcessor hpc;
 
+	public enum Sensing {
+		FILE_REQUEST_TOO_SHORT, FILE_REQUEST_INVALID_KEY, FILE_REQUEST_FILE_NOT_FOUND, FILE_REQUEST_FILE_LOCAL, FILE_REQUEST_FILE_STATIC, FILE_REQUEST_VALID_FILE_TOKEN, FILE_REQUEST_INVALID_FILE_TOKEN, FILE_REQUEST_FILE_NOT_LOCAL_OR_STATIC
+	}
+
+	public LinkedList<Sensing> sensingPointsHit = new LinkedList<>();
+
 	public HTTPResponse(HTTPSession session) {
 		this.session = session;
 
@@ -54,6 +61,10 @@ public class HTTPResponse {
 		requestHeadOnly = false;
 
 		responseStatusCode = 500;	// if nothing alters this, there's a bug somewhere
+	}
+
+	private void hitSensingPoint(Sensing point) {
+		sensingPointsHit.add(point);
 	}
 
 	private HTTPResponseProcessor processRemoteAPICommand(String command, String additional) {
@@ -311,6 +322,7 @@ public class HTTPResponse {
 	protected void processFileRequest(String[] urlparts, boolean localNetworkAccess) {
 		if (urlparts.length < 4) {
 			responseStatusCode = 400;
+			hitSensingPoint(Sensing.FILE_REQUEST_TOO_SHORT);
 			return;
 		}
 
@@ -329,14 +341,17 @@ public class HTTPResponse {
 
 		if (!isKeystampValid(hvfile, additional)) {
 			responseStatusCode = 403;
+			hitSensingPoint(Sensing.FILE_REQUEST_INVALID_KEY);
 		} else if (requestedHVFile == null) {
 			Out.warning(session + " The requested file was invalid or not found in cache.");
 			responseStatusCode = 404;
+			hitSensingPoint(Sensing.FILE_REQUEST_FILE_NOT_FOUND);
 		} else {
 			String fileid = requestedHVFile.getFileid();
 
 			if (requestedHVFile.getLocalFileRef().exists()) {
 				hpc = new HTTPResponseProcessorFile(requestedHVFile);
+				hitSensingPoint(Sensing.FILE_REQUEST_FILE_LOCAL);
 			} else if (Settings.isStaticRange(fileid)) {
 				// non-existent file in a static range. do an on-demand request
 				// of the file from the image servers
@@ -346,15 +361,19 @@ public class HTTPResponse {
 				Hashtable<String, String> tokens = session.getHTTPServer().getHentaiAtHomeClient().getServerHandler()
 						.getFileTokens(requestTokens);
 
+				hitSensingPoint(Sensing.FILE_REQUEST_FILE_STATIC);
 				if (tokens.containsKey(fileid)) {
 					hpc = new HTTPResponseProcessorProxy(session, fileid, tokens.get(fileid), 1, 1, "ondemand");
+					hitSensingPoint(Sensing.FILE_REQUEST_VALID_FILE_TOKEN);
 				} else {
 					responseStatusCode = 404;
+					hitSensingPoint(Sensing.FILE_REQUEST_INVALID_FILE_TOKEN);
 				}
 			} else {
 				// file does not exist, and is not in one of the client's static
 				// ranges
 				responseStatusCode = 404;
+				hitSensingPoint(Sensing.FILE_REQUEST_FILE_NOT_LOCAL_OR_STATIC);
 			}
 
 		}

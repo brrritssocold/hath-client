@@ -23,6 +23,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.http;
 
+import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Matchers.anyBoolean;
@@ -36,6 +37,7 @@ import java.util.Hashtable;
 
 import org.hath.base.HVFile;
 import org.hath.base.Settings;
+import org.hath.base.http.HTTPResponse.Sensing;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -60,6 +62,10 @@ public class HTTPResponseTest {
 		setUpMocks(hvFileMock);
 		addIpToRPC(client_address);
 		setProxyMode(4);
+	}
+
+	private void assertSensingPoint(Sensing point) {
+		assertThat(cut.sensingPointsHit, hasItem(point));
 	}
 
 	private void addIpToRPC(InetAddress ipAddress) {
@@ -148,10 +154,11 @@ public class HTTPResponseTest {
 	}
 
 	@Test
-	public void testParseRequestGetFileRequestTooShort() throws Exception {
+	public void testParseRequestFileTooShort() throws Exception {
 		cut.parseRequest("GET /h/foo HTTP/1.1", true);
 
 		assertThat(cut.getResponseStatusCode(), is(400));
+		assertSensingPoint(Sensing.FILE_REQUEST_TOO_SHORT);
 	}
 
 	@Test
@@ -176,48 +183,54 @@ public class HTTPResponseTest {
 	}
 
 	@Test
-	public void testParseRequestInvalidKeystamp() throws Exception {
+	public void testParseRequestFileInvalidKeystamp() throws Exception {
 		cut.parseRequest("GET /h/foo/keystamp=derp/baz HTTP/1.1", true);
 
 		assertThat(cut.getResponseStatusCode(), is(403));
+		assertSensingPoint(Sensing.FILE_REQUEST_INVALID_KEY);
 	}
 
 	@Test
-	public void testParseRequestInvalidKeystampTimeDriftTooBig() throws Exception {
+	public void testParseRequestFileInvalidKeystampTimeDriftTooBig() throws Exception {
 		cut.parseRequest("GET /h/foo/" + generateKeystamp("foo", 2000) + "/baz HTTP/1.1", true);
 
 		assertThat(cut.getResponseStatusCode(), is(403));
+		assertSensingPoint(Sensing.FILE_REQUEST_INVALID_KEY);
 	}
 
 	@Test
-	public void testParseRequestInvalidKeystampHashMismatch() throws Exception {
+	public void testParseRequestFileInvalidKeystampHashMismatch() throws Exception {
 		cut.parseRequest("GET /h/foo/" + generateKeystamp("foo") + "a" + "/baz HTTP/1.1", true);
 
 		assertThat(cut.getResponseStatusCode(), is(403));
+		assertSensingPoint(Sensing.FILE_REQUEST_INVALID_KEY);
 	}
 
 	@Test
-	public void testParseRequestInvalidKeystampTimeTooLarge() throws Exception {
+	public void testParseRequestFileInvalidKeystampTimeTooLarge() throws Exception {
 		cut.parseRequest("GET /h/foo/keystamp=" + Long.MAX_VALUE + "-foobar/baz HTTP/1.1", true);
 
 		assertThat(cut.getResponseStatusCode(), is(403));
+		assertSensingPoint(Sensing.FILE_REQUEST_INVALID_KEY);
 	}
 
 	@Test
-	public void testParseRequestHVFileNull() throws Exception {
+	public void testParseRequestFileHVFileNull() throws Exception {
 		setUpMocks(null);
 
 		cut.parseRequest("GET /h/foo/" + generateKeystamp("foo") + "/baz HTTP/1.1", true);
 
 		assertThat(cut.getResponseStatusCode(), is(404));
+		assertSensingPoint(Sensing.FILE_REQUEST_FILE_NOT_FOUND);
 	}
 
 	@Test
-	public void testParseRequestHVFileExists() throws Exception {
+	public void testParseRequestFileHVFileExists() throws Exception {
 		when(hvFileMock.getLocalFileRef().exists()).thenReturn(true);
 		cut.parseRequest("GET /h/foo/" + generateKeystamp("foo") + "/baz HTTP/1.1", true);
 
 		assertThat(cut.getResponseStatusCode(), is(500));
+		assertSensingPoint(Sensing.FILE_REQUEST_FILE_LOCAL);
 	}
 
 	@Test
@@ -226,6 +239,7 @@ public class HTTPResponseTest {
 		cut.parseRequest("GET /h/foo/" + generateKeystamp("foo") + "/baz HTTP/1.1", false);
 
 		assertThat(cut.getResponseStatusCode(), is(500));
+		assertSensingPoint(Sensing.FILE_REQUEST_FILE_LOCAL);
 	}
 
 	@Test
@@ -236,10 +250,11 @@ public class HTTPResponseTest {
 		cut.parseRequest("GET /h/bazbaz/" + generateKeystamp("bazbaz") + "/baz HTTP/1.1", true);
 
 		assertThat(cut.getResponseStatusCode(), is(404));
+		assertSensingPoint(Sensing.FILE_REQUEST_FILE_NOT_LOCAL_OR_STATIC);
 	}
 
 	@Test
-	public void testParseRequestStaticRangeIdNotInTokens() throws Exception {
+	public void testParseRequestFileStaticRangeIdNotInTokens() throws Exception {
 		String fileid = "foobar";
 		when(hvFileMock.getLocalFileRef().exists()).thenReturn(false);
 		when(hvFileMock.getFileid()).thenReturn(fileid);
@@ -249,10 +264,11 @@ public class HTTPResponseTest {
 		cut.parseRequest("GET /h/" + fileid + "/" + generateKeystamp(fileid) + "/baz HTTP/1.1", true);
 
 		assertThat(cut.getResponseStatusCode(), is(404));
+		assertSensingPoint(Sensing.FILE_REQUEST_INVALID_FILE_TOKEN);
 	}
 
 	@Test
-	public void testParseRequestStaticRange() throws Exception {
+	public void testParseRequestFileStaticRange() throws Exception {
 		String fileid = "foobar";
 
 		Hashtable<String, String> tokens = new Hashtable<>();
@@ -269,6 +285,7 @@ public class HTTPResponseTest {
 		cut.parseRequest("GET /h/" + fileid + "/" + generateKeystamp(fileid) + "/baz HTTP/1.1", true);
 
 		assertThat(cut.getResponseStatusCode(), is(500));
+		assertSensingPoint(Sensing.FILE_REQUEST_VALID_FILE_TOKEN);
 	}
 
 	@Test
