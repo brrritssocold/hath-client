@@ -36,6 +36,11 @@ import org.hath.base.Out;
 import org.hath.base.Settings;
 import org.hath.base.Stats;
 
+/**
+ * Verifies the Request and then chooses the appropriate way to handle the
+ * request. Sets status Codes.
+ *
+ */
 public class HTTPResponse {
 	private static final Pattern absoluteUriPattern = Pattern.compile("^http://[^/]+/", Pattern.CASE_INSENSITIVE);
 
