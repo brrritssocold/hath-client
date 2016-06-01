@@ -155,14 +155,7 @@ public class HTTPSession implements Runnable {
 			byte[] headerBytes = header.toString().getBytes(Charset.forName("ISO-8859-1"));
 			
 			if(contentLength > 0) {
-				try {
-					// buffer size might be limited by OS. for linux, check net.core.wmem_max
-					int bufferSize = (int) Math.min(contentLength + headerBytes.length + 32, Math.min(Settings.isUseLessMemory() ? 131072 : 524288, Math.round(0.2 * Settings.getThrottleBytesPerSec())));
-					socket.setSendBufferSize(bufferSize);
-					//Out.debug("Socket size for " + connId + " is now " + mySocket.getSendBufferSize() + " (requested " + bufferSize + ")");
-				} catch (Exception e) {
-					Out.info(e.getMessage());
-				}
+				setSendBufferSize(contentLength, headerBytes);
 			}
 
 			bs.write(headerBytes, 0, headerBytes.length);
@@ -268,6 +261,17 @@ public class HTTPSession implements Runnable {
 		}
 
 		connectionFinished();
+	}
+
+	protected void setSendBufferSize(int contentLength, byte[] headerBytes) {
+		try {
+			// buffer size might be limited by OS. for linux, check net.core.wmem_max
+			int bufferSize = (int) Math.min(contentLength + headerBytes.length + 32, Math.min(Settings.isUseLessMemory() ? 131072 : 524288, Math.round(0.2 * Settings.getThrottleBytesPerSec())));
+			mySocket.setSendBufferSize(bufferSize);
+			//Out.debug("Socket size for " + connId + " is now " + mySocket.getSendBufferSize() + " (requested " + bufferSize + ")");
+		} catch (Exception e) {
+			Out.info(e.getMessage());
+		}
 	}
 
 	private String getHTTPStatusHeader(int statuscode) {
