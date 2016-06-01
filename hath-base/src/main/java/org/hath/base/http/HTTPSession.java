@@ -108,26 +108,7 @@ public class HTTPSession implements Runnable {
 			int statusCode = hr.getResponseStatusCode();
 			int contentLength = hpc.getContentLength();
 
-			// we'll create a new date formatter for each session instead of synchronizing on a shared formatter. (sdf is not thread-safe)
-			SimpleDateFormat sdf = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss", java.util.Locale.US);
-			sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
-
-			// build the header
-			StringBuilder header = new StringBuilder(300);
-
-			header.append(getHTTPStatusHeader(statusCode));
-			header.append(hpc.getHeader());
-			header.append("Date: " + sdf.format(new Date()) + " GMT" + CRLF);
-			header.append("Server: Genetic Lifeform and Distributed Open Server " + Settings.CLIENT_VERSION + CRLF);
-			header.append("Connection: close" + CRLF);
-			header.append("Content-Type: " + hpc.getContentType() + CRLF);
-
-			if(contentLength > 0) {
-				header.append("Cache-Control: public, max-age=31536000" + CRLF);
-				header.append("Content-Length: " + contentLength + CRLF);
-			}
-
-			header.append(CRLF);
+			StringBuilder header = createHeader(hpc, statusCode, contentLength);
 		
 			// write the header to the socket
 			byte[] headerBytes = header.toString().getBytes(Charset.forName("ISO-8859-1"));
@@ -236,6 +217,30 @@ public class HTTPSession implements Runnable {
 		}
 
 		connectionFinished();
+	}
+
+	protected StringBuilder createHeader(HTTPResponseProcessor hpc, int statusCode, int contentLength) {
+		// we'll create a new date formatter for each session instead of synchronizing on a shared formatter. (sdf is not thread-safe)
+		SimpleDateFormat sdf = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss", java.util.Locale.US);
+		sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+
+		// build the header
+		StringBuilder header = new StringBuilder(300);
+
+		header.append(getHTTPStatusHeader(statusCode));
+		header.append(hpc.getHeader());
+		header.append("Date: " + sdf.format(new Date()) + " GMT" + CRLF);
+		header.append("Server: Genetic Lifeform and Distributed Open Server " + Settings.CLIENT_VERSION + CRLF);
+		header.append("Connection: close" + CRLF);
+		header.append("Content-Type: " + hpc.getContentType() + CRLF);
+
+		if(contentLength > 0) {
+			header.append("Cache-Control: public, max-age=31536000" + CRLF);
+			header.append("Content-Length: " + contentLength + CRLF);
+		}
+
+		header.append(CRLF);
+		return header;
 	}
 
 	protected String readRequest(BufferedReader br) throws IOException {
