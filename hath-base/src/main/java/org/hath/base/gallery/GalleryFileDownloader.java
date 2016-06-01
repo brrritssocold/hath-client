@@ -26,6 +26,7 @@ package org.hath.base.gallery;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.InputStream;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.Arrays;
@@ -80,22 +81,31 @@ public class GalleryFileDownloader implements Runnable {
 	}
 	
 	public int initialize() {
+		try {
+			initialize(new URL("http", Settings.getRequestServer(), "/r/" + fileid + "/" + token + "/" + gid + "-"
+					+ page + "/" + filename + (skipHath ? "?nl=1" : "")));
+		} catch (MalformedURLException e) {
+			e.printStackTrace();
+		}
+
+		downloadState = DOWNLOAD_FAILED_INIT;
+		return 500;
+	}
+
+	public int initialize(URL source) {
 		// we'll need to run this in a private thread so we can push data to the originating client at the same time we download it (pass-through), so we'll use a specialized version of the stuff found in FileDownloader
 		// this also handles negotiating file browse limits with the server
 		Out.info("Gallery File Download Request initializing for " + fileid + "...");
-		
+
 		try {
 			boolean retry = false;
 			int retval = 0;
 			int tempLength = 0;
-			
+
 			do {
 				retry = false;
 			
-				URL source = new URL("http", Settings.getRequestServer(), "/r/" + fileid + "/" + token + "/" + gid + "-" + page + "/" + filename + (skipHath ? "?nl=1" : ""));	
-				
 				Out.debug("GalleryFileDownloader: Requesting file download from " + source);
-				
 				connection = source.openConnection();
 				connection.setConnectTimeout(10000);
 				connection.setReadTimeout(30000);	// this doesn't always seem to work however, so we'll do it somewhat differently..
