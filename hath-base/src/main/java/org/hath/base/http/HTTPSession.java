@@ -55,6 +55,7 @@ public class HTTPSession implements Runnable {
 	private boolean localNetworkAccess;
 	private long sessionStartTime, lastPacketSend;
 	private HTTPResponse hr;
+	private int rcvdBytes = 0;
 
 	public HTTPSession(Socket s, int connId, boolean localNetworkAccess, HTTPServer httpServer) {
 		sessionStartTime = System.currentTimeMillis();
@@ -96,31 +97,7 @@ public class HTTPSession implements Runnable {
 		String info = this.toString() + " ";		
 
 		try {
-			// http "parser" follows... might wanna replace this with a more compliant one eventually ;-)
-
-			String read = null;
-			String request = null;
-			int rcvdBytes = 0;
-
-			// utterly ignore every single line except for the request one.
-			do {
-				read = br.readLine();
-
-				if(read != null) {
-					rcvdBytes += read.length();
-
-					if(getheadPattern.matcher(read).matches()) {
-						request = read.substring(0, Math.min(Settings.MAX_REQUEST_LENGTH, read.length()));
-					}
-					else if(read.isEmpty()) {
-						break;
-					}
-				}
-				else {
-					break;
-				}
-			} while(true);
-		
+			String request = readRequest(br);
 			hr = new HTTPResponse(this);
 			
 			// parse the request - this will also update the response code and initialize the proper response processor
@@ -259,6 +236,33 @@ public class HTTPSession implements Runnable {
 		}
 
 		connectionFinished();
+	}
+
+	protected String readRequest(BufferedReader br) throws IOException {
+		// http "parser" follows... might wanna replace this with a more compliant one eventually ;-)
+
+		String read = null;
+		String request = null;
+
+		// utterly ignore every single line except for the request one.
+		do {
+			read = br.readLine();
+
+			if(read != null) {
+				rcvdBytes += read.length();
+
+				if(getheadPattern.matcher(read).matches()) {
+					request = read.substring(0, Math.min(Settings.MAX_REQUEST_LENGTH, read.length()));
+				}
+				else if(read.isEmpty()) {
+					break;
+				}
+			}
+			else {
+				break;
+			}
+		} while(true);
+		return request;
 	}
 
 	protected void setSendBufferSize(int contentLength, byte[] headerBytes) {
