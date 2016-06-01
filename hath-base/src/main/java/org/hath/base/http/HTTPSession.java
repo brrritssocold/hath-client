@@ -26,7 +26,9 @@ package org.hath.base.http;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.nio.charset.Charset;
@@ -81,20 +83,19 @@ public class HTTPSession implements Runnable {
 	}
 
 	protected void processSession(Socket socket) {
-		InputStreamReader isr = null;
-		BufferedReader br = null;
-		DataOutputStream dos = null;
-		BufferedOutputStream bs = null;
-		
+		try (BufferedReader isr = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+				OutputStream dos = new BufferedOutputStream(new DataOutputStream(socket.getOutputStream()));) {
+			processSession(isr, dos);
+		} catch (IOException e) {
+			Out.error("Failed to open socket stream: " + e);
+		}
+	}
+
+	protected void processSession(BufferedReader br, OutputStream bs) {
 		HTTPResponseProcessor hpc = null;
 		String info = this.toString() + " ";		
 
 		try {
-			isr = new InputStreamReader(socket.getInputStream());
-			br = new BufferedReader(isr);
-			dos = new DataOutputStream(socket.getOutputStream());
-			bs = new BufferedOutputStream(dos);
-
 			// http "parser" follows... might wanna replace this with a more compliant one eventually ;-)
 
 			String read = null;
@@ -255,9 +256,6 @@ public class HTTPSession implements Runnable {
 			if(hpc != null) {
 				hpc.cleanup();
 			}
-			
-			try { br.close(); isr.close(); bs.close(); dos.close(); } catch(Exception e) {}
-			try { socket.close(); } catch(Exception e) {}
 		}
 
 		connectionFinished();
