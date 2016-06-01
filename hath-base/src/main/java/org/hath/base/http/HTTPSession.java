@@ -77,6 +77,10 @@ public class HTTPSession implements Runnable {
 	}
 
 	protected void processSession() {
+		processSession(mySocket);
+	}
+
+	protected void processSession(Socket socket) {
 		InputStreamReader isr = null;
 		BufferedReader br = null;
 		DataOutputStream dos = null;
@@ -86,9 +90,9 @@ public class HTTPSession implements Runnable {
 		String info = this.toString() + " ";		
 
 		try {
-			isr = new InputStreamReader(mySocket.getInputStream());
+			isr = new InputStreamReader(socket.getInputStream());
 			br = new BufferedReader(isr);
-			dos = new DataOutputStream(mySocket.getOutputStream());
+			dos = new DataOutputStream(socket.getOutputStream());
 			bs = new BufferedOutputStream(dos);
 
 			// http "parser" follows... might wanna replace this with a more compliant one eventually ;-)
@@ -154,7 +158,7 @@ public class HTTPSession implements Runnable {
 				try {
 					// buffer size might be limited by OS. for linux, check net.core.wmem_max
 					int bufferSize = (int) Math.min(contentLength + headerBytes.length + 32, Math.min(Settings.isUseLessMemory() ? 131072 : 524288, Math.round(0.2 * Settings.getThrottleBytesPerSec())));
-					mySocket.setSendBufferSize(bufferSize);
+					socket.setSendBufferSize(bufferSize);
 					//Out.debug("Socket size for " + connId + " is now " + mySocket.getSendBufferSize() + " (requested " + bufferSize + ")");
 				} catch (Exception e) {
 					Out.info(e.getMessage());
@@ -260,7 +264,7 @@ public class HTTPSession implements Runnable {
 			}
 			
 			try { br.close(); isr.close(); bs.close(); dos.close(); } catch(Exception e) {}
-			try { mySocket.close(); } catch(Exception e) {}
+			try { socket.close(); } catch(Exception e) {}
 		}
 
 		connectionFinished();
