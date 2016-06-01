@@ -113,9 +113,7 @@ public class HTTPSession implements Runnable {
 			// write the header to the socket
 			byte[] headerBytes = header.toString().getBytes(Charset.forName("ISO-8859-1"));
 			
-			if(contentLength > 0) {
-				setSendBufferSize(contentLength, headerBytes);
-			}
+			setSendBufferSize(contentLength, headerBytes);
 
 			bs.write(headerBytes, 0, headerBytes.length);
 			
@@ -271,6 +269,10 @@ public class HTTPSession implements Runnable {
 	}
 
 	protected void setSendBufferSize(int contentLength, byte[] headerBytes) {
+		if(contentLength <= 0) {
+			return;
+		}
+		
 		try {
 			// buffer size might be limited by OS. for linux, check net.core.wmem_max
 			int bufferSize = (int) Math.min(contentLength + headerBytes.length + 32, Math.min(Settings.isUseLessMemory() ? 131072 : 524288, Math.round(0.2 * Settings.getThrottleBytesPerSec())));
