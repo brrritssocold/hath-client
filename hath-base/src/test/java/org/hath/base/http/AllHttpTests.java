@@ -28,7 +28,7 @@ import org.junit.runners.Suite;
 import org.junit.runners.Suite.SuiteClasses;
 
 @RunWith(Suite.class)
-@SuiteClasses({ FloodControlTest.class, HTTPServerTest.class })
+@SuiteClasses({ FloodControlTest.class, HTTPServerTest.class, HTTPServerTest.class })
 public class AllHttpTests {
 
 }
