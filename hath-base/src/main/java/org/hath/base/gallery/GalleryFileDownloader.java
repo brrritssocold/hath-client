@@ -30,6 +30,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.Arrays;
+import java.util.LinkedList;
 
 import org.hath.base.CacheHandler;
 import org.hath.base.FileTools;
@@ -64,6 +65,15 @@ public class GalleryFileDownloader implements Runnable {
 	private URLConnection connection;
 	
 	private int downloadState;
+
+	public LinkedList<Sensing> sensingPointHits = new LinkedList<>();
+	public enum Sensing {
+		CONTENT_LENGTH_MISMATCH, CONTENT_LENGTH_UNKNOWN, CONTENT_LENGTH_GREATER_10MB, CONTENT_LENGTH_MATCH, INTI_FAIL, BYTES_READ
+	};
+
+	private void hitSensingPoint(Sensing point) {
+		sensingPointHits.add(point);
+	}
 
 	public GalleryFileDownloader(HentaiAtHomeClient client, String fileid, String token, int gid, int page, String filename, boolean skipHath) {
 		this.client = client;
@@ -119,13 +129,16 @@ public class GalleryFileDownloader implements Runnable {
 					Out.warning("Request host did not send Content-Length, aborting transfer." + " (" + connection + ")");
 					Out.warning("Note: A common reason for this is running firewalls with outgoing restrictions or programs like PeerGuardian/PeerBlock. Verify that the remote host is not blocked.");
 					retval = 502;
+					hitSensingPoint(Sensing.CONTENT_LENGTH_UNKNOWN);
 				}
 				else if(tempLength > 10485760) {
 					Out.warning("Content-Length is larger than 10 MB, aborting transfer." + " (" + connection + ")");
 					retval = 502;
+					hitSensingPoint(Sensing.CONTENT_LENGTH_GREATER_10MB);
 				}
 				else if(tempLength != requestedHVFile.getSize()) {
 					Out.warning("Reported contentLength " + contentLength + " does not match expected length of file " + fileid + " (" + connection + ")");
+					hitSensingPoint(Sensing.CONTENT_LENGTH_MISMATCH);
 					
 					// this could be more solid, but it's not important. this will only be tested if there is a fail, and even if the fail somehow matches the size of the error images, the server won't actually increase the limit unless we're close to it.
 					if(retval == 0 && (tempLength == 28658 || tempLength == 1009)) {
@@ -136,6 +149,7 @@ public class GalleryFileDownloader implements Runnable {
 					}
 				} else {
 					retval = 0;
+					hitSensingPoint(Sensing.CONTENT_LENGTH_MATCH);
 				}
 			} while(retry);
 			
@@ -156,6 +170,7 @@ public class GalleryFileDownloader implements Runnable {
 			return 200;
 		} catch(Exception e) {
 			e.printStackTrace();
+			hitSensingPoint(Sensing.INTI_FAIL);
 		}
 		
 		downloadState = DOWNLOAD_FAILED_INIT;
@@ -193,6 +208,7 @@ public class GalleryFileDownloader implements Runnable {
 							if(++bytestatcounter > 1000) {
 								Stats.bytesRcvd(bytestatcounter);
 								bytestatcounter -= 1000;
+								hitSensingPoint(Sensing.BYTES_READ);
 							}
 						}
 						else {
