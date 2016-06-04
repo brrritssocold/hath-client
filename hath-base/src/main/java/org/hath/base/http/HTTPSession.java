@@ -55,14 +55,21 @@ public class HTTPSession implements Runnable {
 	private boolean localNetworkAccess;
 	private long sessionStartTime, lastPacketSend;
 	private HTTPResponse hr;
+	private HTTPResponseFactory responseFactory;
 	private int rcvdBytes = 0;
 
-	public HTTPSession(Socket s, int connId, boolean localNetworkAccess, HTTPServer httpServer) {
+	public HTTPSession(Socket s, int connId, boolean localNetworkAccess, HTTPServer httpServer,
+			HTTPResponseFactory responseFactory) {
 		sessionStartTime = System.currentTimeMillis();
 		this.mySocket = s;
 		this.connId = connId;
 		this.httpServer = httpServer;
 		this.localNetworkAccess = localNetworkAccess;
+		this.responseFactory = responseFactory;
+	}
+
+	public HTTPSession(Socket s, int connId, boolean localNetworkAccess, HTTPServer httpServer) {
+		this(s, connId, localNetworkAccess, httpServer, new HTTPResponseFactory());
 	}
 
 	public void handleSession() {
@@ -98,7 +105,7 @@ public class HTTPSession implements Runnable {
 
 		try {
 			String request = readRequest(br);
-			hr = new HTTPResponse(this);
+			hr = responseFactory.create(this);
 			
 			// parse the request - this will also update the response code and initialize the proper response processor
 			hr.parseRequest(request, localNetworkAccess);
