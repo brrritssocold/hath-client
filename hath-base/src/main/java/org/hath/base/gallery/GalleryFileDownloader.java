@@ -206,6 +206,43 @@ public class GalleryFileDownloader implements Runnable {
 	}
 
 	public void run() {
+		boolean success = readData();
+		
+		if(writeoff != getContentLength()) {
+			Out.debug("Requested file " + fileid + " is incomplete, and was not stored.");				
+		} else if(! MiscTools.getSHAString(databuffer).equals(requestedHVFile.getHash())) {
+			Out.debug("Requested file " + fileid + " is corrupt, and was not stored.");				
+		} else {
+			try {
+				CacheHandler cacheHandler = client.getCacheHandler();
+				File tmpfile = File.createTempFile("hathproxy_", "", CacheHandler.getTmpDir());
+				FileTools.putFileContents(tmpfile, databuffer);
+				
+				if(cacheHandler.moveFileToCacheDir(tmpfile, requestedHVFile)) {
+					cacheHandler.addFileToActiveCache(requestedHVFile);
+					cacheHandler.addPendingRegisterFile(requestedHVFile);
+					Out.debug("Requested file " + fileid + " was successfully stored in cache.");
+					success = true;
+				}
+				else {
+					tmpfile.delete();
+					Out.debug("Requested file " + fileid + " exists or cannot be cached, and was dropped.");
+				}
+				
+				Out.info("Gallery File Download Request complete for " + fileid);
+			} catch(Exception e) {
+				e.printStackTrace();
+			}
+		}
+		
+		if(success) {
+			downloadState = DOWNLOAD_COMPLETE;
+		} else {
+			downloadState = DOWNLOAD_FAILED_CONN;
+		}
+	}
+
+	protected boolean readData() {
 		int trycounter = 3;
 		boolean complete = false;
 		boolean success = false;
@@ -247,40 +284,7 @@ public class GalleryFileDownloader implements Runnable {
 			}
 			// TODO does this even work?
 		} while(!complete && --trycounter > 0);
-
-		
-		if(writeoff != getContentLength()) {
-			Out.debug("Requested file " + fileid + " is incomplete, and was not stored.");				
-		} else if(! MiscTools.getSHAString(databuffer).equals(requestedHVFile.getHash())) {
-			Out.debug("Requested file " + fileid + " is corrupt, and was not stored.");				
-		} else {
-			try {
-				CacheHandler cacheHandler = client.getCacheHandler();
-				File tmpfile = File.createTempFile("hathproxy_", "", CacheHandler.getTmpDir());
-				FileTools.putFileContents(tmpfile, databuffer);
-				
-				if(cacheHandler.moveFileToCacheDir(tmpfile, requestedHVFile)) {
-					cacheHandler.addFileToActiveCache(requestedHVFile);
-					cacheHandler.addPendingRegisterFile(requestedHVFile);
-					Out.debug("Requested file " + fileid + " was successfully stored in cache.");
-					success = true;
-				}
-				else {
-					tmpfile.delete();
-					Out.debug("Requested file " + fileid + " exists or cannot be cached, and was dropped.");
-				}
-				
-				Out.info("Gallery File Download Request complete for " + fileid);
-			} catch(Exception e) {
-				e.printStackTrace();
-			}
-		}
-		
-		if(success) {
-			downloadState = DOWNLOAD_COMPLETE;
-		} else {
-			downloadState = DOWNLOAD_FAILED_CONN;
-		}
+		return success;
 	}
 	
 	public String getContentType() {
