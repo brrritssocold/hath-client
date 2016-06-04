@@ -63,7 +63,6 @@ import com.google.common.collect.MultimapBuilder;
 public class GalleryFileDownloaderTest {
 	private static final String VALID_FILEID = "0000000000000000000000000000000000000000-10-0-0-jpg";
 	private static final String VALID_TOKEN = "1-0000000000000000000000000000000000000000";
-	private static final int TRIGGER_EOF = 1234;
 
 	private static Server server;
 	private static int testPort;
@@ -171,29 +170,6 @@ public class GalleryFileDownloaderTest {
 	}
 	
 	@Test
-	public void testRequestNoContentLength() throws Exception {
-		testHandler.setContentLength(Long.MAX_VALUE);
-
-		cut.initialize(testURL);
-
-		assertSensingPoint(Sensing.CONTENT_LENGTH_UNKNOWN);
-	}
-
-	@Test
-	public void testRequestNoContentLengthResponseCode() throws Exception {
-		testHandler.setContentLength(Long.MAX_VALUE);
-
-		assertThat(cut.initialize(testURL), is(502));
-	}
-
-	@Test
-	public void testRequestNoContentLengthDownloadState() throws Exception {
-		testHandler.setContentLength(Long.MAX_VALUE);
-
-		assertThat(cut.getDownloadState(), is(0));
-	}
-
-	@Test
 	public void testRequestContentLengthTooLarge() throws Exception {
 		testHandler.setContentLength(10585760);
 
@@ -255,7 +231,7 @@ public class GalleryFileDownloaderTest {
 	public void testRequestDownloadDataStats() throws Exception {
 		testHandler.setContentLength(10);
 		testHandler.returnData(true);
-		byte[] testData = testHandler.generateRandomData();
+		testHandler.generateRandomData();
 
 		cut.initialize(testURL);
 
@@ -263,7 +239,7 @@ public class GalleryFileDownloaderTest {
 			Thread.sleep(50);
 		}
 
-		byte[] loadedData = cut.getDownloadBufferRange(0, 10);
+		cut.getDownloadBufferRange(0, 10);
 
 		assertThat(Stats.getBytesRcvd(), is(10L));
 	}
@@ -404,6 +380,23 @@ public class GalleryFileDownloaderTest {
 		assertSensingPoint(Sensing.INTI_FAIL);
 	}
 
+	@Test(timeout = 5000)
+	public void testRequestTimeout() throws Exception {
+		testHandler.setContentLength(10);
+		testHandler.returnData(true);
+		testHandler.generateRandomData();
+		testHandler.setResponseDelay(1000);
+
+		cut.initialize(testURL, 500, 30000);
+
+		while (cut.getDownloadState() == 0) {
+			Thread.sleep(50);
+		}
+
+
+		assertThat(cut.getDownloadState(), is(-1));
+	}
+
 	@Ignore
 	@Test
 	public void testGetContentType() throws Exception {
@@ -432,15 +425,21 @@ public class GalleryFileDownloaderTest {
 	}
 
 	static class TestHandler extends AbstractHandler {
+		public void setResponseDelay(int responseDelay) {
+			this.responseDelay = responseDelay;
+		}
+
 		private Multimap<String, String> headerMap = MultimapBuilder.hashKeys().linkedListValues().build();
 		private long contentLength = 0;
 		private byte[] randomData = new byte[0];
 		private boolean returnData = false;
+		private int responseDelay = -1;
 
 		public void reset() {
 			headerMap.clear();
 			contentLength = 0;
 			returnData = false;
+			responseDelay = -1;
 		}
 
 		public byte[] generateRandomData() {
@@ -484,11 +483,17 @@ public class GalleryFileDownloaderTest {
 		public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
 				throws IOException, ServletException {
 			storeHeaders(baseRequest);
-			System.out.println(request.getHeader("User-Agent"));
 
 			response.setContentType("application/octet-stream");
 			response.setContentLengthLong(contentLength);
 
+			if (responseDelay > 0) {
+				try {
+					Thread.sleep(responseDelay);
+				} catch (InterruptedException e) {
+				}
+			}
+			
 			if (returnData) {
 				response.getOutputStream().write(randomData, 0, (int) contentLength);
 				response.getOutputStream().flush();
