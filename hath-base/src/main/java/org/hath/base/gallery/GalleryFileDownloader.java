@@ -78,7 +78,7 @@ public class GalleryFileDownloader implements Runnable {
 
 	public LinkedList<Sensing> sensingPointHits = new LinkedList<>();
 	public enum Sensing {
-		CONTENT_LENGTH_MISMATCH, CONTENT_LENGTH_GREATER_10MB, CONTENT_LENGTH_MATCH, INTI_FAIL, BYTES_READ
+		CONTENT_LENGTH_MISMATCH, CONTENT_LENGTH_GREATER_10MB, CONTENT_LENGTH_MATCH, INTI_FAIL, BYTES_READ, FILE_SAVED_TO_CACHE, FILE_NOT_SAVED_TO_CACHE, CORRUPT_FILE, INCOMPLETE_FILE
 	};
 
 	private void hitSensingPoint(Sensing point) {
@@ -209,9 +209,11 @@ public class GalleryFileDownloader implements Runnable {
 		boolean success = readData();
 		
 		if(writeoff != getContentLength()) {
-			Out.debug("Requested file " + fileid + " is incomplete, and was not stored.");				
+			Out.debug("Requested file " + fileid + " is incomplete, and was not stored.");
+			hitSensingPoint(Sensing.INCOMPLETE_FILE);
 		} else if(! MiscTools.getSHAString(databuffer).equals(requestedHVFile.getHash())) {
-			Out.debug("Requested file " + fileid + " is corrupt, and was not stored.");				
+			Out.debug("Requested file " + fileid + " is corrupt, and was not stored.");
+			hitSensingPoint(Sensing.CORRUPT_FILE);
 		} else {
 			try {
 				CacheHandler cacheHandler = client.getCacheHandler();
@@ -223,10 +225,12 @@ public class GalleryFileDownloader implements Runnable {
 					cacheHandler.addPendingRegisterFile(requestedHVFile);
 					Out.debug("Requested file " + fileid + " was successfully stored in cache.");
 					success = true;
+					hitSensingPoint(Sensing.FILE_SAVED_TO_CACHE);
 				}
 				else {
 					tmpfile.delete();
 					Out.debug("Requested file " + fileid + " exists or cannot be cached, and was dropped.");
+					hitSensingPoint(Sensing.FILE_NOT_SAVED_TO_CACHE);
 				}
 				
 				Out.info("Gallery File Download Request complete for " + fileid);

@@ -28,6 +28,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
+import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -228,6 +229,21 @@ public class GalleryFileDownloaderTest {
 	}
 
 	@Test(timeout = 1000)
+	public void testCorruptFile() throws Exception {
+		testHandler.setContentLength(10);
+		testHandler.returnData(true);
+		testHandler.generateRandomData();
+
+		cut.initialize(testURL);
+
+		while (cut.getDownloadState() == 0) {
+			Thread.sleep(50);
+		}
+
+		assertSensingPoint(Sensing.CORRUPT_FILE);
+	}
+
+	@Test(timeout = 1000)
 	public void testRequestDownloadDataStats() throws Exception {
 		testHandler.setContentLength(10);
 		testHandler.returnData(true);
@@ -395,6 +411,56 @@ public class GalleryFileDownloaderTest {
 
 
 		assertThat(cut.getDownloadState(), is(-1));
+	}
+
+	@Test
+	public void testFileCached() throws Exception {
+		testHandler.setContentLength(10);
+		testHandler.returnData(true);
+		byte[] data = testHandler.generateRandomData();
+
+		when(clientMock.getCacheHandler().moveFileToCacheDir(any(), any())).thenReturn(true);
+
+		fileid = MiscTools.getSHAString(data) + "-10-0-0-jpg";
+		token = VALID_TOKEN;
+		gid = 42;
+		page = 2;
+		filename = "baz";
+
+		cut = new GalleryFileDownloader(clientMock, fileid, token, gid, page, filename, false);
+		testURL = buildRequestUrl(fileid, token, gid, page, filename, false);
+
+		cut.initialize(testURL);
+
+		while (cut.getDownloadState() == 0) {
+			Thread.sleep(50);
+		}
+
+		assertSensingPoint(Sensing.FILE_SAVED_TO_CACHE);
+	}
+
+	@Test
+	public void testFileNotCached() throws Exception {
+		testHandler.setContentLength(10);
+		testHandler.returnData(true);
+		byte[] data = testHandler.generateRandomData();
+
+		fileid = MiscTools.getSHAString(data) + "-10-0-0-jpg";
+		token = VALID_TOKEN;
+		gid = 42;
+		page = 2;
+		filename = "baz";
+
+		cut = new GalleryFileDownloader(clientMock, fileid, token, gid, page, filename, false);
+		testURL = buildRequestUrl(fileid, token, gid, page, filename, false);
+
+		cut.initialize(testURL);
+
+		while (cut.getDownloadState() == 0) {
+			Thread.sleep(50);
+		}
+
+		assertSensingPoint(Sensing.FILE_NOT_SAVED_TO_CACHE);
 	}
 
 	@Ignore
