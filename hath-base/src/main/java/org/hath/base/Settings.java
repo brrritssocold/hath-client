@@ -332,6 +332,22 @@ public class Settings {
 		return clientID;
 	}
 	
+	/**
+	 * For testing only!
+	 */
+	@Deprecated
+	public static void setClientID(int clientID) {
+		Settings.clientID = clientID;
+	}
+
+	/**
+	 * For testing only!
+	 */
+	@Deprecated
+	public static void setClientKey(String clientKey) {
+		Settings.clientKey = clientKey;
+	}
+
 	public static String getClientKey() {
 		return clientKey;
 	}
