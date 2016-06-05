@@ -34,14 +34,17 @@ public class HTTPResponseProcessorSpeedtest extends HTTPResponseProcessor {
 		rand = new Random();
 	}
 
+	@Override
 	public int getContentLength() {
 		return testsize;
 	}
 	
+	@Override
 	public byte[] getBytes() {
 		return getRandomBytes(testsize);
 	}
 	
+	@Override
 	public byte[] getBytesRange(int len) {
 		return getRandomBytes(len);
 	}

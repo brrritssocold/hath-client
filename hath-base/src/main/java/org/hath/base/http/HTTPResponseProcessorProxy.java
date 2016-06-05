@@ -37,23 +37,28 @@ public class HTTPResponseProcessorProxy extends HTTPResponseProcessor {
 		gdf = new GalleryFileDownloader(session.getHTTPServer().getHentaiAtHomeClient(), fileid, token, gid, page, filename, false);
 	}
 
+	@Override
 	public int initialize() {
 		Out.info(session + ": Initializing proxy request...");
 		return gdf.initialize();
 	}	
 
+	@Override
 	public String getContentType() {
 		return gdf.getContentType();
 	}
 
+	@Override
 	public int getContentLength() {
 		return gdf.getContentLength();
 	}
 
+	@Override
 	public byte[] getBytes() throws Exception {
 		return getBytesRange(getContentLength());
 	}
 
+	@Override
 	public byte[] getBytesRange(int len) throws Exception {
 		// wait for data
 		int endoff = readoff + len;

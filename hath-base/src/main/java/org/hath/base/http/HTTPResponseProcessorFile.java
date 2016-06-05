@@ -43,6 +43,7 @@ public class HTTPResponseProcessorFile extends HTTPResponseProcessor {
 		this.requestedHVFile = requestedHVFile;
 	}
 
+	@Override
 	public int initialize() {
 		int responseStatusCode = 0;
 
@@ -60,6 +61,7 @@ public class HTTPResponseProcessorFile extends HTTPResponseProcessor {
 		return responseStatusCode;
 	}
 	
+	@Override
 	public void cleanup() {
 		if(bis != null) {
 			try {
@@ -70,10 +72,12 @@ public class HTTPResponseProcessorFile extends HTTPResponseProcessor {
 		}
 	}
 
+	@Override
 	public String getContentType() {
 		return requestedHVFile.getMimeType();
 	}
 
+	@Override
 	public int getContentLength() {
 		if(bis != null) {
 			return requestedHVFile.getSize();
@@ -83,10 +87,12 @@ public class HTTPResponseProcessorFile extends HTTPResponseProcessor {
 		}
 	}
 
+	@Override
 	public byte[] getBytes() {
 		return getBytesRange(requestedHVFile.getSize());
 	}
 
+	@Override
 	public byte[] getBytesRange(int len) {
 		byte[] range = null;
 		
