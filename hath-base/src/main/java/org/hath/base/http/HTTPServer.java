@@ -23,26 +23,34 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.http;
 
+import java.io.IOException;
 import java.net.InetAddress;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.eclipse.jetty.server.Request;
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.Out;
 import org.hath.base.Settings;
 import org.hath.base.Stats;
 
-public class HTTPServer implements Runnable {
+import com.google.common.net.InetAddresses;
+
+public class HTTPServer extends AbstractHandler {
 	private static final int MAX_FLOOD_ENTRY_AGE_SECONDS = 60;
 
 	private HentaiAtHomeClient client;
 	private HTTPBandwidthMonitor bandwidthMonitor;
-	private ServerSocket ss;
-	private Thread myThread;
+	private Server httpServer;
 	private List<HTTPSession> sessions;
 	private int currentConnId;	
 	private boolean allowNormalConnections;
@@ -58,8 +66,6 @@ public class HTTPServer implements Runnable {
 		this.sessionFactory = factory;
 		bandwidthMonitor = new HTTPBandwidthMonitor();
 		sessions = Collections.checkedList(new ArrayList<HTTPSession>(), HTTPSession.class);
-		ss = null;
-		myThread = null;
 		currentConnId = 0;
 		allowNormalConnections = false;
 		floodControl = new FloodControl(MAX_FLOOD_ENTRY_AGE_SECONDS, TimeUnit.SECONDS);
@@ -69,14 +75,15 @@ public class HTTPServer implements Runnable {
 		try {
 			Out.info("Starting up the internal HTTP Server...");
 		
-			if(ss != null) {
+			if (httpServer != null && httpServer.isRunning()) {
 				stopConnectionListener();
 			}
 			
-			ss = new ServerSocket(port);
-			myThread = new Thread(this);
-			myThread.start();
-			
+			httpServer = new Server(port);
+			httpServer.setStopTimeout(TimeUnit.MILLISECONDS.convert(15, TimeUnit.SECONDS));
+			httpServer.setHandler(this);
+			httpServer.start();
+
 			Out.info("Internal HTTP Server was successfully started, and is listening on port " + port);
 			
 			return true;
@@ -99,11 +106,12 @@ public class HTTPServer implements Runnable {
 	public void stopConnectionListener() {
 		Out.info("Shutting down the internal HTTP Server...");
 
-		if(ss != null) {
+		if (httpServer != null) {
 			try {
-				ss.close();	// will cause ss.accept() to throw an exception, terminating the accept thread
-			} catch(Exception e) {}
-			ss = null;
+				httpServer.stop();
+			} catch (Exception e) {
+				Out.error("Failed to stop internal HTTP Server: " + e);
+			}
 		}
 	}
 	
@@ -128,22 +136,10 @@ public class HTTPServer implements Runnable {
 		allowNormalConnections = true;
 	}
 
-	public void run() {
-		try {
-			while(true) {
-				Socket s = ss.accept();
-				processConnection(s);
-			}
-		} catch(java.io.IOException e) {
-			if(!client.isShuttingDown()) {
-				Out.error("ServerSocket terminated unexpectedly!");
-				HentaiAtHomeClient.dieWithError(e);
-			} else {
-				Out.info("ServerSocket was closed and will no longer accept new connections.");
-			}
-
-			ss = null;
-		}
+	@Override
+	public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
+			throws IOException, ServletException {
+		processConnection(InetAddresses.forString(baseRequest.getRemoteAddr()));
 	}
 
 	protected void processConnection(Socket socket) {
