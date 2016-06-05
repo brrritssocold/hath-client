@@ -23,17 +23,20 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.http;
 
-import java.util.Date;
-import java.util.TimeZone;
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.InetAddress;
+import java.net.Socket;
+import java.nio.charset.Charset;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
-import java.net.Socket;
-import java.net.InetAddress;
-import java.lang.Thread;
-import java.lang.StringBuilder;
-import java.nio.charset.Charset;
-import java.io.*;
-import java.util.regex.*;
+import java.util.Date;
+import java.util.TimeZone;
+import java.util.regex.Pattern;
 
 import org.hath.base.Out;
 import org.hath.base.Settings;
@@ -52,13 +55,21 @@ public class HTTPSession implements Runnable {
 	private boolean localNetworkAccess;
 	private long sessionStartTime, lastPacketSend;
 	private HTTPResponse hr;
+	private HTTPResponseFactory responseFactory;
+	private int rcvdBytes = 0;
 
-	public HTTPSession(Socket s, int connId, boolean localNetworkAccess, HTTPServer httpServer) {
+	public HTTPSession(Socket s, int connId, boolean localNetworkAccess, HTTPServer httpServer,
+			HTTPResponseFactory responseFactory) {
 		sessionStartTime = System.currentTimeMillis();
 		this.mySocket = s;
 		this.connId = connId;
 		this.httpServer = httpServer;
 		this.localNetworkAccess = localNetworkAccess;
+		this.responseFactory = responseFactory;
+	}
+
+	public HTTPSession(Socket s, int connId, boolean localNetworkAccess, HTTPServer httpServer) {
+		this(s, connId, localNetworkAccess, httpServer, new HTTPResponseFactory());
 	}
 
 	public void handleSession() {
@@ -72,46 +83,29 @@ public class HTTPSession implements Runnable {
 	}
 
 	public void run() {
-		InputStreamReader isr = null;
-		BufferedReader br = null;
-		DataOutputStream dos = null;
-		BufferedOutputStream bs = null;
-		
+		processSession();
+	}
+
+	protected void processSession() {
+		processSession(mySocket);
+	}
+
+	protected void processSession(Socket socket) {
+		try (BufferedReader isr = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+				OutputStream dos = new BufferedOutputStream(new DataOutputStream(socket.getOutputStream()));) {
+			processSession(isr, dos);
+		} catch (IOException e) {
+			Out.error("Failed to open socket stream: " + e);
+		}
+	}
+
+	protected void processSession(BufferedReader br, OutputStream bs) {
 		HTTPResponseProcessor hpc = null;
 		String info = this.toString() + " ";		
 
 		try {
-			isr = new InputStreamReader(mySocket.getInputStream());
-			br = new BufferedReader(isr);
-			dos = new DataOutputStream(mySocket.getOutputStream());
-			bs = new BufferedOutputStream(dos);
-
-			// http "parser" follows... might wanna replace this with a more compliant one eventually ;-)
-
-			String read = null;
-			String request = null;
-			int rcvdBytes = 0;
-
-			// utterly ignore every single line except for the request one.
-			do {
-				read = br.readLine();
-
-				if(read != null) {
-					rcvdBytes += read.length();
-
-					if(getheadPattern.matcher(read).matches()) {
-						request = read.substring(0, Math.min(Settings.MAX_REQUEST_LENGTH, read.length()));
-					}
-					else if(read.isEmpty()) {
-						break;
-					}
-				}
-				else {
-					break;
-				}
-			} while(true);
-		
-			hr = new HTTPResponse(this);
+			String request = readRequest(br);
+			hr = responseFactory.create(this);
 			
 			// parse the request - this will also update the response code and initialize the proper response processor
 			hr.parseRequest(request, localNetworkAccess);
@@ -121,40 +115,12 @@ public class HTTPSession implements Runnable {
 			int statusCode = hr.getResponseStatusCode();
 			int contentLength = hpc.getContentLength();
 
-			// we'll create a new date formatter for each session instead of synchronizing on a shared formatter. (sdf is not thread-safe)
-			SimpleDateFormat sdf = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss", java.util.Locale.US);
-			sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
-
-			// build the header
-			StringBuilder header = new StringBuilder(300);
-
-			header.append(getHTTPStatusHeader(statusCode));
-			header.append(hpc.getHeader());
-			header.append("Date: " + sdf.format(new Date()) + " GMT" + CRLF);
-			header.append("Server: Genetic Lifeform and Distributed Open Server " + Settings.CLIENT_VERSION + CRLF);
-			header.append("Connection: close" + CRLF);
-			header.append("Content-Type: " + hpc.getContentType() + CRLF);
-
-			if(contentLength > 0) {
-				header.append("Cache-Control: public, max-age=31536000" + CRLF);
-				header.append("Content-Length: " + contentLength + CRLF);
-			}
-
-			header.append(CRLF);
+			StringBuilder header = createHeader(hpc, statusCode, contentLength);
 		
 			// write the header to the socket
 			byte[] headerBytes = header.toString().getBytes(Charset.forName("ISO-8859-1"));
 			
-			if(contentLength > 0) {
-				try {
-					// buffer size might be limited by OS. for linux, check net.core.wmem_max
-					int bufferSize = (int) Math.min(contentLength + headerBytes.length + 32, Math.min(Settings.isUseLessMemory() ? 131072 : 524288, Math.round(0.2 * Settings.getThrottleBytesPerSec())));
-					mySocket.setSendBufferSize(bufferSize);
-					//Out.debug("Socket size for " + connId + " is now " + mySocket.getSendBufferSize() + " (requested " + bufferSize + ")");
-				} catch (Exception e) {
-					Out.info(e.getMessage());
-				}
-			}
+			setSendBufferSize(contentLength, headerBytes);
 
 			bs.write(headerBytes, 0, headerBytes.length);
 			
@@ -253,12 +219,75 @@ public class HTTPSession implements Runnable {
 			if(hpc != null) {
 				hpc.cleanup();
 			}
-			
-			try { br.close(); isr.close(); bs.close(); dos.close(); } catch(Exception e) {}
-			try { mySocket.close(); } catch(Exception e) {}
 		}
 
 		connectionFinished();
+	}
+
+	protected StringBuilder createHeader(HTTPResponseProcessor hpc, int statusCode, int contentLength) {
+		// we'll create a new date formatter for each session instead of synchronizing on a shared formatter. (sdf is not thread-safe)
+		SimpleDateFormat sdf = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss", java.util.Locale.US);
+		sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+
+		// build the header
+		StringBuilder header = new StringBuilder(300);
+
+		header.append(getHTTPStatusHeader(statusCode));
+		header.append(hpc.getHeader());
+		header.append("Date: " + sdf.format(new Date()) + " GMT" + CRLF);
+		header.append("Server: Genetic Lifeform and Distributed Open Server " + Settings.CLIENT_VERSION + CRLF);
+		header.append("Connection: close" + CRLF);
+		header.append("Content-Type: " + hpc.getContentType() + CRLF);
+
+		if(contentLength > 0) {
+			header.append("Cache-Control: public, max-age=31536000" + CRLF);
+			header.append("Content-Length: " + contentLength + CRLF);
+		}
+
+		header.append(CRLF);
+		return header;
+	}
+
+	protected String readRequest(BufferedReader br) throws IOException {
+		// http "parser" follows... might wanna replace this with a more compliant one eventually ;-)
+
+		String read = null;
+		String request = null;
+
+		// utterly ignore every single line except for the request one.
+		do {
+			read = br.readLine();
+
+			if(read != null) {
+				rcvdBytes += read.length();
+
+				if(getheadPattern.matcher(read).matches()) {
+					request = read.substring(0, Math.min(Settings.MAX_REQUEST_LENGTH, read.length()));
+				}
+				else if(read.isEmpty()) {
+					break;
+				}
+			}
+			else {
+				break;
+			}
+		} while(true);
+		return request;
+	}
+
+	protected void setSendBufferSize(int contentLength, byte[] headerBytes) {
+		if(contentLength <= 0) {
+			return;
+		}
+		
+		try {
+			// buffer size might be limited by OS. for linux, check net.core.wmem_max
+			int bufferSize = (int) Math.min(contentLength + headerBytes.length + 32, Math.min(Settings.isUseLessMemory() ? 131072 : 524288, Math.round(0.2 * Settings.getThrottleBytesPerSec())));
+			mySocket.setSendBufferSize(bufferSize);
+			//Out.debug("Socket size for " + connId + " is now " + mySocket.getSendBufferSize() + " (requested " + bufferSize + ")");
+		} catch (Exception e) {
+			Out.info(e.getMessage());
+		}
 	}
 
 	private String getHTTPStatusHeader(int statuscode) {
