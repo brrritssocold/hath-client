@@ -170,4 +170,8 @@ public class SessionTracker {
 	public boolean isMaxSessionReached() {
 		return ((!isMaxSessionsDisabled()) && (activeSessions() >= maxSessions));
 	}
+
+	public long getMaxSessions() {
+		return maxSessions;
+	}
 }
