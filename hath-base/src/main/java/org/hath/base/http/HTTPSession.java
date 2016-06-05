@@ -38,11 +38,17 @@ import java.util.Date;
 import java.util.TimeZone;
 import java.util.regex.Pattern;
 
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.eclipse.jetty.server.Request;
+import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.hath.base.Out;
 import org.hath.base.Settings;
 import org.hath.base.Stats;
 
-public class HTTPSession implements Runnable {
+public class HTTPSession extends AbstractHandler implements Runnable {
 
 	public static final String CRLF = "\r\n";
 
@@ -78,6 +84,13 @@ public class HTTPSession implements Runnable {
 		httpSession.start();
 	}
 
+	@Override
+	public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
+			throws IOException, ServletException {
+		processSession(baseRequest, response);
+	
+	}
+
 	private void connectionFinished() {
 		httpServer.removeHTTPSession(this);
 	}
@@ -97,6 +110,10 @@ public class HTTPSession implements Runnable {
 		} catch (IOException e) {
 			Out.error("Failed to open socket stream: " + e);
 		}
+	}
+
+	protected void processSession(Request baseRequest, HttpServletResponse response) throws IOException {
+		processSession(new BufferedReader(baseRequest.getReader()), response.getOutputStream());
 	}
 
 	protected void processSession(BufferedReader br, OutputStream bs) {
