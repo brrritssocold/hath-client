@@ -23,10 +23,17 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.http;
 
+import java.io.IOException;
+import java.util.LinkedList;
+
+import javax.servlet.http.HttpServletResponse;
+
+import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.Settings;
 
 public abstract class HTTPResponseProcessor {
 	private String header = "";
+	private LinkedList<HeaderPair> headersToAdd = new LinkedList<>();
 
 	public String getContentType() {
 		return Settings.CONTENT_TYPE_DEFAULT;
@@ -42,10 +49,39 @@ public abstract class HTTPResponseProcessor {
 	
 	public void cleanup() {}
 
+	public void updateResponse(HttpServletResponse response) throws IOException {
+		response.setStatus(initialize());
+		response.setContentLength(getContentLength());
+		response.setContentType(getContentType());
+
+		for (HeaderPair pair : headersToAdd) {
+			response.addHeader(pair.name, pair.value);
+		}
+
+		try {
+			response.getOutputStream().write(getBytes());
+		} catch (Exception e) {
+			e.printStackTrace();
+			HentaiAtHomeClient.dieWithError("Lazy programmers don't use specific exceptions");
+		}
+	}
+
+	/**
+	 * Subclasses should update the response object directly
+	 */
+	@Deprecated
 	public abstract byte[] getBytes() throws Exception;
+
+	/**
+	 * Subclasses should update the response object directly
+	 */
+	@Deprecated
 	public abstract byte[] getBytesRange(int len) throws Exception;
 	
-
+	/**
+	 * Subclasses should update the response object directly
+	 */
+	@Deprecated
 	public String getHeader() {
 		return this.header;
 	}
@@ -53,5 +89,16 @@ public abstract class HTTPResponseProcessor {
 	public void addHeaderField(String name, String value) {
 		// TODO: encode the value if needed.
 		this.header += name + ": " + value + "\r\n";
+		headersToAdd.add(new HeaderPair(name, value));
+	}
+
+	protected class HeaderPair {
+		public HeaderPair(String name, String value) {
+			this.name = name;
+			this.value = value;
+		}
+
+		public String name;
+		public String value;
 	}
 }
