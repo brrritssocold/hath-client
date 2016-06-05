@@ -30,12 +30,12 @@ public class HTTPSessionFactory {
 	 * Use the non socket version
 	 */
 	@Deprecated
-	public HTTPSession create(Socket socket, int connectionID, boolean localNetworkAccess, HTTPServer httpServer) {
-		return new HTTPSession(socket, connectionID, localNetworkAccess, httpServer);
+	public BaseHandler create(Socket socket, int connectionID, boolean localNetworkAccess, HTTPServer httpServer) {
+		return new BaseHandler(socket, connectionID, localNetworkAccess, httpServer);
 	}
 
-	public HTTPSession create(int connId, boolean localNetworkAccess, HTTPBandwidthMonitor bandwidthMonitor,
+	public BaseHandler create(int connId, boolean localNetworkAccess, HTTPBandwidthMonitor bandwidthMonitor,
 			HTTPResponseFactory responseFactory) {
-		return new HTTPSession(connId, localNetworkAccess, bandwidthMonitor, responseFactory);
+		return new BaseHandler(connId, localNetworkAccess, bandwidthMonitor, responseFactory);
 	}
 }

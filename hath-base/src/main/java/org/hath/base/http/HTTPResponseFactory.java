@@ -24,7 +24,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 package org.hath.base.http;
 
 public class HTTPResponseFactory {
-	public HTTPResponse create(HTTPSession session) {
+	public HTTPResponse create(BaseHandler session) {
 		return new HTTPResponse(session);
 	}
 }

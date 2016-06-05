@@ -27,11 +27,11 @@ import org.hath.base.Out;
 import org.hath.base.gallery.GalleryFileDownloader;
 
 public class HTTPResponseProcessorProxy extends HTTPResponseProcessor {
-	private HTTPSession session;
+	private BaseHandler session;
 	private GalleryFileDownloader gdf;
 	private int readoff;
 	
-	public HTTPResponseProcessorProxy(HTTPSession session, String fileid, String token, int gid, int page, String filename) {
+	public HTTPResponseProcessorProxy(BaseHandler session, String fileid, String token, int gid, int page, String filename) {
 		this.session = session;
 		readoff = 0;
 		gdf = new GalleryFileDownloader(session.getHTTPServer().getHentaiAtHomeClient(), fileid, token, gid, page, filename, false);

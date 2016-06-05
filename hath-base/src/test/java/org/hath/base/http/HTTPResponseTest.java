@@ -47,7 +47,7 @@ import com.google.common.net.InetAddresses;
 
 
 public class HTTPResponseTest {
-	private HTTPSession sessionMock;
+	private BaseHandler sessionMock;
 	private HVFile hvFileMock;
 	private HTTPResponse cut;
 	private InetAddress client_address;
@@ -79,7 +79,7 @@ public class HTTPResponseTest {
 	}
 
 	private void setUpMocks(HVFile hvFile, InetAddress ipAddress, boolean localNetwork) {
-		sessionMock = mock(HTTPSession.class, Mockito.RETURNS_DEEP_STUBS);
+		sessionMock = mock(BaseHandler.class, Mockito.RETURNS_DEEP_STUBS);
 
 		when(sessionMock.isLocalNetworkAccess()).thenReturn(localNetwork);
 		when(sessionMock.getSocketInetAddress()).thenReturn(ipAddress);

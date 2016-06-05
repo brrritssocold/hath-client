@@ -55,7 +55,7 @@ public class HTTPServerTest {
 	private HentaiAtHomeClient mockClient;
 	private Socket mockSocket;
 	private HTTPSessionFactory mockSessionFactory;
-	private HTTPSession mockSession;
+	private BaseHandler mockSession;
 	private ServerHandler mockServerHandler;
 	private HTTPServer hTTPServer;
 
@@ -74,7 +74,7 @@ public class HTTPServerTest {
 		mockSocket = mock(Socket.class);
 		mockClient = mock(HentaiAtHomeClient.class, Mockito.RETURNS_DEEP_STUBS);
 		mockSessionFactory = mock(HTTPSessionFactory.class);
-		mockSession = mock(HTTPSession.class);
+		mockSession = mock(BaseHandler.class);
 		mockServerHandler = mock(ServerHandler.class);
 		
 		when(mockClient.isShuttingDown()).thenReturn(true);

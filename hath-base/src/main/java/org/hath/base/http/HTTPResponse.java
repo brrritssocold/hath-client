@@ -44,7 +44,7 @@ import org.hath.base.Stats;
 public class HTTPResponse {
 	private static final Pattern absoluteUriPattern = Pattern.compile("^http://[^/]+/", Pattern.CASE_INSENSITIVE);
 
-	private HTTPSession session;
+	private BaseHandler session;
 
 	private boolean requestHeadOnly, validRequest;
 	private boolean servercmd;
@@ -58,7 +58,7 @@ public class HTTPResponse {
 
 	public LinkedList<Sensing> sensingPointsHit = new LinkedList<>();
 
-	public HTTPResponse(HTTPSession session) {
+	public HTTPResponse(BaseHandler session) {
 		this.session = session;
 
 		validRequest = false;

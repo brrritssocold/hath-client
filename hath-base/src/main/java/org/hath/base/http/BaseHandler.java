@@ -48,7 +48,7 @@ import org.hath.base.Out;
 import org.hath.base.Settings;
 import org.hath.base.Stats;
 
-public class HTTPSession extends AbstractHandler implements Runnable {
+public class BaseHandler extends AbstractHandler implements Runnable {
 
 	public static final String CRLF = "\r\n";
 
@@ -69,7 +69,7 @@ public class HTTPSession extends AbstractHandler implements Runnable {
 	 * Use the non socket version
 	 */
 	@Deprecated
-	public HTTPSession(Socket s, int connId, boolean localNetworkAccess, HTTPServer httpServer,
+	public BaseHandler(Socket s, int connId, boolean localNetworkAccess, HTTPServer httpServer,
 			HTTPResponseFactory responseFactory) {
 		sessionStartTime = System.currentTimeMillis();
 		this.mySocket = s;
@@ -80,7 +80,7 @@ public class HTTPSession extends AbstractHandler implements Runnable {
 		this.responseFactory = responseFactory;
 	}
 
-	public HTTPSession(int connId, boolean localNetworkAccess, HTTPBandwidthMonitor bandwidthMonitor,
+	public BaseHandler(int connId, boolean localNetworkAccess, HTTPBandwidthMonitor bandwidthMonitor,
 			HTTPResponseFactory responseFactory) {
 		sessionStartTime = System.currentTimeMillis();
 		this.connId = connId;
@@ -89,13 +89,13 @@ public class HTTPSession extends AbstractHandler implements Runnable {
 		this.responseFactory = responseFactory;
 	}
 
-	public HTTPSession(Socket s, int connId, boolean localNetworkAccess, HTTPServer httpServer) {
+	public BaseHandler(Socket s, int connId, boolean localNetworkAccess, HTTPServer httpServer) {
 		this(s, connId, localNetworkAccess, httpServer, new HTTPResponseFactory());
 	}
 
 	/**
 	 * Use the http server to call
-	 * {@link HTTPSession#handle(String, Request, HttpServletRequest, HttpServletResponse)}
+	 * {@link BaseHandler#handle(String, Request, HttpServletRequest, HttpServletResponse)}
 	 */
 	@Deprecated
 	public void handleSession() {

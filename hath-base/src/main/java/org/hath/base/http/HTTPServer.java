@@ -51,7 +51,7 @@ public class HTTPServer extends AbstractHandler {
 	private HentaiAtHomeClient client;
 	private HTTPBandwidthMonitor bandwidthMonitor;
 	private Server httpServer;
-	private List<HTTPSession> sessions;
+	private List<BaseHandler> sessions;
 	private int currentConnId;	
 	private boolean allowNormalConnections;
 	private FloodControl floodControl;
@@ -65,7 +65,7 @@ public class HTTPServer extends AbstractHandler {
 		this.client = client;
 		this.sessionFactory = factory;
 		bandwidthMonitor = new HTTPBandwidthMonitor();
-		sessions = Collections.checkedList(new ArrayList<HTTPSession>(), HTTPSession.class);
+		sessions = Collections.checkedList(new ArrayList<BaseHandler>(), BaseHandler.class);
 		currentConnId = 0;
 		allowNormalConnections = false;
 		floodControl = new FloodControl(MAX_FLOOD_ENTRY_AGE_SECONDS, TimeUnit.SECONDS);
@@ -118,15 +118,15 @@ public class HTTPServer extends AbstractHandler {
 	public void nukeOldConnections(boolean killall) {
 		synchronized(sessions) {
 			// in some rare cases, the connection is unable to remove itself from the session list. if so, it will return true for doTimeoutCheck, meaning that we will have to clear it out from here instead
-			List<HTTPSession> remove = Collections.checkedList(new ArrayList<HTTPSession>(), HTTPSession.class);
+			List<BaseHandler> remove = Collections.checkedList(new ArrayList<BaseHandler>(), BaseHandler.class);
 			
-			for(HTTPSession session : sessions) {
+			for(BaseHandler session : sessions) {
 				if(session.doTimeoutCheck(killall)) {
 					remove.add(session);
 				}
 			}
 			
-			for(HTTPSession session : remove) {
+			for(BaseHandler session : remove) {
 				sessions.remove(session);
 			}
 		}
@@ -191,7 +191,7 @@ public class HTTPServer extends AbstractHandler {
 			}
 			else {
 				// all is well. keep truckin'
-				HTTPSession hs = sessionFactory.create(getNewConnId(), localNetworkAccess, bandwidthMonitor,
+				BaseHandler hs = sessionFactory.create(getNewConnId(), localNetworkAccess, bandwidthMonitor,
 						new HTTPResponseFactory());
 				sessions.add(hs);
 				Stats.setOpenConnections(sessions.size());
@@ -205,7 +205,7 @@ public class HTTPServer extends AbstractHandler {
 		return ++currentConnId;
 	}
 	
-	public void removeHTTPSession(HTTPSession httpSession) {
+	public void removeHTTPSession(BaseHandler httpSession) {
 		synchronized(sessions) {
 			sessions.remove(httpSession);
 			Stats.setOpenConnections(sessions.size());
