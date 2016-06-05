@@ -147,12 +147,20 @@ public class HTTPServer implements Runnable {
 	}
 
 	protected void processConnection(Socket socket) {
+		InetAddress addr = socket.getInetAddress();
+		boolean forceClose = processConnection(addr);
+
+		if (forceClose) {
+			try { socket.close(); } catch(Exception e) { /* LALALALALA */ }
+		}
+	}
+
+	protected boolean processConnection(InetAddress addr) {
 		synchronized(sessions) {
 			boolean forceClose = false;
 
 			//  private network: localhost, 127.x.y.z, 10.0.0.0 - 10.255.255.255, 172.16.0.0 - 172.31.255.255,  192.168.0.0 - 192.168.255.255, 169.254.0.0 -169.254.255.255
 			
-			InetAddress addr = socket.getInetAddress();
 			String addrString = addr.toString();
 			String myInetAddr = Settings.getClientHost().replace("::ffff:", "");
 			boolean localNetworkAccess = java.util.regex.Pattern.matches("^((" + myInetAddr + ")|(localhost)|(127\\.)|(10\\.)|(192\\.168\\.)|(172\\.((1[6-9])|(2[0-9])|(3[0-1]))\\.)|(169\\.254\\.)|(::1)|(0:0:0:0:0:0:0:1)|(fc)|(fd)).*$", addr.getHostAddress());
@@ -182,14 +190,17 @@ public class HTTPServer implements Runnable {
 			}
 
 			if(forceClose) {
-				try { socket.close(); } catch(Exception e) { /* LALALALALA */ }					
+				return true;
+				// FIXME set request handled
 			}
 			else {
 				// all is well. keep truckin'
-				HTTPSession hs = sessionFactory.create(socket, getNewConnId(), localNetworkAccess, this);
+				HTTPSession hs = sessionFactory.create(getNewConnId(), localNetworkAccess, bandwidthMonitor,
+						new HTTPResponseFactory());
 				sessions.add(hs);
 				Stats.setOpenConnections(sessions.size());
-				hs.handleSession();											
+				hs.handleSession();
+				return false;
 			}
 		}
 	}
