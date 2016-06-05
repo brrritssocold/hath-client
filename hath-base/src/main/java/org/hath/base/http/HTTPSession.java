@@ -63,13 +63,28 @@ public class HTTPSession extends AbstractHandler implements Runnable {
 	private HTTPResponse hr;
 	private HTTPResponseFactory responseFactory;
 	private int rcvdBytes = 0;
+	private HTTPBandwidthMonitor bandwidthMonitor;
 
+	/**
+	 * Use the non socket version
+	 */
+	@Deprecated
 	public HTTPSession(Socket s, int connId, boolean localNetworkAccess, HTTPServer httpServer,
 			HTTPResponseFactory responseFactory) {
 		sessionStartTime = System.currentTimeMillis();
 		this.mySocket = s;
 		this.connId = connId;
 		this.httpServer = httpServer;
+		this.bandwidthMonitor = httpServer.getBandwidthMonitor();
+		this.localNetworkAccess = localNetworkAccess;
+		this.responseFactory = responseFactory;
+	}
+
+	public HTTPSession(int connId, boolean localNetworkAccess, HTTPBandwidthMonitor bandwidthMonitor,
+			HTTPResponseFactory responseFactory) {
+		sessionStartTime = System.currentTimeMillis();
+		this.connId = connId;
+		this.bandwidthMonitor = bandwidthMonitor;
 		this.localNetworkAccess = localNetworkAccess;
 		this.responseFactory = responseFactory;
 	}
@@ -78,6 +93,11 @@ public class HTTPSession extends AbstractHandler implements Runnable {
 		this(s, connId, localNetworkAccess, httpServer, new HTTPResponseFactory());
 	}
 
+	/**
+	 * Use the http server to call
+	 * {@link HTTPSession#handle(String, Request, HttpServletRequest, HttpServletResponse)}
+	 */
+	@Deprecated
 	public void handleSession() {
 		httpSession = new Thread(this);
 		httpSession.setName("HTTP Session");
@@ -199,7 +219,7 @@ public class HTTPSession extends AbstractHandler implements Runnable {
 						// bytes written to the local network do not count against the bandwidth stats. these do, however.
 						Stats.bytesRcvd(rcvdBytes);
 
-						HTTPBandwidthMonitor bwm = httpServer.getBandwidthMonitor();
+						HTTPBandwidthMonitor bwm = this.bandwidthMonitor;
 						boolean disableBWM = Settings.isDisableBWM();
 						
 						int packetSize = bwm.getActualPacketSize();
