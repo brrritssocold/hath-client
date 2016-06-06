@@ -70,7 +70,12 @@ public class SessionTracker {
 			throw new IllegalArgumentException("Overload percentage must be betwenn 0.0 and 1.0 (Disabled to 100%)");
 		}
 
+		if (isMaxSessionsDisabled()) {
 		sessionCache = CacheBuilder.newBuilder().build();
+		} else {
+			sessionCache = CacheBuilder.newBuilder().concurrencyLevel((int) maxSessions).build();
+		}
+
 	}
 
 
@@ -164,5 +169,9 @@ public class SessionTracker {
 	 */
 	public boolean isMaxSessionReached() {
 		return ((!isMaxSessionsDisabled()) && (activeSessions() >= maxSessions));
+	}
+
+	public long getMaxSessions() {
+		return maxSessions;
 	}
 }

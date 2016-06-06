@@ -23,13 +23,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.http;
 
-import org.junit.runner.RunWith;
-import org.junit.runners.Suite;
-import org.junit.runners.Suite.SuiteClasses;
-
-@RunWith(Suite.class)
-@SuiteClasses({ FloodControlTest.class, HTTPServerTest.class, HTTPServerTest.class, SessionTrackerTest.class,
-		SessionTrackingHandlerTest.class })
-public class AllHttpTests {
-
+public class HTTPRequestAttributes {
+	public static final String LOCAL_NETWORK_ACCESS = "org.hath.base.http.localNetworkAccess";
+	public static final String API_SERVER_ACCESS = "org.hath.base.http.apiServerAccess";
 }
