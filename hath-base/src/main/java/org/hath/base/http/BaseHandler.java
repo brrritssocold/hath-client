@@ -111,18 +111,23 @@ public class BaseHandler extends AbstractHandler implements Runnable {
 	
 	}
 
+	@Deprecated
 	private void connectionFinished() {
 		httpServer.removeHTTPSession(this);
 	}
 
+	@Deprecated
+	@Override
 	public void run() {
 		processSession();
 	}
 
+	@Deprecated
 	protected void processSession() {
 		processSession(mySocket);
 	}
 
+	@Deprecated
 	protected void processSession(Socket socket) {
 		try (BufferedReader isr = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 				OutputStream dos = new BufferedOutputStream(new DataOutputStream(socket.getOutputStream()));) {
@@ -132,6 +137,7 @@ public class BaseHandler extends AbstractHandler implements Runnable {
 		}
 	}
 
+	@Deprecated
 	protected void processSession(Request baseRequest, HttpServletResponse response) throws IOException {
 		processSession(new BufferedReader(baseRequest.getReader()), response.getOutputStream());
 	}
