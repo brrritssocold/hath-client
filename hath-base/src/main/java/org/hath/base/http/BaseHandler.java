@@ -109,13 +109,6 @@ public class BaseHandler extends AbstractHandler implements Runnable {
 		httpSession.start();
 	}
 
-	@Override
-	public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
-			throws IOException, ServletException {
-		processSession(baseRequest, response);
-	
-	}
-
 	@Deprecated
 	private void connectionFinished() {
 		httpServer.removeHTTPSession(this);
@@ -126,19 +119,19 @@ public class BaseHandler extends AbstractHandler implements Runnable {
 	public void run() {
 	}
 
-	protected void processSession(Request baseRequest, HttpServletResponse response) throws IOException {
-		BufferedReader br = baseRequest.getReader();
+	@Override
+	public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
+			throws IOException, ServletException {
 		ServletOutputStream bs = response.getOutputStream();
 
 		HTTPResponseProcessor hpc = null;
 		String info = this.toString() + " ";		
 
 		try {
-			String request = readRequest(br);
 			hr = responseFactory.create(this);
 			
 			// parse the request - this will also update the response code and initialize the proper response processor
-			hr.parseRequest(request, localNetworkAccess);
+			hr.parseRequest(target, localNetworkAccess);
 
 			// get the status code and response processor - in case of an error, this will be a text type with the error message
 			hpc = hr.getHTTPResponseProcessor();
@@ -153,15 +146,15 @@ public class BaseHandler extends AbstractHandler implements Runnable {
 				// if this is a HEAD request, we flush the socket and finish
 				bs.flush();				
 				info += "Code=" + statusCode + " ";
-				Out.info(info + (request == null ? "Invalid Request" : request));
+				Out.info(info + (target == null ? "Invalid Request" : target));
 			}
 			else {
 				// if this is a GET request, process the pony if we have one
 				info += "Code=" + statusCode + " Bytes=" + String.format("%1$-8s", contentLength) + " ";
 				
-				if(request != null) {
+				if(target != null) {
 					// skip the startup message for error requests
-					Out.info(info + request);
+					Out.info(info + target);
 				}
 
 				long startTime = System.currentTimeMillis();
