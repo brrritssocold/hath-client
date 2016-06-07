@@ -24,6 +24,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 package org.hath.base.http;
 
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.contains;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -31,12 +32,16 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.net.Socket;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.TimeZone;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.eclipse.jetty.http.HttpStatus;
 import org.eclipse.jetty.server.Request;
+import org.hath.base.Settings;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -44,6 +49,7 @@ import org.mockito.Answers;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 
+import com.google.common.net.HttpHeaders;
 import com.google.common.net.InetAddresses;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -79,6 +85,7 @@ public class BaseHandlerTest {
 	private void setDefaultBehavior() throws Exception {
 		when(responseFactory.create(any()).getResponseStatusCode()).thenReturn(HttpStatus.OK_200);
 		when(responseFactory.create(any()).getHTTPResponseProcessor().getContentLength()).thenReturn(42);
+		when(responseFactory.create(any()).getHTTPResponseProcessor().getContentType()).thenReturn("text/xml");
 
 		when(socket.getInetAddress()).thenReturn(InetAddresses.forString(EXTERNAL_ADDRESS));
 
@@ -154,5 +161,76 @@ public class BaseHandlerTest {
 
 		verify(response.getOutputStream()).flush();
 		verify(bandwidthMonitor, never()).getActualPacketSize();
+	}
+
+	@Test
+	public void testHeaderStatusCode() throws Exception {
+		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
+
+		verify(response).setStatus(HttpStatus.OK_200);
+	}
+
+	@Test
+	public void testHeaderDate() throws Exception {
+		SimpleDateFormat sdf = new SimpleDateFormat("EEE, dd MMM yyyy", java.util.Locale.US);
+		sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+
+		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
+
+		verify(response).setHeader(eq(HttpHeaders.DATE), contains(sdf.format(new Date())));
+	}
+
+	@Test
+	public void testHeaderDateTimezone() throws Exception {
+		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
+
+		verify(response).setHeader(eq(HttpHeaders.DATE), contains("GMT"));
+	}
+
+	@Test
+	public void testHeaderServer() throws Exception {
+		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
+
+		verify(response).setHeader(eq(HttpHeaders.SERVER),
+				eq("Genetic Lifeform and Distributed Open Server " + Settings.CLIENT_VERSION));
+	}
+
+	@Test
+	public void testHeaderConnection() throws Exception {
+		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
+
+		verify(response).setHeader(eq(HttpHeaders.CONNECTION), eq("close"));
+	}
+
+	@Test
+	public void testHeaderCacheControl() throws Exception {
+		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
+
+		verify(response).setHeader(eq(HttpHeaders.CACHE_CONTROL), eq("public, max-age=31536000"));
+	}
+	
+	@Test
+	public void testHeaderContentLength() throws Exception {
+		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
+
+		verify(response).setContentLength(eq(42));
+	}
+	
+	@Test
+	public void testHeaderCacheControlNoContent() throws Exception {
+		when(responseFactory.create(any()).getHTTPResponseProcessor().getContentLength()).thenReturn(0);
+
+		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
+
+		verify(response, never()).setHeader(eq(HttpHeaders.CACHE_CONTROL), eq("public, max-age=31536000"));
+	}
+
+	@Test
+	public void testHeaderContentLengthNoContent() throws Exception {
+		when(responseFactory.create(any()).getHTTPResponseProcessor().getContentLength()).thenReturn(0);
+
+		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
+
+		verify(response, never()).setContentLength(eq(42));
 	}
 }

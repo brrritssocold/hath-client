@@ -23,15 +23,10 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.http;
 
-import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.nio.charset.Charset;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -39,6 +34,7 @@ import java.util.TimeZone;
 import java.util.regex.Pattern;
 
 import javax.servlet.ServletException;
+import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -47,6 +43,8 @@ import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.hath.base.Out;
 import org.hath.base.Settings;
 import org.hath.base.Stats;
+
+import com.google.common.net.HttpHeaders;
 
 public class BaseHandler extends AbstractHandler implements Runnable {
 
@@ -126,30 +124,12 @@ public class BaseHandler extends AbstractHandler implements Runnable {
 	@Deprecated
 	@Override
 	public void run() {
-		processSession();
 	}
 
-	@Deprecated
-	protected void processSession() {
-		processSession(mySocket);
-	}
-
-	@Deprecated
-	protected void processSession(Socket socket) {
-		try (BufferedReader isr = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-				OutputStream dos = new BufferedOutputStream(new DataOutputStream(socket.getOutputStream()));) {
-			processSession(isr, dos);
-		} catch (IOException e) {
-			Out.error("Failed to open socket stream: " + e);
-		}
-	}
-
-	@Deprecated
 	protected void processSession(Request baseRequest, HttpServletResponse response) throws IOException {
-		processSession(baseRequest.getReader(), response.getOutputStream());
-	}
+		BufferedReader br = baseRequest.getReader();
+		ServletOutputStream bs = response.getOutputStream();
 
-	protected void processSession(BufferedReader br, OutputStream bs) {
 		HTTPResponseProcessor hpc = null;
 		String info = this.toString() + " ";		
 
@@ -165,23 +145,9 @@ public class BaseHandler extends AbstractHandler implements Runnable {
 			int statusCode = hr.getResponseStatusCode();
 			int contentLength = hpc.getContentLength();
 
-			StringBuilder header = createHeader(hpc, statusCode, contentLength);
+			createHeader(response, statusCode, contentLength);
 		
-			// write the header to the socket
-			byte[] headerBytes = header.toString().getBytes(Charset.forName("ISO-8859-1"));
-			
-			setSendBufferSize(contentLength, headerBytes);
-
-			bs.write(headerBytes, 0, headerBytes.length);
-			
-			// subtract the total size of the header from the size of the first data packet sent. this avoids a problem where the third packet is undersize.
-			int pendingHeaderLength = headerBytes.length;
-			
-			if(pendingHeaderLength >= Settings.TCP_PACKET_SIZE_LOW) {
-				// flush header if we're already above the desirable max data packet size. (this shouldn't actually be possible, but better safe than trying to write a negative number of bytes.)
-				bs.flush();
-				pendingHeaderLength = 0;
-			}
+			response.setBufferSize(524288);
 
 			if(hr.isRequestHeadOnly()) {
 				// if this is a HEAD request, we flush the socket and finish
@@ -214,12 +180,11 @@ public class BaseHandler extends AbstractHandler implements Runnable {
 							while(writtenBytes < contentLength) {
 								// write a packet of data and flush. getBytesRange will block if new data is not yet available.
 
-								int writeLen = Math.min(Settings.TCP_PACKET_SIZE_HIGH - pendingHeaderLength, contentLength - writtenBytes);
+								int writeLen = Math.min(Settings.TCP_PACKET_SIZE_HIGH, contentLength - writtenBytes);
 								bs.write(hpc.getBytesRange(writeLen), 0, writeLen);
 								bs.flush();
 
 								writtenBytes += writeLen;
-								pendingHeaderLength = 0;
 							}
 						}
 						else {
@@ -242,12 +207,11 @@ public class BaseHandler extends AbstractHandler implements Runnable {
 							// write a packet of data and flush.
 							lastPacketSend = System.currentTimeMillis();
 
-							int writeLen = Math.min(packetSize - pendingHeaderLength, contentLength - writtenBytes);
+							int writeLen = Math.min(packetSize, contentLength - writtenBytes);
 							bs.write(hpc.getBytesRange(writeLen), 0, writeLen);
 							bs.flush();
 
 							writtenBytes += writeLen;
-							pendingHeaderLength = 0;
 
 							Stats.bytesSent(writeLen);
 							
@@ -274,28 +238,23 @@ public class BaseHandler extends AbstractHandler implements Runnable {
 		connectionFinished();
 	}
 
-	protected StringBuilder createHeader(HTTPResponseProcessor hpc, int statusCode, int contentLength) {
+	protected void createHeader(HttpServletResponse response, int statusCode,
+			int contentLength) {
 		// we'll create a new date formatter for each session instead of synchronizing on a shared formatter. (sdf is not thread-safe)
 		SimpleDateFormat sdf = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss", java.util.Locale.US);
 		sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
 
 		// build the header
-		StringBuilder header = new StringBuilder(300);
-
-		header.append(getHTTPStatusHeader(statusCode));
-		header.append(hpc.getHeader());
-		header.append("Date: " + sdf.format(new Date()) + " GMT" + CRLF);
-		header.append("Server: Genetic Lifeform and Distributed Open Server " + Settings.CLIENT_VERSION + CRLF);
-		header.append("Connection: close" + CRLF);
-		header.append("Content-Type: " + hpc.getContentType() + CRLF);
+		response.setStatus(statusCode);
+		response.setHeader(HttpHeaders.DATE, sdf.format(new Date()) + " GMT");
+		response.setHeader(HttpHeaders.SERVER,
+				"Genetic Lifeform and Distributed Open Server " + Settings.CLIENT_VERSION);
+		response.setHeader(HttpHeaders.CONNECTION, "close");
 
 		if(contentLength > 0) {
-			header.append("Cache-Control: public, max-age=31536000" + CRLF);
-			header.append("Content-Length: " + contentLength + CRLF);
+			response.setHeader(HttpHeaders.CACHE_CONTROL, "public, max-age=31536000");
+			response.setContentLength(contentLength);
 		}
-
-		header.append(CRLF);
-		return header;
 	}
 
 	protected String readRequest(BufferedReader br) throws IOException {
