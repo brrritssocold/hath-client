@@ -80,6 +80,13 @@ public class BaseHandler extends AbstractHandler implements Runnable {
 		this.responseFactory = responseFactory;
 	}
 
+	@Deprecated
+	public BaseHandler(Socket socket, int connId, boolean localNetworkAccess, HTTPBandwidthMonitor bandwidthMonitor,
+			HTTPResponseFactory responseFactory) {
+		this(connId, localNetworkAccess, bandwidthMonitor, responseFactory);
+		mySocket = socket;
+	}
+
 	public BaseHandler(int connId, boolean localNetworkAccess, HTTPBandwidthMonitor bandwidthMonitor,
 			HTTPResponseFactory responseFactory) {
 		sessionStartTime = System.currentTimeMillis();
@@ -139,7 +146,7 @@ public class BaseHandler extends AbstractHandler implements Runnable {
 
 	@Deprecated
 	protected void processSession(Request baseRequest, HttpServletResponse response) throws IOException {
-		processSession(new BufferedReader(baseRequest.getReader()), response.getOutputStream());
+		processSession(baseRequest.getReader(), response.getOutputStream());
 	}
 
 	protected void processSession(BufferedReader br, OutputStream bs) {
@@ -375,6 +382,10 @@ public class BaseHandler extends AbstractHandler implements Runnable {
 
 	public HTTPServer getHTTPServer() {
 		return httpServer;
+	}
+
+	public void setHttpServer(HTTPServer httpServer) {
+		this.httpServer = httpServer;
 	}
 
 	public InetAddress getSocketInetAddress() {
