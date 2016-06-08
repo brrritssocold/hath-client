@@ -215,9 +215,7 @@ public class BaseHandler extends AbstractHandler implements Runnable {
 					}
 				}
 
-				long sendTime = System.currentTimeMillis() - startTime;
-				DecimalFormat df = new DecimalFormat("0.00");
-				Out.info(info + "Finished processing request in " + df.format(sendTime / 1000.0) + " seconds (" + (sendTime > 0 ? df.format(contentLength / (float) sendTime) : "-.--") + " KB/s)");
+				printProcessingFinished(info, contentLength, startTime);
 			}				
 		} catch(Exception e) {
 			Out.info(info + "The connection was interrupted or closed by the remote host.");
@@ -229,6 +227,12 @@ public class BaseHandler extends AbstractHandler implements Runnable {
 		}
 
 		connectionFinished();
+	}
+
+	private void printProcessingFinished(String info, int contentLength, long startTime) {
+		long sendTime = System.currentTimeMillis() - startTime;
+		DecimalFormat df = new DecimalFormat("0.00");
+		Out.info(info + "Finished processing request in " + df.format(sendTime / 1000.0) + " seconds (" + (sendTime > 0 ? df.format(contentLength / (float) sendTime) : "-.--") + " KB/s)");
 	}
 
 	protected void createHeader(HttpServletResponse response, int statusCode,
