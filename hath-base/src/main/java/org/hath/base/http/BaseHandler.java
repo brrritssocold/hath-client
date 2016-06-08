@@ -142,14 +142,16 @@ public class BaseHandler extends AbstractHandler implements Runnable {
 		
 			response.setBufferSize(524288);
 
+			long startTime = System.currentTimeMillis();
 
 			if (baseRequest.isHead()) {
 				// if this is a HEAD request, we flush the socket and finish
 				baseRequest.setHandled(true);
 				info += "Code=" + statusCode + " ";
 				Out.info(info + (target == null ? "Invalid Request" : target));
+				printProcessingFinished(info, contentLength, startTime);
+				return;
 			}
-			else {
 				// if this is a GET request, process the pony if we have one
 				info += "Code=" + statusCode + " Bytes=" + String.format("%1$-8s", contentLength) + " ";
 				
@@ -157,8 +159,6 @@ public class BaseHandler extends AbstractHandler implements Runnable {
 					// skip the startup message for error requests
 					Out.info(info + target);
 				}
-
-				long startTime = System.currentTimeMillis();
 
 				if(contentLength == 0) {
 					// there is no pony to write (probably a redirect). flush the socket and finish.
@@ -217,7 +217,6 @@ public class BaseHandler extends AbstractHandler implements Runnable {
 				}
 
 				printProcessingFinished(info, contentLength, startTime);
-			}				
 		} catch(Exception e) {
 			Out.info(info + "The connection was interrupted or closed by the remote host.");
 			Out.debug(e == null ? "(no exception)" : e.getMessage());
