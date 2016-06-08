@@ -52,4 +52,23 @@ public class HTTPRequestAttributes {
 			return this.attributeName;
 		}
 	};
+
+	/**
+	 * Get the value of the boolean attribute.
+	 * 
+	 * @param request
+	 *            the request containing the attribute
+	 * @param attribute
+	 *            to be read
+	 * @return the value of the attribute, or false if not set
+	 */
+	public static boolean getAttribute(HttpServletRequest request, BooleanAttributes attribute) {
+		Object attr = request.getAttribute(attribute.toString());
+
+		if (attr == null) {
+			return false;
+		}
+
+		return (boolean) attr;
+	}
 }
