@@ -23,7 +23,33 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.http;
 
+import javax.servlet.http.HttpServletRequest;
+
 public class HTTPRequestAttributes {
+	/**
+	 * Use {@link BooleanAttributes#LOCAL_NETWORK_ACCESS} instead
+	 */
+	@Deprecated
 	public static final String LOCAL_NETWORK_ACCESS = "org.hath.base.http.localNetworkAccess";
+	/**
+	 * Use {@link BooleanAttributes#API_SERVER_ACCESS} instead
+	 */
+	@Deprecated
 	public static final String API_SERVER_ACCESS = "org.hath.base.http.apiServerAccess";
+
+	public enum BooleanAttributes {
+		LOCAL_NETWORK_ACCESS("org.hath.base.http.localNetworkAccess"), API_SERVER_ACCESS(
+				"org.hath.base.http.apiServerAccess");
+		
+		private final String attributeName;
+
+		private BooleanAttributes(final String attributeName) {
+			this.attributeName = attributeName;
+		}
+
+		@Override
+		public String toString() {
+			return this.attributeName;
+		}
+	};
 }
