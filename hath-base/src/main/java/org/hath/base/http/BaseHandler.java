@@ -162,8 +162,10 @@ public class BaseHandler extends AbstractHandler implements Runnable {
 
 				if(contentLength == 0) {
 					// there is no pony to write (probably a redirect). flush the socket and finish.
-					bs.flush();				
-				} else {				
+					baseRequest.setHandled(true);
+					printProcessingFinished(info, contentLength, startTime);
+					return;
+			}
 					if(localNetworkAccess && (hpc instanceof HTTPResponseProcessorFile || hpc instanceof HTTPResponseProcessorProxy)) {
 						Out.debug(this + " Local network access detected, skipping throttle.");
 						
@@ -214,7 +216,6 @@ public class BaseHandler extends AbstractHandler implements Runnable {
 							}
 						}
 					}
-				}
 
 				printProcessingFinished(info, contentLength, startTime);
 		} catch(Exception e) {

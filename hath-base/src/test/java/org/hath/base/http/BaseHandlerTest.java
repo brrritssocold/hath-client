@@ -149,7 +149,7 @@ public class BaseHandlerTest {
 
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
 
-		verify(response.getOutputStream()).flush();
+		verify(baseRequest).setHandled(true);
 		verify(bandwidthMonitor, never()).getActualPacketSize();
 	}
 
