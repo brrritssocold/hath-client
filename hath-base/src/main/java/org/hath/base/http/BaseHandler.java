@@ -142,9 +142,10 @@ public class BaseHandler extends AbstractHandler implements Runnable {
 		
 			response.setBufferSize(524288);
 
-			if(hr.isRequestHeadOnly()) {
+
+			if (baseRequest.isHead()) {
 				// if this is a HEAD request, we flush the socket and finish
-				bs.flush();				
+				baseRequest.setHandled(true);
 				info += "Code=" + statusCode + " ";
 				Out.info(info + (target == null ? "Invalid Request" : target));
 			}

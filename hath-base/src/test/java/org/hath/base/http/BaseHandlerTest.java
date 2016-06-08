@@ -156,11 +156,11 @@ public class BaseHandlerTest {
 	@Test
 	public void testHeaderOnlyRequest() throws Exception {
 		when(responseFactory.create(any()).isRequestHeadOnly()).thenReturn(true);
+		when(baseRequest.isHead()).thenReturn(true);
 
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
 
-		verify(response.getOutputStream()).flush();
-		verify(bandwidthMonitor, never()).getActualPacketSize();
+		verify(baseRequest).setHandled(eq(true));
 	}
 
 	@Test
