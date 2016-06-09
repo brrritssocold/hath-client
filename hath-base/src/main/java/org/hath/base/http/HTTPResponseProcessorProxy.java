@@ -25,24 +25,34 @@ package org.hath.base.http;
 
 import javax.servlet.http.HttpServletResponse;
 
+import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.Out;
 import org.hath.base.gallery.GalleryFileDownloader;
 import org.hath.base.http.handlers.BaseHandler;
 
 public class HTTPResponseProcessorProxy extends HTTPResponseProcessor {
-	private BaseHandler session;
+	private HentaiAtHomeClient client;
 	private GalleryFileDownloader gdf;
 	private int readoff;
 	
-	public HTTPResponseProcessorProxy(BaseHandler session, String fileid, String token, int gid, int page, String filename) {
-		this.session = session;
+	public HTTPResponseProcessorProxy(HentaiAtHomeClient client, String fileid, String token, int gid, int page,
+			String filename) {
+		this.client = client;
 		readoff = 0;
-		gdf = new GalleryFileDownloader(session.getHTTPServer().getHentaiAtHomeClient(), fileid, token, gid, page, filename, false);
+		gdf = new GalleryFileDownloader(client, fileid, token, gid, page, filename, false);
+	}
+
+	@Deprecated
+	public HTTPResponseProcessorProxy(BaseHandler session, String fileid, String token, int gid, int page,
+			String filename) {
+		this.client = session.getHTTPServer().getHentaiAtHomeClient();
+		readoff = 0;
+		gdf = new GalleryFileDownloader(client, fileid, token, gid, page, filename, false);
 	}
 
 	@Override
 	public void initialize(HttpServletResponse response) {
-		Out.info(session + ": Initializing proxy request...");
+		Out.info(client + ": Initializing proxy request...");
 		response.setStatus(gdf.initialize());
 	}	
 
