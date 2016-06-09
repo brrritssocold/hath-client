@@ -91,6 +91,8 @@ public class BaseHandlerTest {
 
 		when(baseRequest.getReader().readLine()).thenReturn("GET / HTTP/1.1", "");
 		when(bandwidthMonitor.getActualPacketSize()).thenReturn(300);
+
+		when(request.getAttribute(HTTPRequestAttributes.LOCAL_NETWORK_ACCESS)).thenReturn(true);
 	}
 
 	@Test
@@ -136,6 +138,7 @@ public class BaseHandlerTest {
 		when(rp.getContentLength()).thenReturn(42);
 		when(rp.getBytes()).thenReturn(new byte[42]);
 		when(responseFactory.create(any()).getHTTPResponseProcessor()).thenReturn(rp);
+		when(request.getAttribute(HTTPRequestAttributes.LOCAL_NETWORK_ACCESS)).thenReturn(false);
 
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
 

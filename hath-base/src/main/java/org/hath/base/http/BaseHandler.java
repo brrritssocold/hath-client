@@ -43,6 +43,7 @@ import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.hath.base.Out;
 import org.hath.base.Settings;
 import org.hath.base.Stats;
+import org.hath.base.http.HTTPRequestAttributes.BooleanAttributes;
 
 import com.google.common.net.HttpHeaders;
 
@@ -128,6 +129,7 @@ public class BaseHandler extends AbstractHandler implements Runnable {
 		String info = this.toString() + " ";		
 
 		try {
+			localNetworkAccess = HTTPRequestAttributes.getAttribute(request, BooleanAttributes.LOCAL_NETWORK_ACCESS);
 			hr = responseFactory.create(this);
 			
 			// parse the request - this will also update the response code and initialize the proper response processor
