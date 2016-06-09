@@ -69,7 +69,6 @@ public class HTTPServer {
 		createSessionTrackingHandler();
 
 		handlerCollection.addHandler(sessionTrackingHandler);
-		handlerCollection.addHandler(new BaseHandler(new HTTPBandwidthMonitor(), new HTTPResponseFactory()));
 		handlerCollection.addHandler(createContextHandlerCollection());
 
 		return handlerCollection;
