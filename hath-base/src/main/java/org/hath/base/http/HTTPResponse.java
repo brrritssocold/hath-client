@@ -161,17 +161,8 @@ public class HTTPResponse {
 					return;
 				}				
 				else if(urlparts.length == 2) {
-					if (urlparts[1].equals("robots.txt")) {
-						// Bots are not welcome.
-						hpc = new HTTPResponseProcessorText("User-agent: *\nDisallow: /", "text/plain");
-						responseStatusCode = 200; // Found
-						hitSensingPoint(Sensing.ROBOTS);
-						return;
-					}
-					else {
 						Out.warning(session + " Invalid request type '" + urlparts[1] + "'.");
 						hitSensingPoint(Sensing.INVALID_REQUEST_LEN2);
-					}
 				}
 				else {
 					Out.warning(session + " Invalid request type '" + urlparts[1] + "'.");

@@ -28,7 +28,7 @@ import org.junit.runners.Suite;
 import org.junit.runners.Suite.SuiteClasses;
 
 @RunWith(Suite.class)
-@SuiteClasses({ FaviconHandlerTest.class })
+@SuiteClasses({ FaviconHandlerTest.class, RobotsHandlerTest.class })
 public class AllHandlerTests {
 
 }

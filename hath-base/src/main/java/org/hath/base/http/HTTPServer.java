@@ -38,6 +38,7 @@ import org.hath.base.Out;
 import org.hath.base.Settings;
 import org.hath.base.Stats;
 import org.hath.base.http.handlers.FaviconHandler;
+import org.hath.base.http.handlers.RobotsHandler;
 
 public class HTTPServer {
 	private static final int MAX_FLOOD_ENTRY_AGE_SECONDS = 60;
@@ -89,6 +90,7 @@ public class HTTPServer {
 		ContextHandlerCollection handlerCollection = new ContextHandlerCollection();
 
 		handlerCollection.addHandler(createContextHandler("/favicon.ico", new FaviconHandler()));
+		handlerCollection.addHandler(createContextHandler("/robots.txt", new RobotsHandler()));
 
 		return handlerCollection;
 	}

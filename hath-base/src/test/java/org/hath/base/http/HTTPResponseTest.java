@@ -630,14 +630,6 @@ public class HTTPResponseTest {
 	}
 
 	@Test
-	public void testParseRequestRobots() throws Exception {
-		cut.parseRequest("GET /robots.txt HTTP/1.1", true);
-
-		assertThat(cut.getResponseStatusCode(), is(200));
-		assertSensingPoint(Sensing.ROBOTS);
-	}
-
-	@Test
 	public void testParseRequestInvalid() throws Exception {
 		cut.parseRequest("GET /foo HTTP/1.1", true);
 
