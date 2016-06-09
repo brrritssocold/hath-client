@@ -104,7 +104,6 @@ public class BaseHandler extends AbstractHandler {
 				info += "Code=" + statusCode + " ";
 				Out.info(info + (target == null ? "Invalid Request" : target));
 				printProcessingFinished(info, contentLength, startTime);
-				baseRequest.setHandled(true);
 				return;
 			}
 				// if this is a GET request, process the pony if we have one
@@ -119,7 +118,6 @@ public class BaseHandler extends AbstractHandler {
 					// there is no pony to write (probably a redirect). flush the socket and finish.
 					baseRequest.setHandled(true);
 					printProcessingFinished(info, contentLength, startTime);
-				baseRequest.setHandled(true);
 					return;
 			}
 					if(localNetworkAccess && (hpc instanceof HTTPResponseProcessorFile || hpc instanceof HTTPResponseProcessorProxy)) {
