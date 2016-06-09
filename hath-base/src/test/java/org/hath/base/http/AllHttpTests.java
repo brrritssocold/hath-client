@@ -29,7 +29,8 @@ import org.junit.runners.Suite.SuiteClasses;
 
 @RunWith(Suite.class)
 @SuiteClasses({ FloodControlTest.class, HTTPServerTest.class, HTTPServerTest.class, SessionTrackerTest.class,
-		SessionTrackingHandlerTest.class, HTTPRequestAttributesTest.class })
+		SessionTrackingHandlerTest.class, HTTPRequestAttributesTest.class, HTTPResponseTest.class,
+		BaseHandlerTest.class })
 public class AllHttpTests {
 
 }
