@@ -73,6 +73,8 @@ public class BaseHandlerTest {
 	HttpServletRequest request;
 	@Mock(answer = Answers.RETURNS_DEEP_STUBS)
 	HttpServletResponse response;
+	@Mock
+	HTTPResponseProcessor hpcMock;
 
 	private BaseHandler cut;
 
@@ -84,10 +86,13 @@ public class BaseHandlerTest {
 		cut.setHttpServer(httpServer);
 	}
 
+	private void setHttpResponseProcessor(HTTPResponseProcessor hpc) {
+		// TODO replace me with helper
+		when(request.getAttribute("org.hath.base.http.httpResponseProcessor")).thenReturn(hpcMock);
+	}
+
 	private void setDefaultBehavior() throws Exception {
 		when(responseFactory.create(any()).getResponseStatusCode()).thenReturn(HttpStatus.OK_200);
-		when(responseFactory.create(any()).getHTTPResponseProcessor().getContentLength()).thenReturn(42);
-		when(responseFactory.create(any()).getHTTPResponseProcessor().getContentType()).thenReturn("text/xml");
 
 		when(socket.getInetAddress()).thenReturn(InetAddresses.forString(EXTERNAL_ADDRESS));
 
@@ -95,8 +100,11 @@ public class BaseHandlerTest {
 		when(bandwidthMonitor.getActualPacketSize()).thenReturn(300);
 
 		when(request.getAttribute(HTTPRequestAttributes.LOCAL_NETWORK_ACCESS)).thenReturn(true);
+		setHttpResponseProcessor(hpcMock);
 		when(request.getRemoteAddr()).thenReturn(REMOTE_ADDRESS);
 		when(request.getAttribute(IntegerAttributes.SESSION_ID.toString())).thenReturn(2);
+
+		when(hpcMock.getContentLength()).thenReturn(42);
 	}
 
 	@Test
@@ -109,49 +117,48 @@ public class BaseHandlerTest {
 
 	@Test
 	public void testLocalAccessIsProxyRequest() throws Exception {
-		HTTPResponseProcessor rp = mock(HTTPResponseProcessorProxy.class);
-		when(rp.getContentLength()).thenReturn(42);
-		when(rp.getBytesRange(eq(42))).thenReturn(new byte[42]);
-		when(responseFactory.create(any()).getHTTPResponseProcessor())
-				.thenReturn(rp);
+		hpcMock = mock(HTTPResponseProcessorProxy.class);
+		when(hpcMock.getContentLength()).thenReturn(42);
+		when(hpcMock.getBytesRange(eq(42))).thenReturn(new byte[42]);
+		setHttpResponseProcessor(hpcMock);
 
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
 
-		verify(rp).getBytesRange(eq(42));
+		verify(hpcMock).getBytesRange(eq(42));
 	}
 
 	@Test
 	public void testLocalAccessIsFileRequest() throws Exception {
-		HTTPResponseProcessor rp = mock(HTTPResponseProcessorFile.class);
-		when(rp.getContentLength()).thenReturn(42);
-		when(rp.getBytes()).thenReturn(new byte[42]);
-		when(responseFactory.create(any()).getHTTPResponseProcessor())
-				.thenReturn(rp);
+		hpcMock = mock(HTTPResponseProcessorFile.class);
+		when(hpcMock.getContentLength()).thenReturn(42);
+		when(hpcMock.getBytes()).thenReturn(new byte[42]);
+		setHttpResponseProcessor(hpcMock);
 
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
 
-		verify(rp).getBytes();
+		verify(hpcMock).getBytes();
 	}
 
 	@Test
 	public void testNonLocalAccessIsFileRequest() throws Exception {
 		cut.setHttpServer(httpServer);
 
-		HTTPResponseProcessor rp = mock(HTTPResponseProcessorFile.class);
-		when(rp.getContentLength()).thenReturn(42);
-		when(rp.getBytes()).thenReturn(new byte[42]);
-		when(responseFactory.create(any()).getHTTPResponseProcessor()).thenReturn(rp);
+		hpcMock = mock(HTTPResponseProcessorFile.class);
+		when(hpcMock.getContentLength()).thenReturn(42);
+		when(hpcMock.getBytes()).thenReturn(new byte[42]);
 		when(request.getAttribute(HTTPRequestAttributes.LOCAL_NETWORK_ACCESS)).thenReturn(false);
+
+		setHttpResponseProcessor(hpcMock);
 
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
 
 		verify(bandwidthMonitor).getActualPacketSize();
-		verify(rp).getBytesRange(eq(42));
+		verify(hpcMock).getBytesRange(eq(42));
 	}
 
 	@Test
 	public void testZeroContentLength() throws Exception {
-		when(responseFactory.create(any()).getHTTPResponseProcessor().getContentLength()).thenReturn(0);
+		when(hpcMock.getContentLength()).thenReturn(0);
 
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
 
@@ -167,13 +174,6 @@ public class BaseHandlerTest {
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
 
 		verify(baseRequest).setHandled(eq(true));
-	}
-
-	@Test
-	public void testHeaderStatusCode() throws Exception {
-		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
-
-		verify(response).setStatus(HttpStatus.OK_200);
 	}
 
 	@Test
@@ -224,7 +224,7 @@ public class BaseHandlerTest {
 	
 	@Test
 	public void testHeaderCacheControlNoContent() throws Exception {
-		when(responseFactory.create(any()).getHTTPResponseProcessor().getContentLength()).thenReturn(0);
+		when(hpcMock.getContentLength()).thenReturn(0);
 
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
 
@@ -233,7 +233,7 @@ public class BaseHandlerTest {
 
 	@Test
 	public void testHeaderContentLengthNoContent() throws Exception {
-		when(responseFactory.create(any()).getHTTPResponseProcessor().getContentLength()).thenReturn(0);
+		when(hpcMock.getContentLength()).thenReturn(0);
 
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
 

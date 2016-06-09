@@ -27,6 +27,9 @@ import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 
+import javax.servlet.http.HttpServletResponse;
+
+import org.eclipse.jetty.http.HttpStatus;
 import org.hath.base.HVFile;
 import org.hath.base.Out;
 import org.hath.base.Settings;
@@ -44,21 +47,17 @@ public class HTTPResponseProcessorFile extends HTTPResponseProcessor {
 	}
 
 	@Override
-	public int initialize() {
-		int responseStatusCode = 0;
-
+	public void initialize(HttpServletResponse response) {
 		File file = requestedHVFile.getLocalFileRef();
 
 		try {
 			bis = new BufferedInputStream(new FileInputStream(file), Settings.isUseLessMemory() ? 8192 : 65536);
-			responseStatusCode = 200;
+			response.setStatus(HttpStatus.OK_200);
 			Stats.fileSent();
 		} catch(java.io.IOException e) {
 			Out.warning("Failed reading content from " + file);
-			responseStatusCode = 500;
+			response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR_500);
 		}
-
-		return responseStatusCode;
 	}
 	
 	@Override

@@ -47,6 +47,10 @@ import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
 
 import com.google.common.net.HttpHeaders;
 
+/**
+ * Writes data from {@link HTTPResponseProcessor} into the response. Handles
+ * requests based on local or external origin and enforces the bandwidth limit.
+ */
 public class BaseHandler extends AbstractHandler {
 	private Socket mySocket;
 	private HTTPServer httpServer;
@@ -57,6 +61,12 @@ public class BaseHandler extends AbstractHandler {
 	private HTTPResponseFactory responseFactory;
 	private HTTPBandwidthMonitor bandwidthMonitor;
 
+	public BaseHandler(HTTPBandwidthMonitor bandwidthMonitor) {
+		sessionStartTime = System.currentTimeMillis();
+		this.bandwidthMonitor = bandwidthMonitor;
+	}
+
+	@Deprecated
 	public BaseHandler(HTTPBandwidthMonitor bandwidthMonitor, HTTPResponseFactory responseFactory) {
 		sessionStartTime = System.currentTimeMillis();
 		this.bandwidthMonitor = bandwidthMonitor;
@@ -74,17 +84,15 @@ public class BaseHandler extends AbstractHandler {
 		try {
 			connId = HTTPRequestAttributes.getAttribute(request, IntegerAttributes.SESSION_ID);
 			localNetworkAccess = HTTPRequestAttributes.getAttribute(request, BooleanAttributes.LOCAL_NETWORK_ACCESS);
-			hr = responseFactory.create(this);
 			
-			// parse the request - this will also update the response code and initialize the proper response processor
-			hr.parseRequest(target, localNetworkAccess);
+			// TODO replace this with helper class
+			hpc = (HTTPResponseProcessor) request.getAttribute("org.hath.base.http.httpResponseProcessor");
 
-			// get the status code and response processor - in case of an error, this will be a text type with the error message
-			hpc = hr.getHTTPResponseProcessor();
-			int statusCode = hr.getResponseStatusCode();
 			int contentLength = hpc.getContentLength();
+			int statusCode = response.getStatus();
+			response.setContentType(hpc.getContentType());
 
-			createHeader(response, statusCode, contentLength);
+			createHeader(response, contentLength);
 		
 			response.setBufferSize(524288);
 
@@ -96,6 +104,7 @@ public class BaseHandler extends AbstractHandler {
 				info += "Code=" + statusCode + " ";
 				Out.info(info + (target == null ? "Invalid Request" : target));
 				printProcessingFinished(info, contentLength, startTime);
+				baseRequest.setHandled(true);
 				return;
 			}
 				// if this is a GET request, process the pony if we have one
@@ -110,6 +119,7 @@ public class BaseHandler extends AbstractHandler {
 					// there is no pony to write (probably a redirect). flush the socket and finish.
 					baseRequest.setHandled(true);
 					printProcessingFinished(info, contentLength, startTime);
+				baseRequest.setHandled(true);
 					return;
 			}
 					if(localNetworkAccess && (hpc instanceof HTTPResponseProcessorFile || hpc instanceof HTTPResponseProcessorProxy)) {
@@ -163,6 +173,7 @@ public class BaseHandler extends AbstractHandler {
 						}
 					}
 
+			baseRequest.setHandled(true);
 				printProcessingFinished(info, contentLength, startTime);
 		} catch(Exception e) {
 			Out.info(info + "The connection was interrupted or closed by the remote host.");
@@ -180,14 +191,12 @@ public class BaseHandler extends AbstractHandler {
 		Out.info(info + "Finished processing request in " + df.format(sendTime / 1000.0) + " seconds (" + (sendTime > 0 ? df.format(contentLength / (float) sendTime) : "-.--") + " KB/s)");
 	}
 
-	protected void createHeader(HttpServletResponse response, int statusCode,
-			int contentLength) {
+	protected void createHeader(HttpServletResponse response, int contentLength) {
 		// we'll create a new date formatter for each session instead of synchronizing on a shared formatter. (sdf is not thread-safe)
 		SimpleDateFormat sdf = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss", java.util.Locale.US);
 		sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
 
 		// build the header
-		response.setStatus(statusCode);
 		response.setHeader(HttpHeaders.DATE, sdf.format(new Date()) + " GMT");
 		response.setHeader(HttpHeaders.SERVER,
 				"Genetic Lifeform and Distributed Open Server " + Settings.CLIENT_VERSION);

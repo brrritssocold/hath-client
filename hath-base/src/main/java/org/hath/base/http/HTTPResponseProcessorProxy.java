@@ -23,6 +23,8 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.http;
 
+import javax.servlet.http.HttpServletResponse;
+
 import org.hath.base.Out;
 import org.hath.base.gallery.GalleryFileDownloader;
 
@@ -38,9 +40,9 @@ public class HTTPResponseProcessorProxy extends HTTPResponseProcessor {
 	}
 
 	@Override
-	public int initialize() {
+	public void initialize(HttpServletResponse response) {
 		Out.info(session + ": Initializing proxy request...");
-		return gdf.initialize();
+		response.setStatus(gdf.initialize());
 	}	
 
 	@Override

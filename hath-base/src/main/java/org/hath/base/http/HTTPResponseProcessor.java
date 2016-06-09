@@ -43,14 +43,12 @@ public abstract class HTTPResponseProcessor {
 		return 0;
 	}
 	
-	public int initialize() {
-		return 0;
+	public void initialize(HttpServletResponse response) {
 	}
 	
 	public void cleanup() {}
 
 	public void updateResponse(HttpServletResponse response) throws IOException {
-		response.setStatus(initialize());
 		response.setContentLength(getContentLength());
 		response.setContentType(getContentType());
 

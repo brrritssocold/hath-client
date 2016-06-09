@@ -34,7 +34,6 @@ import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.MiscTools;
 import org.hath.base.Out;
 import org.hath.base.Settings;
-import org.hath.base.Stats;
 
 /**
  * Verifies the Request and then chooses the appropriate way to handle the
@@ -126,6 +125,7 @@ public class HTTPResponse {
 		} else if( !(requestParts[0].equalsIgnoreCase("GET") || requestParts[0].equalsIgnoreCase("HEAD")) || !requestParts[2].startsWith("HTTP/") ) {
 			Out.warning(session + " HTTP request is not GET or HEAD.");
 			responseStatusCode = 405;
+			// TODO add header "Allow", "GET,HEAD"
 			hitSensingPoint(Sensing.HTTP_REQUEST_TYPE_AND_FORM_INVALID);
 			return;
 		} else {
@@ -393,37 +393,6 @@ public class HTTPResponse {
 	protected String calculateKeystamp(String hvfile, long keystampTime) {
 		return MiscTools.getSHAString(keystampTime + "-" + hvfile + "-" + Settings.getClientKey() + "-hotlinkthis").substring(0, 10);
 	}
-
-	public HTTPResponseProcessor getHTTPResponseProcessor() {
-		if(hpc == null) {
-			//Out.info(session + " The remote host made an invalid request that could not be serviced.");
-
-			hpc = new HTTPResponseProcessorText("An error has occurred. (" + responseStatusCode + ")");
-			
-			if(responseStatusCode == 405) {
-				hpc.addHeaderField("Allow", "GET,HEAD");
-			}
-		}
-		else if(hpc instanceof HTTPResponseProcessorFile) {
-			responseStatusCode = hpc.initialize();
-		}
-		else if(hpc instanceof HTTPResponseProcessorProxy) {
-			responseStatusCode = hpc.initialize();
-		}
-		else if(hpc instanceof HTTPResponseProcessorText) {
-			// do nothing
-		}
-		else if(hpc instanceof HTTPResponseProcessorSpeedtest) {
-			Stats.setProgramStatus("Running speed tests...");
-		}
-		else if(hpc instanceof HTTPResponseProcessorCachelist) {
-			Stats.setProgramStatus("Building and sending cache list to server...");
-			hpc.initialize();
-		}
-
-		return hpc;
-	}
-
 
 	// accessors
 
