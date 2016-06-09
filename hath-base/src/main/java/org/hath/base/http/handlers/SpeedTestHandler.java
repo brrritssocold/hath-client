@@ -45,6 +45,7 @@ public class SpeedTestHandler extends AbstractHandler {
 	@Override
 	public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
 			throws IOException, ServletException {
+		// TODO replace with util method
 		String[] urlparts = target.replace("%3d", "=").split("/");
 
 		// sends a randomly generated file of a given length for speed testing
