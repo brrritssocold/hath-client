@@ -32,7 +32,7 @@ import org.junit.runners.Suite.SuiteClasses;
 @SuiteClasses({ AllHandlerTests.class, FloodControlTest.class, HTTPServerTest.class, HTTPServerTest.class,
 		SessionTrackerTest.class,
 		SessionTrackingHandlerTest.class, HTTPRequestAttributesTest.class, HTTPResponseTest.class,
-		BaseHandlerTest.class })
+		BaseHandlerTest.class, HTTPServerRoutingTest.class })
 public class AllHttpTests {
 
 }
