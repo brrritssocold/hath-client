@@ -66,16 +66,8 @@ public abstract class HTTPResponseProcessor {
 		}
 	}
 
-	/**
-	 * Subclasses should update the response object directly
-	 */
-	@Deprecated
 	public abstract byte[] getBytes() throws Exception;
 
-	/**
-	 * Subclasses should update the response object directly
-	 */
-	@Deprecated
 	public abstract byte[] getBytesRange(int len) throws Exception;
 	
 	/**
@@ -86,6 +78,10 @@ public abstract class HTTPResponseProcessor {
 		return this.header;
 	}
 
+	/**
+	 * Subclasses should update the response object directly
+	 */
+	@Deprecated
 	public void addHeaderField(String name, String value) {
 		// TODO: encode the value if needed.
 		this.header += name + ": " + value + "\r\n";
