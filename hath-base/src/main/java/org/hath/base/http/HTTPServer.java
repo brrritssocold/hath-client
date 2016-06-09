@@ -28,11 +28,16 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.handler.ContextHandler;
+import org.eclipse.jetty.server.handler.ContextHandlerCollection;
+import org.eclipse.jetty.server.handler.HandlerCollection;
 import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.Out;
 import org.hath.base.Settings;
 import org.hath.base.Stats;
+import org.hath.base.http.handlers.FaviconHandler;
 
 public class HTTPServer {
 	private static final int MAX_FLOOD_ENTRY_AGE_SECONDS = 60;
@@ -57,6 +62,44 @@ public class HTTPServer {
 		sessions = Collections.checkedList(new ArrayList<BaseHandler>(), BaseHandler.class);
 	}
 	
+	public Handler setupHandlers() {
+		HandlerCollection handlerCollection = new HandlerCollection();
+
+		createSessionTrackingHandler();
+
+		handlerCollection.addHandler(sessionTrackingHandler);
+		handlerCollection.addHandler(new BaseHandler(new HTTPBandwidthMonitor(), new HTTPResponseFactory()));
+		handlerCollection.addHandler(createContextHandlerCollection());
+
+		return handlerCollection;
+	}
+
+	private void createSessionTrackingHandler() {
+		SessionTracker sessionTracker = new SessionTracker(REQUEST_TIMEOUT_SECONDS, TimeUnit.SECONDS,
+				Settings.getMaxConnections(), OVERLOAD_PERCENTAGE);
+		FloodControl floodControl = new FloodControl(MAX_FLOOD_ENTRY_AGE_SECONDS, TimeUnit.SECONDS);
+		sessionTrackingHandler = new SessionTrackingHandler(client, floodControl, sessionTracker);
+	}
+
+	/**
+	 * This {@link ContextHandlerCollection} is used to route the requests to
+	 * the respective handlers.
+	 */
+	private ContextHandlerCollection createContextHandlerCollection() {
+		ContextHandlerCollection handlerCollection = new ContextHandlerCollection();
+
+		handlerCollection.addHandler(createContextHandler("/favicon.ico", new FaviconHandler()));
+
+		return handlerCollection;
+	}
+
+	private ContextHandler createContextHandler(String contextPath, Handler handler) {
+		ContextHandler contextHandler = new ContextHandler(contextPath);
+		contextHandler.setHandler(handler);
+
+		return contextHandler;
+	}
+
 	public boolean startConnectionListener(int port) {
 		try {
 			Out.info("Starting up the internal HTTP Server...");
@@ -68,13 +111,8 @@ public class HTTPServer {
 			httpServer = new Server(port);
 			httpServer.setStopTimeout(TimeUnit.MILLISECONDS.convert(15, TimeUnit.SECONDS));
 
-			SessionTracker sessionTracker = new SessionTracker(REQUEST_TIMEOUT_SECONDS, TimeUnit.SECONDS,
-					Settings.getMaxConnections(), OVERLOAD_PERCENTAGE);
-			FloodControl floodControl = new FloodControl(MAX_FLOOD_ENTRY_AGE_SECONDS, TimeUnit.SECONDS);
-
-			sessionTrackingHandler = new SessionTrackingHandler(client, floodControl, sessionTracker);
 			
-			httpServer.setHandler(sessionTrackingHandler);
+			httpServer.setHandler(setupHandlers());
 			httpServer.start();
 
 			Out.info("Internal HTTP Server was successfully started, and is listening on port " + port);
