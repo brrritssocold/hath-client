@@ -32,7 +32,7 @@ import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.ContextHandler;
 import org.eclipse.jetty.server.handler.ContextHandlerCollection;
-import org.eclipse.jetty.server.handler.HandlerCollection;
+import org.eclipse.jetty.server.handler.HandlerList;
 import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.Out;
 import org.hath.base.Settings;
@@ -65,14 +65,15 @@ public class HTTPServer {
 	}
 	
 	public Handler setupHandlers() {
-		HandlerCollection handlerCollection = new HandlerCollection();
+		HandlerList handlerList = new HandlerList();
 
 		createSessionTrackingHandler();
 
-		handlerCollection.addHandler(sessionTrackingHandler);
-		handlerCollection.addHandler(createContextHandlerCollection());
+		handlerList.addHandler(sessionTrackingHandler);
+		handlerList.addHandler(createContextHandlerCollection());
+		handlerList.addHandler(new BaseHandler(new HTTPBandwidthMonitor()));
 
-		return handlerCollection;
+		return handlerList;
 	}
 
 	private void createSessionTrackingHandler() {

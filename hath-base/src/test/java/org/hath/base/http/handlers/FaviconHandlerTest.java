@@ -59,11 +59,4 @@ public class FaviconHandlerTest extends HandlerJunitTest {
 
 		verify(response).setContentType("text/html");
 	}
-
-	@Test
-	public void testRequestHandled() throws Exception {
-		cut.handle(target, baseRequest, baseRequest, response);
-
-		verify(baseRequest).setHandled(true);
-	}
 }
