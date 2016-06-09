@@ -21,18 +21,14 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base.http;
+package org.hath.base.http.handlers;
 
-import org.hath.base.http.handlers.AllHandlerTests;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 import org.junit.runners.Suite.SuiteClasses;
 
 @RunWith(Suite.class)
-@SuiteClasses({ AllHandlerTests.class, FloodControlTest.class, HTTPServerTest.class, HTTPServerTest.class,
-		SessionTrackerTest.class,
-		SessionTrackingHandlerTest.class, HTTPRequestAttributesTest.class, HTTPResponseTest.class,
-		BaseHandlerTest.class })
-public class AllHttpTests {
+@SuiteClasses({ FaviconHandlerTest.class })
+public class AllHandlerTests {
 
 }

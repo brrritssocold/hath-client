@@ -161,15 +161,7 @@ public class HTTPResponse {
 					return;
 				}				
 				else if(urlparts.length == 2) {
-					if(urlparts[1].equals("favicon.ico")) {
-						// Redirect to the main website icon (which should already be in the browser cache).
-						hpc = new HTTPResponseProcessorText("");
-						hpc.addHeaderField("Location", "http://g.e-hentai.org/favicon.ico");
-						responseStatusCode = 301; // Moved Permanently
-						hitSensingPoint(Sensing.FAVICON);
-						return;
-					}
-					else if(urlparts[1].equals("robots.txt")) {
+					if (urlparts[1].equals("robots.txt")) {
 						// Bots are not welcome.
 						hpc = new HTTPResponseProcessorText("User-agent: *\nDisallow: /", "text/plain");
 						responseStatusCode = 200; // Found

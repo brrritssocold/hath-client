@@ -630,14 +630,6 @@ public class HTTPResponseTest {
 	}
 
 	@Test
-	public void testParseRequestFavicon() throws Exception {
-		cut.parseRequest("GET /favicon.ico HTTP/1.1", true);
-
-		assertThat(cut.getResponseStatusCode(), is(301));
-		assertSensingPoint(Sensing.FAVICON);
-	}
-
-	@Test
 	public void testParseRequestRobots() throws Exception {
 		cut.parseRequest("GET /robots.txt HTTP/1.1", true);
 
