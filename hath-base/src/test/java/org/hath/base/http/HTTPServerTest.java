@@ -26,7 +26,6 @@ package org.hath.base.http;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -61,7 +60,7 @@ public class HTTPServerTest {
 
 		hTTPServer = new HTTPServer(mockClient, mockSessionFactory);
 
-		when(mockSessionFactory.create(anyInt(), any(), any())).thenReturn(mockSession,
+		when(mockSessionFactory.create(any(), any())).thenReturn(mockSession,
 				mockSession);
 		
 		when(mockClient.getServerHandler()).thenReturn(mockServerHandler);

@@ -37,6 +37,7 @@ import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.Out;
 import org.hath.base.Settings;
 import org.hath.base.Stats;
+import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
 
 import com.google.common.net.InetAddresses;
 
@@ -122,6 +123,7 @@ public class SessionTrackingHandler extends AbstractHandler {
 
 		// all is well. keep truckin'
 		int sessionID = getNewConnId();
+		request.setAttribute(IntegerAttributes.SESSION_ID.toString(), sessionID);
 		sessionTracker.add(sessionID, baseRequest);
 		Stats.setOpenConnections((int) sessionTracker.activeSessions());
 	}

@@ -42,6 +42,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.eclipse.jetty.http.HttpStatus;
 import org.eclipse.jetty.server.Request;
 import org.hath.base.Settings;
+import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -79,7 +80,7 @@ public class BaseHandlerTest {
 	public void setUp() throws Exception {
 		setDefaultBehavior();
 
-		cut = new BaseHandler(2, bandwidthMonitor, responseFactory);
+		cut = new BaseHandler(bandwidthMonitor, responseFactory);
 		cut.setHttpServer(httpServer);
 	}
 
@@ -95,6 +96,7 @@ public class BaseHandlerTest {
 
 		when(request.getAttribute(HTTPRequestAttributes.LOCAL_NETWORK_ACCESS)).thenReturn(true);
 		when(request.getRemoteAddr()).thenReturn(REMOTE_ADDRESS);
+		when(request.getAttribute(IntegerAttributes.SESSION_ID.toString())).thenReturn(2);
 	}
 
 	@Test

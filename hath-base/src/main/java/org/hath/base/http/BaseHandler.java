@@ -43,6 +43,7 @@ import org.hath.base.Out;
 import org.hath.base.Settings;
 import org.hath.base.Stats;
 import org.hath.base.http.HTTPRequestAttributes.BooleanAttributes;
+import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
 
 import com.google.common.net.HttpHeaders;
 
@@ -56,9 +57,8 @@ public class BaseHandler extends AbstractHandler {
 	private HTTPResponseFactory responseFactory;
 	private HTTPBandwidthMonitor bandwidthMonitor;
 
-	public BaseHandler(int connId, HTTPBandwidthMonitor bandwidthMonitor, HTTPResponseFactory responseFactory) {
+	public BaseHandler(HTTPBandwidthMonitor bandwidthMonitor, HTTPResponseFactory responseFactory) {
 		sessionStartTime = System.currentTimeMillis();
-		this.connId = connId;
 		this.bandwidthMonitor = bandwidthMonitor;
 		this.responseFactory = responseFactory;
 	}
@@ -72,6 +72,7 @@ public class BaseHandler extends AbstractHandler {
 		String info = info(request.getRemoteAddr()) + " ";
 
 		try {
+			connId = HTTPRequestAttributes.getAttribute(request, IntegerAttributes.SESSION_ID);
 			localNetworkAccess = HTTPRequestAttributes.getAttribute(request, BooleanAttributes.LOCAL_NETWORK_ACCESS);
 			hr = responseFactory.create(this);
 			
