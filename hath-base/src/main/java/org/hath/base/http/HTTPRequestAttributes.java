@@ -68,6 +68,21 @@ public class HTTPRequestAttributes {
 		}
 	};
 
+	public enum ClassAttributes {
+		HTTPResponseProcessor("org.hath.base.http.httpResponseProcessor");
+
+		private final String attributeName;
+
+		private ClassAttributes(final String attributeName) {
+			this.attributeName = attributeName;
+		}
+
+		@Override
+		public String toString() {
+			return this.attributeName;
+		}
+	};
+
 	/**
 	 * Get the value of the boolean attribute.
 	 * 
@@ -104,5 +119,11 @@ public class HTTPRequestAttributes {
 		}
 
 		return (int) attr;
+	}
+
+	public static HTTPResponseProcessor getResponseProcessor(HttpServletRequest request) {
+		Object attr = request.getAttribute(ClassAttributes.HTTPResponseProcessor.toString());
+
+		return (HTTPResponseProcessor) attr;
 	}
 }

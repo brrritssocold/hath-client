@@ -24,12 +24,15 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 package org.hath.base.http;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertThat;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import javax.servlet.http.HttpServletRequest;
 
 import org.hath.base.http.HTTPRequestAttributes.BooleanAttributes;
+import org.hath.base.http.HTTPRequestAttributes.ClassAttributes;
 import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -84,5 +87,22 @@ public class HTTPRequestAttributesTest {
 		when(request.getAttribute(IntegerAttributes.SESSION_ID.toString())).thenReturn("foobar");
 
 		HTTPRequestAttributes.getAttribute(request, IntegerAttributes.SESSION_ID);
+	}
+
+	@Test
+	public void testGetResponseProcessorSet() throws Exception {
+		HTTPResponseProcessor mockProcessor = mock(HTTPResponseProcessor.class);
+		when(request.getAttribute(ClassAttributes.HTTPResponseProcessor.toString())).thenReturn(mockProcessor);
+		
+		HTTPResponseProcessor result = HTTPRequestAttributes.getResponseProcessor(request);
+
+		assertThat(result, is(mockProcessor));
+	}
+
+	@Test
+	public void testGetResponseProcessorNotSet() throws Exception {
+		HTTPResponseProcessor result = HTTPRequestAttributes.getResponseProcessor(request);
+
+		assertThat(result, nullValue());
 	}
 }
