@@ -86,7 +86,7 @@ public class BaseHandler extends AbstractHandler {
 			localNetworkAccess = HTTPRequestAttributes.getAttribute(request, BooleanAttributes.LOCAL_NETWORK_ACCESS);
 			
 			// TODO replace this with helper class
-			hpc = (HTTPResponseProcessor) request.getAttribute("org.hath.base.http.httpResponseProcessor");
+			hpc = HTTPRequestAttributes.getResponseProcessor(request);
 
 			int contentLength = hpc.getContentLength();
 			int statusCode = response.getStatus();

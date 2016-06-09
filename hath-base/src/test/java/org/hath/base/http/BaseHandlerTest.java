@@ -42,6 +42,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.eclipse.jetty.http.HttpStatus;
 import org.eclipse.jetty.server.Request;
 import org.hath.base.Settings;
+import org.hath.base.http.HTTPRequestAttributes.ClassAttributes;
 import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
 import org.junit.Before;
 import org.junit.Test;
@@ -88,7 +89,7 @@ public class BaseHandlerTest {
 
 	private void setHttpResponseProcessor(HTTPResponseProcessor hpc) {
 		// TODO replace me with helper
-		when(request.getAttribute("org.hath.base.http.httpResponseProcessor")).thenReturn(hpcMock);
+		when(request.getAttribute(ClassAttributes.HTTPResponseProcessor.toString())).thenReturn(hpcMock);
 	}
 
 	private void setDefaultBehavior() throws Exception {
