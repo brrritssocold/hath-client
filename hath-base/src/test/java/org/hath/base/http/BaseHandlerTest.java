@@ -55,6 +55,7 @@ import com.google.common.net.InetAddresses;
 @RunWith(MockitoJUnitRunner.class)
 public class BaseHandlerTest {
 	private static final String EXTERNAL_ADDRESS = "123.123.123.123";
+	private static final String REMOTE_ADDRESS = "233.233.233.233";
 	private static final String DEFAULT_TARGET = "/";
 	
 	@Mock
@@ -78,7 +79,7 @@ public class BaseHandlerTest {
 	public void setUp() throws Exception {
 		setDefaultBehavior();
 
-		cut = new BaseHandler(socket, 2, true, bandwidthMonitor, responseFactory);
+		cut = new BaseHandler(2, bandwidthMonitor, responseFactory);
 		cut.setHttpServer(httpServer);
 	}
 
@@ -93,6 +94,7 @@ public class BaseHandlerTest {
 		when(bandwidthMonitor.getActualPacketSize()).thenReturn(300);
 
 		when(request.getAttribute(HTTPRequestAttributes.LOCAL_NETWORK_ACCESS)).thenReturn(true);
+		when(request.getRemoteAddr()).thenReturn(REMOTE_ADDRESS);
 	}
 
 	@Test
@@ -131,7 +133,6 @@ public class BaseHandlerTest {
 
 	@Test
 	public void testNonLocalAccessIsFileRequest() throws Exception {
-		cut = new BaseHandler(socket, 2, false, bandwidthMonitor, responseFactory);
 		cut.setHttpServer(httpServer);
 
 		HTTPResponseProcessor rp = mock(HTTPResponseProcessorFile.class);

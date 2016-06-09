@@ -23,7 +23,6 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.http;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
@@ -32,7 +31,6 @@ import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
-import java.util.regex.Pattern;
 
 import javax.servlet.ServletException;
 import javax.servlet.ServletOutputStream;
@@ -48,77 +46,21 @@ import org.hath.base.http.HTTPRequestAttributes.BooleanAttributes;
 
 import com.google.common.net.HttpHeaders;
 
-public class BaseHandler extends AbstractHandler implements Runnable {
-
-	public static final String CRLF = "\r\n";
-
-	private static final Pattern getheadPattern = Pattern.compile("^((GET)|(HEAD)).*", Pattern.CASE_INSENSITIVE);
-
+public class BaseHandler extends AbstractHandler {
 	private Socket mySocket;
 	private HTTPServer httpServer;
 	private int connId;
-	private Thread httpSession;
 	private boolean localNetworkAccess;
 	private long sessionStartTime, lastPacketSend;
 	private HTTPResponse hr;
 	private HTTPResponseFactory responseFactory;
-	private int rcvdBytes = 0;
 	private HTTPBandwidthMonitor bandwidthMonitor;
 
-	/**
-	 * Use the non socket version
-	 */
-	@Deprecated
-	public BaseHandler(Socket s, int connId, boolean localNetworkAccess, HTTPServer httpServer,
-			HTTPResponseFactory responseFactory) {
-		sessionStartTime = System.currentTimeMillis();
-		this.mySocket = s;
-		this.connId = connId;
-		this.httpServer = httpServer;
-		this.bandwidthMonitor = httpServer.getBandwidthMonitor();
-		this.localNetworkAccess = localNetworkAccess;
-		this.responseFactory = responseFactory;
-	}
-
-	@Deprecated
-	public BaseHandler(Socket socket, int connId, boolean localNetworkAccess, HTTPBandwidthMonitor bandwidthMonitor,
-			HTTPResponseFactory responseFactory) {
-		this(connId, localNetworkAccess, bandwidthMonitor, responseFactory);
-		mySocket = socket;
-	}
-
-	public BaseHandler(int connId, boolean localNetworkAccess, HTTPBandwidthMonitor bandwidthMonitor,
-			HTTPResponseFactory responseFactory) {
+	public BaseHandler(int connId, HTTPBandwidthMonitor bandwidthMonitor, HTTPResponseFactory responseFactory) {
 		sessionStartTime = System.currentTimeMillis();
 		this.connId = connId;
 		this.bandwidthMonitor = bandwidthMonitor;
-		this.localNetworkAccess = localNetworkAccess;
 		this.responseFactory = responseFactory;
-	}
-
-	public BaseHandler(Socket s, int connId, boolean localNetworkAccess, HTTPServer httpServer) {
-		this(s, connId, localNetworkAccess, httpServer, new HTTPResponseFactory());
-	}
-
-	/**
-	 * Use the http server to call
-	 * {@link BaseHandler#handle(String, Request, HttpServletRequest, HttpServletResponse)}
-	 */
-	@Deprecated
-	public void handleSession() {
-		httpSession = new Thread(this);
-		httpSession.setName("HTTP Session");
-		httpSession.start();
-	}
-
-	@Deprecated
-	private void connectionFinished() {
-		httpServer.removeHTTPSession(this);
-	}
-
-	@Deprecated
-	@Override
-	public void run() {
 	}
 
 	@Override
@@ -127,7 +69,7 @@ public class BaseHandler extends AbstractHandler implements Runnable {
 		ServletOutputStream bs = response.getOutputStream();
 
 		HTTPResponseProcessor hpc = null;
-		String info = this.toString() + " ";		
+		String info = info(request.getRemoteAddr()) + " ";
 
 		try {
 			localNetworkAccess = HTTPRequestAttributes.getAttribute(request, BooleanAttributes.LOCAL_NETWORK_ACCESS);
@@ -229,8 +171,6 @@ public class BaseHandler extends AbstractHandler implements Runnable {
 				hpc.cleanup();
 			}
 		}
-
-		connectionFinished();
 	}
 
 	private void printProcessingFinished(String info, int contentLength, long startTime) {
@@ -258,63 +198,7 @@ public class BaseHandler extends AbstractHandler implements Runnable {
 		}
 	}
 
-	protected String readRequest(BufferedReader br) throws IOException {
-		// http "parser" follows... might wanna replace this with a more compliant one eventually ;-)
-
-		String read = null;
-		String request = null;
-
-		// utterly ignore every single line except for the request one.
-		do {
-			read = br.readLine();
-
-			if(read != null) {
-				rcvdBytes += read.length();
-
-				if(getheadPattern.matcher(read).matches()) {
-					request = read.substring(0, Math.min(Settings.MAX_REQUEST_LENGTH, read.length()));
-				}
-				else if(read.isEmpty()) {
-					break;
-				}
-			}
-			else {
-				break;
-			}
-		} while(true);
-		return request;
-	}
-
-	protected void setSendBufferSize(int contentLength, byte[] headerBytes) {
-		if(contentLength <= 0) {
-			return;
-		}
-		
-		try {
-			// buffer size might be limited by OS. for linux, check net.core.wmem_max
-			int bufferSize = (int) Math.min(contentLength + headerBytes.length + 32, Math.min(Settings.isUseLessMemory() ? 131072 : 524288, Math.round(0.2 * Settings.getThrottleBytesPerSec())));
-			mySocket.setSendBufferSize(bufferSize);
-			//Out.debug("Socket size for " + connId + " is now " + mySocket.getSendBufferSize() + " (requested " + bufferSize + ")");
-		} catch (Exception e) {
-			Out.info(e.getMessage());
-		}
-	}
-
-	private String getHTTPStatusHeader(int statuscode) {
-		switch(statuscode) {
-			case 200: return "HTTP/1.1 200 OK" + CRLF;
-			case 301: return "HTTP/1.1 301 Moved Permanently" + CRLF;
-			case 400: return "HTTP/1.1 400 Bad Request" + CRLF;
-			case 403: return "HTTP/1.1 403 Permission Denied" + CRLF;
-			case 404: return "HTTP/1.1 404 Not Found" + CRLF;
-			case 405: return "HTTP/1.1 405 Method Not Allowed" + CRLF;
-			case 418: return "HTTP/1.1 418 I'm a teapot" + CRLF;
-			case 501: return "HTTP/1.1 501 Not Implemented" + CRLF;
-			case 502: return "HTTP/1.1 502 Bad Gateway" + CRLF;
-			default: return "HTTP/1.1 500 Internal Server Error" + CRLF;
-		}
-	}
-
+	@Deprecated
 	public boolean doTimeoutCheck(boolean forceKill) {
 		if(mySocket.isClosed()) {
 			//  the connecion was already closed and should be removed by the HTTPServer instance.
@@ -356,8 +240,7 @@ public class BaseHandler extends AbstractHandler implements Runnable {
 		return localNetworkAccess;
 	}
 
-	public String toString() {
-		return "{" + connId + String.format("%1$-17s", getSocketInetAddress().toString() + "}");
+	private String info(String remoteIp) {
+		return "{" + connId + String.format("%1$-17s", remoteIp + "}");
 	}
-
 }

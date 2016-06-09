@@ -23,19 +23,9 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.http;
 
-import java.net.Socket;
-
 public class HTTPSessionFactory {
-	/**
-	 * Use the non socket version
-	 */
-	@Deprecated
-	public BaseHandler create(Socket socket, int connectionID, boolean localNetworkAccess, HTTPServer httpServer) {
-		return new BaseHandler(socket, connectionID, localNetworkAccess, httpServer);
-	}
-
-	public BaseHandler create(int connId, boolean localNetworkAccess, HTTPBandwidthMonitor bandwidthMonitor,
+	public BaseHandler create(int connId, HTTPBandwidthMonitor bandwidthMonitor,
 			HTTPResponseFactory responseFactory) {
-		return new BaseHandler(connId, localNetworkAccess, bandwidthMonitor, responseFactory);
+		return new BaseHandler(connId, bandwidthMonitor, responseFactory);
 	}
 }
