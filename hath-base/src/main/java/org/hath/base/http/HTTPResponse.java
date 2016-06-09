@@ -34,6 +34,7 @@ import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.MiscTools;
 import org.hath.base.Out;
 import org.hath.base.Settings;
+import org.hath.base.http.handlers.BaseHandler;
 
 /**
  * Verifies the Request and then chooses the appropriate way to handle the

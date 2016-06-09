@@ -38,6 +38,7 @@ import java.util.Hashtable;
 import org.hath.base.HVFile;
 import org.hath.base.Settings;
 import org.hath.base.http.HTTPResponse.Sensing;
+import org.hath.base.http.handlers.BaseHandler;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;

@@ -24,6 +24,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 package org.hath.base.http;
 
 import org.hath.base.http.handlers.AllHandlerTests;
+import org.hath.base.http.handlers.BaseHandlerTest;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 import org.junit.runners.Suite.SuiteClasses;

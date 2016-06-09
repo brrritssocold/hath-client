@@ -27,6 +27,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.hath.base.Out;
 import org.hath.base.gallery.GalleryFileDownloader;
+import org.hath.base.http.handlers.BaseHandler;
 
 public class HTTPResponseProcessorProxy extends HTTPResponseProcessor {
 	private BaseHandler session;

@@ -32,6 +32,7 @@ import static org.mockito.Mockito.when;
 import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.ServerHandler;
 import org.hath.base.Settings;
+import org.hath.base.http.handlers.BaseHandler;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;

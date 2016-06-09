@@ -23,6 +23,8 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.http;
 
+import org.hath.base.http.handlers.BaseHandler;
+
 public class HTTPResponseFactory {
 	public HTTPResponse create(BaseHandler session) {
 		return new HTTPResponse(session);

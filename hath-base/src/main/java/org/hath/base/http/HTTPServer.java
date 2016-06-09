@@ -37,6 +37,7 @@ import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.Out;
 import org.hath.base.Settings;
 import org.hath.base.Stats;
+import org.hath.base.http.handlers.BaseHandler;
 import org.hath.base.http.handlers.FaviconHandler;
 import org.hath.base.http.handlers.RobotsHandler;
 import org.hath.base.http.handlers.SpeedTestHandler;

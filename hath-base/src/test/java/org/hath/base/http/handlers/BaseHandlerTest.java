@@ -21,7 +21,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base.http;
+package org.hath.base.http.handlers;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.contains;
@@ -42,8 +42,16 @@ import javax.servlet.http.HttpServletResponse;
 import org.eclipse.jetty.http.HttpStatus;
 import org.eclipse.jetty.server.Request;
 import org.hath.base.Settings;
+import org.hath.base.http.HTTPBandwidthMonitor;
+import org.hath.base.http.HTTPRequestAttributes;
+import org.hath.base.http.HTTPResponseFactory;
+import org.hath.base.http.HTTPResponseProcessor;
+import org.hath.base.http.HTTPResponseProcessorFile;
+import org.hath.base.http.HTTPResponseProcessorProxy;
+import org.hath.base.http.HTTPServer;
 import org.hath.base.http.HTTPRequestAttributes.ClassAttributes;
 import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
+import org.hath.base.http.handlers.BaseHandler;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
