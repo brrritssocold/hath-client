@@ -37,6 +37,8 @@ import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.Out;
 import org.hath.base.Settings;
 import org.hath.base.Stats;
+import org.hath.base.http.HTTPRequestAttributes.BooleanAttributes;
+import org.hath.base.http.HTTPRequestAttributes.ClassAttributes;
 import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
 
 import com.google.common.net.InetAddresses;
@@ -89,8 +91,9 @@ public class SessionTrackingHandler extends AbstractHandler {
 
 		boolean apiServerAccess = Settings.isValidRPCServer(addr);
 
-		request.setAttribute(HTTPRequestAttributes.LOCAL_NETWORK_ACCESS, localNetworkAccess);
-		request.setAttribute(HTTPRequestAttributes.API_SERVER_ACCESS, apiServerAccess);
+		request.setAttribute(BooleanAttributes.LOCAL_NETWORK_ACCESS.toString(), localNetworkAccess);
+		request.setAttribute(BooleanAttributes.API_SERVER_ACCESS.toString(), apiServerAccess);
+		request.setAttribute(ClassAttributes.HentaiAtHomeClient.toString(), client);
 
 		if (!apiServerAccess && !allowNormalConnections) {
 			Out.warning("Rejecting connection request during startup.");

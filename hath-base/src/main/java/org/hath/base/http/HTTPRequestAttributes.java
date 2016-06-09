@@ -25,6 +25,8 @@ package org.hath.base.http;
 
 import javax.servlet.http.HttpServletRequest;
 
+import org.hath.base.HentaiAtHomeClient;
+
 public class HTTPRequestAttributes {
 	/**
 	 * Use {@link BooleanAttributes#LOCAL_NETWORK_ACCESS} instead
@@ -69,7 +71,8 @@ public class HTTPRequestAttributes {
 	};
 
 	public enum ClassAttributes {
-		HTTPResponseProcessor("org.hath.base.http.httpResponseProcessor");
+		HTTPResponseProcessor("org.hath.base.http.httpResponseProcessor"), HentaiAtHomeClient(
+				"org.hath.base.HentaiAtHomeClient");
 
 		private final String attributeName;
 
@@ -125,5 +128,11 @@ public class HTTPRequestAttributes {
 		Object attr = request.getAttribute(ClassAttributes.HTTPResponseProcessor.toString());
 
 		return (HTTPResponseProcessor) attr;
+	}
+
+	public static HentaiAtHomeClient getClient(HttpServletRequest request) {
+		Object attr = request.getAttribute(ClassAttributes.HentaiAtHomeClient.toString());
+
+		return (HentaiAtHomeClient) attr;
 	}
 }

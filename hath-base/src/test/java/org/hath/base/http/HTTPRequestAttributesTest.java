@@ -31,6 +31,7 @@ import static org.mockito.Mockito.when;
 
 import javax.servlet.http.HttpServletRequest;
 
+import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.http.HTTPRequestAttributes.BooleanAttributes;
 import org.hath.base.http.HTTPRequestAttributes.ClassAttributes;
 import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
@@ -102,6 +103,23 @@ public class HTTPRequestAttributesTest {
 	@Test
 	public void testGetResponseProcessorNotSet() throws Exception {
 		HTTPResponseProcessor result = HTTPRequestAttributes.getResponseProcessor(request);
+
+		assertThat(result, nullValue());
+	}
+
+	@Test
+	public void testGetClientSet() throws Exception {
+		HentaiAtHomeClient clientMock = mock(HentaiAtHomeClient.class);
+		when(request.getAttribute(ClassAttributes.HentaiAtHomeClient.toString())).thenReturn(clientMock);
+
+		HentaiAtHomeClient result = HTTPRequestAttributes.getClient(request);
+
+		assertThat(result, is(clientMock));
+	}
+
+	@Test
+	public void testGetClientNotSet() throws Exception {
+		HentaiAtHomeClient result = HTTPRequestAttributes.getClient(request);
 
 		assertThat(result, nullValue());
 	}
