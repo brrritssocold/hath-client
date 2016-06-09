@@ -156,10 +156,6 @@ public class HTTPResponse {
 						return;
 					}
 				}
-				else if(urlparts[1].equals("t")) {
-					processTestRequest(urlparts);
-					return;
-				}				
 				else if(urlparts.length == 2) {
 						Out.warning(session + " Invalid request type '" + urlparts[1] + "'.");
 						hitSensingPoint(Sensing.INVALID_REQUEST_LEN2);
@@ -175,45 +171,6 @@ public class HTTPResponse {
 
 		Out.warning(session + " Invalid HTTP request.");
 		responseStatusCode = 400;
-	}
-
-	protected void processTestRequest(String[] urlparts) {
-		// sends a randomly generated file of a given length for speed testing purposes
-		if(urlparts.length < 5) {
-			responseStatusCode = 400;
-			hitSensingPoint(Sensing.TEST_REQUEST_INVALID_REQUEST);
-			return;
-		}
-		else {
-			int testsize = Integer.parseInt(urlparts[2]);
-			int testtime = Integer.parseInt(urlparts[3]);
-			String testkey = urlparts[4];
-			
-			Out.debug("Sending threaded proxy test with testsize=" + testsize + " testtime=" + testtime + " testkey=" + testkey);
-			
-			if(Math.abs(testtime - Settings.getServerTime()) > Settings.MAX_KEY_TIME_DRIFT) {
-				Out.warning(session + " Got a speedtest request with expired key");
-				responseStatusCode = 403;
-				hitSensingPoint(Sensing.TEST_REQUEST_EXPIRED_KEY);
-				return;
-			}
-			else if(!calculateTestKey(testsize, testtime).equals(testkey)) {
-				Out.warning(session + " Got a speedtest request with invalid key");
-				responseStatusCode = 403;
-				hitSensingPoint(Sensing.TEST_REQUEST_INVALID_KEY);
-				return;
-			}
-			else {
-				responseStatusCode = 200;
-				hpc = new HTTPResponseProcessorSpeedtest(testsize);
-				hitSensingPoint(Sensing.TEST_REQUEST_VALID);
-				return;
-			}
-		}
-	}
-
-	protected String calculateTestKey(int testsize, int testtime) {
-		return MiscTools.getSHAString("hentai@home-speedtest-" + testsize + "-" + testtime + "-" + Settings.getClientID() + "-" + Settings.getClientKey());
 	}
 
 	protected boolean processProxyRequest(String[] urlparts) {

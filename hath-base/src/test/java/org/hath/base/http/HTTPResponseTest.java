@@ -593,43 +593,6 @@ public class HTTPResponseTest {
 	}
 
 	@Test
-	public void testParseRequestTestInvalidRequest() throws Exception {
-		cut.parseRequest("GET /t/ HTTP/1.1", true);
-
-		assertThat(cut.getResponseStatusCode(), is(400));
-		assertSensingPoint(Sensing.TEST_REQUEST_INVALID_REQUEST);
-	}
-
-	@Test
-	public void testParseRequestTestTimeDriftTooLarge() throws Exception {
-		cut.parseRequest("GET /t/42/5/foobar HTTP/1.1", true);
-
-		assertThat(cut.getResponseStatusCode(), is(403));
-		assertSensingPoint(Sensing.TEST_REQUEST_EXPIRED_KEY);
-	}
-
-	@Test
-	public void testParseRequestTestInvalidKey() throws Exception {
-		cut.parseRequest("GET /t/42/" + Settings.getServerTime() + "/foobar HTTP/1.1", true);
-
-		assertThat(cut.getResponseStatusCode(), is(403));
-		assertSensingPoint(Sensing.TEST_REQUEST_INVALID_KEY);
-	}
-
-	@Test
-	public void testParseRequestValid() throws Exception {
-		int testSize = 42;
-		int testTime = Settings.getServerTime();
-
-		cut.parseRequest(
-				"GET /t/" + testSize + "/" + testTime + "/" + cut.calculateTestKey(testSize, testTime) + " HTTP/1.1",
-				true);
-
-		assertThat(cut.getResponseStatusCode(), is(200));
-		assertSensingPoint(Sensing.TEST_REQUEST_VALID);
-	}
-
-	@Test
 	public void testParseRequestInvalid() throws Exception {
 		cut.parseRequest("GET /foo HTTP/1.1", true);
 

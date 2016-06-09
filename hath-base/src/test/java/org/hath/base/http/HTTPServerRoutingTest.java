@@ -35,6 +35,7 @@ import org.eclipse.jetty.http.HttpStatus;
 import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.ServerHandler;
 import org.hath.base.Settings;
+import org.hath.base.http.handlers.SpeedTestHandler;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -97,5 +98,16 @@ public class HTTPServerRoutingTest {
 
 		assertThat(response.getContentAsString(), containsString("User-agent: *"));
 		assertThat(response.getContentAsString(), containsString("Disallow: /"));
+	}
+
+	@Test
+	public void testSpeedTestRoutingStatus() throws Exception {
+		hTTPServer.allowNormalConnections();
+		int testSize = 1234;
+		int testTime = Settings.getServerTime();
+		ContentResponse response = httpClient.GET("http://localhost:" + SERVER_TEST_PORT + "/t/" + testSize + "/"
+				+ testTime + "/" + SpeedTestHandler.calculateTestKey(testSize, testTime));
+
+		assertThat(response.getStatus(), is(HttpStatus.OK_200));
 	}
 }
