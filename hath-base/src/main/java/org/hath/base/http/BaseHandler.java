@@ -27,6 +27,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -193,7 +194,7 @@ public class BaseHandler extends AbstractHandler implements Runnable {
 					}
 					else {
 						// bytes written to the local network do not count against the bandwidth stats. these do, however.
-						Stats.bytesRcvd(rcvdBytes);
+				Stats.bytesRcvd(target.getBytes(StandardCharsets.ISO_8859_1).length);
 
 						HTTPBandwidthMonitor bwm = this.bandwidthMonitor;
 						boolean disableBWM = Settings.isDisableBWM();
