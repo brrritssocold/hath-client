@@ -27,6 +27,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import javax.servlet.http.HttpServletRequest;
@@ -122,5 +123,22 @@ public class HTTPRequestAttributesTest {
 		HentaiAtHomeClient result = HTTPRequestAttributes.getClient(request);
 
 		assertThat(result, nullValue());
+	}
+
+	@Test
+	public void testSetResponseProcessor() throws Exception {
+		HTTPResponseProcessor processorMock = mock(HTTPResponseProcessor.class);
+
+		HTTPRequestAttributes.setResponseProcessor(request, processorMock);
+
+		verify(request).setAttribute(ClassAttributes.HTTPResponseProcessor.toString(), processorMock);
+	}
+
+	@Test
+	public void testSetClient() throws Exception {
+		HentaiAtHomeClient clientMock = mock(HentaiAtHomeClient.class);
+		HTTPRequestAttributes.setClient(request, clientMock);
+
+		verify(request).setAttribute(ClassAttributes.HentaiAtHomeClient.toString(), clientMock);
 	}
 }

@@ -130,9 +130,17 @@ public class HTTPRequestAttributes {
 		return (HTTPResponseProcessor) attr;
 	}
 
+	public static void setResponseProcessor(HttpServletRequest request, HTTPResponseProcessor hpc) {
+		request.setAttribute(ClassAttributes.HTTPResponseProcessor.toString(), hpc);
+	}
+
 	public static HentaiAtHomeClient getClient(HttpServletRequest request) {
 		Object attr = request.getAttribute(ClassAttributes.HentaiAtHomeClient.toString());
 
 		return (HentaiAtHomeClient) attr;
+	}
+
+	public static void setClient(HttpServletRequest request, HentaiAtHomeClient client) {
+		request.setAttribute(ClassAttributes.HentaiAtHomeClient.toString(), client);
 	}
 }
