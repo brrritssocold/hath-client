@@ -30,6 +30,7 @@ import static org.mockito.Mockito.when;
 import javax.servlet.http.HttpServletRequest;
 
 import org.hath.base.http.HTTPRequestAttributes.BooleanAttributes;
+import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -64,5 +65,24 @@ public class HTTPRequestAttributesTest {
 		when(request.getAttribute(BooleanAttributes.LOCAL_NETWORK_ACCESS.toString())).thenReturn("foobar");
 
 		HTTPRequestAttributes.getAttribute(request, BooleanAttributes.LOCAL_NETWORK_ACCESS);
+	}
+
+	@Test
+	public void testGetAttributeIntNotSet() throws Exception {
+		assertThat(HTTPRequestAttributes.getAttribute(request, IntegerAttributes.SESSION_ID), is(0));
+	}
+
+	@Test
+	public void testGetAttributeIntSet() throws Exception {
+		when(request.getAttribute(IntegerAttributes.SESSION_ID.toString())).thenReturn(42);
+
+		assertThat(HTTPRequestAttributes.getAttribute(request, IntegerAttributes.SESSION_ID), is(42));
+	}
+
+	@Test(expected = ClassCastException.class)
+	public void testGetAttributeSetNotInteger() throws Exception {
+		when(request.getAttribute(IntegerAttributes.SESSION_ID.toString())).thenReturn("foobar");
+
+		HTTPRequestAttributes.getAttribute(request, IntegerAttributes.SESSION_ID);
 	}
 }

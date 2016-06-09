@@ -53,6 +53,21 @@ public class HTTPRequestAttributes {
 		}
 	};
 
+	public enum IntegerAttributes {
+		SESSION_ID("org.hath.base.http.sessionId");
+
+		private final String attributeName;
+
+		private IntegerAttributes(final String attributeName) {
+			this.attributeName = attributeName;
+		}
+
+		@Override
+		public String toString() {
+			return this.attributeName;
+		}
+	};
+
 	/**
 	 * Get the value of the boolean attribute.
 	 * 
@@ -70,5 +85,24 @@ public class HTTPRequestAttributes {
 		}
 
 		return (boolean) attr;
+	}
+
+	/**
+	 * Get the value of the integer attribute.
+	 * 
+	 * @param request
+	 *            the request containing the attribute
+	 * @param attribute
+	 *            to be read
+	 * @return the value of the attribute, or 0 if not set
+	 */
+	public static int getAttribute(HttpServletRequest request, IntegerAttributes attribute) {
+		Object attr = request.getAttribute(attribute.toString());
+
+		if (attr == null) {
+			return 0;
+		}
+
+		return (int) attr;
 	}
 }
