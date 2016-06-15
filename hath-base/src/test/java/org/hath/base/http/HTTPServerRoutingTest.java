@@ -26,15 +26,24 @@ package org.hath.base.http;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
+import static org.mockito.Matchers.anyBoolean;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.api.ContentResponse;
 import org.eclipse.jetty.http.HttpMethod;
 import org.eclipse.jetty.http.HttpStatus;
+import org.hath.base.CacheHandler;
+import org.hath.base.HVFile;
 import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.ServerHandler;
 import org.hath.base.Settings;
+import org.hath.base.http.handlers.FileHandler;
 import org.hath.base.http.handlers.SpeedTestHandler;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -43,18 +52,21 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Answers;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.runners.MockitoJUnitRunner;
 
 @RunWith(MockitoJUnitRunner.class)
 public class HTTPServerRoutingTest {
 	private static final int SERVER_TEST_PORT = 42421;
 
-	@Mock(answer = Answers.RETURNS_DEEP_STUBS)
 	private static HentaiAtHomeClient mockClient;
 	@Mock(answer = Answers.RETURNS_DEEP_STUBS)
 	private static HTTPSessionFactory mockSessionFactory;
 	@Mock
 	private static ServerHandler mockServerHandler;
+	@Mock(answer = Answers.RETURNS_DEEP_STUBS)
+	private static HVFile hvFileMock;
+	private static CacheHandler cacheHandlerMock;
 
 	private static HTTPServer hTTPServer;
 	private static HttpClient httpClient;
@@ -62,6 +74,12 @@ public class HTTPServerRoutingTest {
 	@BeforeClass
 	public static void setUpClass() throws Exception {
 		Settings.updateSetting("host", "123.123.123.123");
+
+		mockClient = mock(HentaiAtHomeClient.class, Mockito.RETURNS_DEEP_STUBS);
+		cacheHandlerMock = mock(CacheHandler.class);
+
+		when(mockClient.getCacheHandler()).thenReturn(cacheHandlerMock);
+		when(cacheHandlerMock.getHVFile(anyString(), anyBoolean())).thenReturn(hvFileMock);
 
 		hTTPServer = new HTTPServer(mockClient, mockSessionFactory);
 
@@ -74,6 +92,8 @@ public class HTTPServerRoutingTest {
 	public void setUp() throws Exception {
 		when(mockClient.isShuttingDown()).thenReturn(true);
 		when(mockClient.getServerHandler()).thenReturn(mockServerHandler);
+		when(mockClient.getCacheHandler()).thenReturn(cacheHandlerMock);
+		when(cacheHandlerMock.getHVFile(anyString(), anyBoolean())).thenReturn(hvFileMock);
 	}
 
 	@AfterClass
@@ -109,5 +129,30 @@ public class HTTPServerRoutingTest {
 				+ testTime + "/" + SpeedTestHandler.calculateTestKey(testSize, testTime));
 
 		assertThat(response.getStatus(), is(HttpStatus.OK_200));
+	}
+
+	@Test
+	public void testFileRoutingStatus() throws Exception {
+		hTTPServer.allowNormalConnections();
+		when(hvFileMock.getLocalFileRef().exists()).thenReturn(true);
+		Path testFile = Files.createTempFile("FileRoutingTest", ".jpg");
+		when(hvFileMock.getLocalFileRef()).thenReturn(testFile.toFile());
+
+		ContentResponse response = httpClient
+				.GET("http://localhost:" + SERVER_TEST_PORT + "/h/foo/" + generateKeystamp("foo") + "/baz");
+
+		assertThat(response.getStatus(), is(HttpStatus.OK_200));
+	}
+
+	private String generateKeystamp(String hvfile) {
+		int currentTime = Settings.getServerTime();
+		StringBuilder sb = new StringBuilder();
+
+		sb.append("keystamp=");
+		sb.append(currentTime);
+		sb.append("-");
+		sb.append(FileHandler.calculateKeystamp(hvfile, currentTime));
+
+		return sb.toString();
 	}
 }

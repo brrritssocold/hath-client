@@ -39,6 +39,7 @@ import org.hath.base.Settings;
 import org.hath.base.Stats;
 import org.hath.base.http.handlers.BaseHandler;
 import org.hath.base.http.handlers.FaviconHandler;
+import org.hath.base.http.handlers.FileHandler;
 import org.hath.base.http.handlers.RobotsHandler;
 import org.hath.base.http.handlers.SpeedTestHandler;
 
@@ -95,6 +96,7 @@ public class HTTPServer {
 		handlerCollection.addHandler(createContextHandler("/robots.txt", new RobotsHandler()));
 
 		handlerCollection.addHandler(createContextHandler("/t", new SpeedTestHandler()));
+		handlerCollection.addHandler(createContextHandler("/h", new FileHandler(client.getCacheHandler())));
 
 		return handlerCollection;
 	}
