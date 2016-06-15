@@ -44,6 +44,7 @@ import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.ServerHandler;
 import org.hath.base.Settings;
 import org.hath.base.http.handlers.FileHandler;
+import org.hath.base.http.handlers.ProxyHandlerTest;
 import org.hath.base.http.handlers.SpeedTestHandler;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -140,6 +141,24 @@ public class HTTPServerRoutingTest {
 
 		ContentResponse response = httpClient
 				.GET("http://localhost:" + SERVER_TEST_PORT + "/h/foo/" + generateKeystamp("foo") + "/baz");
+
+		assertThat(response.getStatus(), is(HttpStatus.OK_200));
+	}
+
+	@Test
+	public void testProxyRoutingStatus() throws Exception {
+		hTTPServer.allowNormalConnections();
+		when(hvFileMock.getLocalFileRef().exists()).thenReturn(true);
+		Path testFile = Files.createTempFile("FileRoutingTest", ".jpg");
+		when(hvFileMock.getLocalFileRef()).thenReturn(testFile.toFile());
+		Settings.updateSetting("request_proxy_mode", String.valueOf(1));
+
+		String proxyRequest = ProxyHandlerTest.buildProxyRequest(ProxyHandlerTest.VALID_FILEID,
+				ProxyHandlerTest.VALID_TOKEN, "42", "1", null, "foobar");
+
+		ContentResponse response = httpClient
+				.GET("http://localhost:" + SERVER_TEST_PORT + "/p"
+						+ proxyRequest);
 
 		assertThat(response.getStatus(), is(HttpStatus.OK_200));
 	}

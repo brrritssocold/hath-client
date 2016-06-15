@@ -52,8 +52,7 @@ public class HTTPResponseTest {
 	private InetAddress client_address;
 
 	private static final String CLIENT_IP = "110.120.130.140";
-	private static final String VALID_FILEID = "0000000000000000000000000000000000000000-0-0-0-jpg";
-	private static final String VALID_TOKEN = "1-0000000000000000000000000000000000000000";
+
 
 	@Before
 	public void setUp() throws Exception {
@@ -62,7 +61,7 @@ public class HTTPResponseTest {
 
 		setUpMocks(hvFileMock);
 		addIpToRPC(client_address);
-		setProxyMode(2);
+
 	}
 
 	private void assertSensingPoint(Sensing point) {
@@ -71,10 +70,6 @@ public class HTTPResponseTest {
 
 	private void addIpToRPC(InetAddress ipAddress) {
 		Settings.updateSetting("rpc_server_ip", ipAddress.getHostAddress());
-	}
-
-	private void setProxyMode(int mode) {
-		Settings.updateSetting("request_proxy_mode", String.valueOf(mode));
 	}
 
 	private void setUpMocks(HVFile hvFile, InetAddress ipAddress, boolean localNetwork) {
@@ -298,165 +293,6 @@ public class HTTPResponseTest {
 
 		assertThat(cut.getResponseStatusCode(), is(403));
 		assertSensingPoint(Sensing.SERVER_CMD_KEY_INVALID);
-	}
-
-	@Test
-	public void testParseRequestProxyDisabled() throws Exception {
-		setProxyMode(0);
-		assertThat(Settings.getRequestProxyMode(), is(0));
-
-		cut.parseRequest("GET /p/ HTTP/1.1", true);
-
-		assertThat(cut.getResponseStatusCode(), is(404));
-		assertSensingPoint(Sensing.PROXY_REQUEST_DENIED);
-	}
-
-	@Test
-	public void testParseRequestProxyValid() throws Exception {
-		setProxyMode(1);
-		assertThat(Settings.getRequestProxyMode(), is(1));
-
-		cut.parseRequest("GET /p/fileid=foobar/bazbaz HTTP/1.1", true);
-
-		assertThat(cut.getResponseStatusCode(), is(404));
-		assertSensingPoint(Sensing.PROXY_REQUEST_GRANTED);
-	}
-
-	@Test
-	public void testParseRequestProxyNotLocal() throws Exception {
-		setProxyMode(2);
-		assertThat(Settings.getRequestProxyMode(), is(2));
-		setUpMocks(hvFileMock, client_address, false);
-
-		cut.parseRequest("GET /p/fileid=foobar/bazbaz HTTP/1.1", true);
-
-		assertThat(cut.getResponseStatusCode(), is(404));
-		assertSensingPoint(Sensing.PROXY_REQUEST_PASSKEY_NOT_REQUIRED);
-	}
-
-	@Test
-	public void testParseRequestProxyNotLocalRequestLocalOnly() throws Exception {
-		setProxyMode(1);
-		assertThat(Settings.getRequestProxyMode(), is(1));
-		setUpMocks(hvFileMock, client_address, false);
-
-		cut.parseRequest("GET /p/ HTTP/1.1", true);
-
-		assertThat(cut.getResponseStatusCode(), is(404));
-		assertSensingPoint(Sensing.PROXY_REQUEST_DENIED);
-	}
-
-	@Test
-	public void testParseRequestProxyInvalidPasskey() throws Exception {
-		setProxyMode(3);
-		assertThat(Settings.getRequestProxyMode(), is(3));
-
-		cut.parseRequest("GET /p/fileid=foobar;passkey=notAkey/bazbaz HTTP/1.1", true);
-
-		assertThat(cut.getResponseStatusCode(), is(404));
-		assertSensingPoint(Sensing.PROXY_REQUEST_PASSKEY_INVALID);
-	}
-
-	@Test
-	public void testParseRequestProxyNoPasskey() throws Exception {
-		setProxyMode(3);
-		assertThat(Settings.getRequestProxyMode(), is(3));
-
-		cut.parseRequest("GET /p/fileid=foobar/bazbaz HTTP/1.1", true);
-
-		assertThat(cut.getResponseStatusCode(), is(404));
-		assertSensingPoint(Sensing.PROXY_REQUEST_PASSKEY_INVALID);
-	}
-
-	@Test
-	public void testParseRequestProxyValidPasskey() throws Exception {
-		setProxyMode(3);
-		assertThat(Settings.getRequestProxyMode(), is(3));
-
-		String passkey = cut.calculateProxyKey("foobar");
-
-		cut.parseRequest("GET /p/fileid=foobar;passkey=" + passkey + "/bazbaz HTTP/1.1", true);
-
-		assertThat(cut.getResponseStatusCode(), is(404));
-		assertSensingPoint(Sensing.PROXY_REQUEST_PASSKEY_AS_EXPECTED);
-	}
-
-	@Test
-	public void testParseRequestProxyValidRequestFileNotLocal() throws Exception {
-		cut.parseRequest(buildProxyRequest(VALID_FILEID, VALID_TOKEN, "42", "1", null, "foobar"), true);
-
-		assertThat(cut.getResponseStatusCode(), is(500));
-		assertSensingPoint(Sensing.PROXY_REQUEST_PROXY_FILE);
-	}
-
-	@Test
-	public void testParseRequestProxyValidRequestFileLocal() throws Exception {
-		when(hvFileMock.getLocalFileRef().exists()).thenReturn(true);
-		cut.parseRequest(buildProxyRequest(VALID_FILEID, VALID_TOKEN, "42", "1", null, "foobar"), true);
-
-		assertThat(cut.getResponseStatusCode(), is(500));
-		assertSensingPoint(Sensing.PROXY_REQUEST_LOCAL_FILE);
-	}
-
-	@Test
-	public void testParseRequestProxyInvalidGid() throws Exception {
-		cut.parseRequest(buildProxyRequest(VALID_FILEID, VALID_TOKEN, "0", "1", null, "foobar"), true);
-
-		assertThat(cut.getResponseStatusCode(), is(404));
-		assertSensingPoint(Sensing.PROXY_REQUEST_INVALID_GID_OR_PAGE);
-	}
-
-	@Test
-	public void testParseRequestProxyInvalidPage() throws Exception {
-		when(hvFileMock.getLocalFileRef().exists()).thenReturn(true);
-		cut.parseRequest(buildProxyRequest(VALID_FILEID, VALID_TOKEN, "42", "0", null, "foobar"), true);
-
-		assertThat(cut.getResponseStatusCode(), is(404));
-		assertSensingPoint(Sensing.PROXY_REQUEST_INVALID_GID_OR_PAGE);
-	}
-
-	@Test
-	public void testParseRequestProxyInvalidInteger() throws Exception {
-		when(hvFileMock.getLocalFileRef().exists()).thenReturn(true);
-		cut.parseRequest(
-				buildProxyRequest(VALID_FILEID, VALID_TOKEN, String.valueOf(Long.MAX_VALUE), "1", null, "foobar"),
-				true);
-
-		assertThat(cut.getResponseStatusCode(), is(404));
-		assertSensingPoint(Sensing.PROXY_REQUEST_INVALID_GID_OR_PAGE_INTEGERS);
-	}
-
-	private void kVpair(StringBuilder sb, String key, String value, boolean isLastPair) {
-		sb.append(key + "=" + value);
-
-		if (!isLastPair) {
-			sb.append(";");
-		}
-	}
-
-	private String buildProxyRequest(String fileid, String token, String gid, String page, String passkey,
-			String filename) {
-		// /p/fileid=asdf;token=asdf;gid=123;page=321;passkey=asdf/filename
-		StringBuilder sb = new StringBuilder();
-
-		sb.append("GET ");
-		sb.append("/p/");
-		kVpair(sb, "fileid", fileid, false);
-		kVpair(sb, "token", token, false);
-		kVpair(sb, "gid", gid, false);
-
-		if (passkey == null) {
-			kVpair(sb, "page", page, true);
-		} else {
-			kVpair(sb, "page", page, false);
-			kVpair(sb, "passkey", cut.calculateProxyKey(fileid), true);
-		}
-		sb.append("/");
-		sb.append(filename);
-		sb.append(" ");
-		sb.append("HTTP/1.1");
-
-		return sb.toString();
 	}
 
 	@Test
