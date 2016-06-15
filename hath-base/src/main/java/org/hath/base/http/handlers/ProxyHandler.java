@@ -25,6 +25,8 @@ package org.hath.base.http.handlers;
 
 import java.util.Hashtable;
 import java.util.LinkedList;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -45,6 +47,7 @@ import org.hath.base.http.HTTPResponseProcessorProxy;
 
 public class ProxyHandler extends AbstractHandler {
 	private HentaiAtHomeClient client;
+	private Pattern rawRequestParser;
 	public LinkedList<Sensing> sensingPointsHit = new LinkedList<>();
 
 	private void hitSensingPoint(Sensing point) {
@@ -53,6 +56,7 @@ public class ProxyHandler extends AbstractHandler {
 
 	public ProxyHandler(HentaiAtHomeClient client) {
 		this.client = client;
+		this.rawRequestParser = Pattern.compile("^(?:Request\\(GET.*\\/p)(.*)(?:\\)@[\\d\\w]*)$");
 	}
 
 	public static String calculateProxyKey(String fileid) {
@@ -66,6 +70,13 @@ public class ProxyHandler extends AbstractHandler {
 	// new proxy request type, used implicitly when the password field is set
 	// form: /p/fileid=asdf;token=asdf;gid=123;page=321;passkey=asdf/filename
 
+		String rawRequest = request.toString();
+
+		Matcher matcher = rawRequestParser.matcher(rawRequest);
+
+		if (matcher.matches()) {
+			target = matcher.group(1);
+		}
 	// we allow access depending on the proxy mode retrieved from the server when the client is first started.
 	// 0 = disabled
 	// 1 = local networks open

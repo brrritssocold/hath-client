@@ -210,6 +210,17 @@ public class ProxyHandlerTest extends HandlerJunitTest {
 	}
 
 	@Test
+	public void testParseRequestProxyValidRequestFileLocalUseRegex() throws Exception {
+		when(hvFileMock.getLocalFileRef().exists()).thenReturn(true);
+		when(request.toString()).thenReturn(
+				"Request(GET //localhost:42421/p/fileid=0000000000000000000000000000000000000000-0-0-0-jpg;token=1-0000000000000000000000000000000000000000;gid=42;page=1/foobar)@1234abcd");
+		cut.handle(buildProxyRequest(VALID_FILEID, VALID_TOKEN, "42", "1", null, "foobar"), baseRequest, request,
+				response);
+
+		assertSensingPoint(Sensing.PROXY_REQUEST_LOCAL_FILE);
+	}
+
+	@Test
 	public void testParseRequestProxyInvalidGid() throws Exception {
 		cut.handle(buildProxyRequest(VALID_FILEID, VALID_TOKEN, "0", "1", null, "foobar"), baseRequest, request,
 				response);
