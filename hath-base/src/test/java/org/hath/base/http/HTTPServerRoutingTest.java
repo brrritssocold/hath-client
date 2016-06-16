@@ -36,6 +36,7 @@ import java.nio.file.Path;
 
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.api.ContentResponse;
+import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.http.HttpMethod;
 import org.eclipse.jetty.http.HttpStatus;
 import org.hath.base.CacheHandler;
@@ -147,6 +148,20 @@ public class HTTPServerRoutingTest {
 	}
 
 	@Test
+	public void testFileRoutingServerHeader() throws Exception {
+		hTTPServer.allowNormalConnections();
+		when(hvFileMock.getLocalFileRef().exists()).thenReturn(true);
+		Path testFile = Files.createTempFile("FileRoutingTest", ".jpg");
+		when(hvFileMock.getLocalFileRef()).thenReturn(testFile.toFile());
+
+		ContentResponse response = httpClient
+				.GET("http://localhost:" + SERVER_TEST_PORT + "/h/foo/" + generateKeystamp("foo") + "/baz");
+
+		assertThat(response.getHeaders().get(HttpHeader.SERVER),
+				containsString("Genetic Lifeform and Distributed Open Server"));
+	}
+
+	@Test
 	public void testProxyRoutingStatus() throws Exception {
 		hTTPServer.allowNormalConnections();
 		when(hvFileMock.getLocalFileRef().exists()).thenReturn(true);
@@ -200,6 +215,14 @@ public class HTTPServerRoutingTest {
 		ContentResponse response = httpClient.GET("http://localhost:" + SERVER_TEST_PORT + "/foo");
 
 		assertThat(response.getStatus(), is(HttpStatus.NOT_FOUND_404));
+	}
+
+	@Test
+	public void testInvalidRequestRoutingServerHeader() throws Exception {
+		hTTPServer.allowNormalConnections();
+		ContentResponse response = httpClient.GET("http://localhost:" + SERVER_TEST_PORT + "/foo");
+
+		assertThat(response.getHeaders().contains(HttpHeader.SERVER), is(false));
 	}
 
 	private String generateKeystamp(String hvfile) {

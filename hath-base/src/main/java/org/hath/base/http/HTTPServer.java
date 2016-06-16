@@ -30,8 +30,12 @@ import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jetty.http.HttpMethod;
 import org.eclipse.jetty.http.HttpStatus;
+import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Handler;
+import org.eclipse.jetty.server.HttpConfiguration;
+import org.eclipse.jetty.server.HttpConnectionFactory;
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.handler.ContextHandler;
 import org.eclipse.jetty.server.handler.ContextHandlerCollection;
 import org.eclipse.jetty.server.handler.HandlerCollection;
@@ -133,9 +137,17 @@ public class HTTPServer {
 				stopConnectionListener();
 			}
 			
-			httpServer = new Server(port);
+			httpServer = new Server();
 			httpServer.setStopTimeout(TimeUnit.MILLISECONDS.convert(15, TimeUnit.SECONDS));
+			HttpConfiguration httpConfig = new HttpConfiguration();
+			httpConfig.setSendServerVersion(false);
 
+			HttpConnectionFactory httpConnectionFactory = new HttpConnectionFactory(httpConfig);
+
+			ServerConnector httpConnector = new ServerConnector(httpServer, httpConnectionFactory);
+			httpConnector.setPort(port);
+			
+			httpServer.setConnectors(new Connector[] { httpConnector });
 			
 			httpServer.setHandler(setupHandlers());
 			httpServer.start();
