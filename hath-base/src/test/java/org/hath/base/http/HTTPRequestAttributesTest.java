@@ -74,7 +74,7 @@ public class HTTPRequestAttributesTest {
 
 	@Test
 	public void testGetAttributeIntNotSet() throws Exception {
-		assertThat(HTTPRequestAttributes.getAttribute(request, IntegerAttributes.SESSION_ID), is(0));
+		assertThat(HTTPRequestAttributes.getAttribute(request, IntegerAttributes.SESSION_ID), is(-1));
 	}
 
 	@Test

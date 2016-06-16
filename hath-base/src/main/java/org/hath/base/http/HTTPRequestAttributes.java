@@ -112,13 +112,13 @@ public class HTTPRequestAttributes {
 	 *            the request containing the attribute
 	 * @param attribute
 	 *            to be read
-	 * @return the value of the attribute, or 0 if not set
+	 * @return the value of the attribute, or -1 if not set
 	 */
 	public static int getAttribute(HttpServletRequest request, IntegerAttributes attribute) {
 		Object attr = request.getAttribute(attribute.toString());
 
 		if (attr == null) {
-			return 0;
+			return -1;
 		}
 
 		return (int) attr;
