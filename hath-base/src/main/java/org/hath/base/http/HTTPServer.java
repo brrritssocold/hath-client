@@ -32,6 +32,7 @@ import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.ContextHandler;
 import org.eclipse.jetty.server.handler.ContextHandlerCollection;
+import org.eclipse.jetty.server.handler.HandlerCollection;
 import org.eclipse.jetty.server.handler.HandlerList;
 import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.Out;
@@ -43,6 +44,7 @@ import org.hath.base.http.handlers.FileHandler;
 import org.hath.base.http.handlers.ProxyHandler;
 import org.hath.base.http.handlers.RobotsHandler;
 import org.hath.base.http.handlers.ServerCommandHandler;
+import org.hath.base.http.handlers.SessionRemovalHandler;
 import org.hath.base.http.handlers.SpeedTestHandler;
 
 public class HTTPServer {
@@ -70,21 +72,25 @@ public class HTTPServer {
 	
 	public Handler setupHandlers() {
 		HandlerList handlerList = new HandlerList();
+		HandlerCollection handlerCollection = new HandlerCollection();
 
-		createSessionTrackingHandler();
-
-		handlerList.addHandler(sessionTrackingHandler);
-		handlerList.addHandler(createContextHandlerCollection());
-		handlerList.addHandler(new BaseHandler(new HTTPBandwidthMonitor()));
-
-		return handlerList;
-	}
-
-	private void createSessionTrackingHandler() {
 		SessionTracker sessionTracker = new SessionTracker(REQUEST_TIMEOUT_SECONDS, TimeUnit.SECONDS,
 				Settings.getMaxConnections(), OVERLOAD_PERCENTAGE);
 		FloodControl floodControl = new FloodControl(MAX_FLOOD_ENTRY_AGE_SECONDS, TimeUnit.SECONDS);
+
 		sessionTrackingHandler = new SessionTrackingHandler(client, floodControl, sessionTracker);
+		SessionRemovalHandler sessionRemovalHandler = new SessionRemovalHandler(sessionTracker);
+
+		// process in-order until positive status or exception
+		handlerList.addHandler(createContextHandlerCollection());
+		handlerList.addHandler(new BaseHandler(new HTTPBandwidthMonitor()));
+
+		// these handlers will always be executed in-order
+		handlerCollection.addHandler(sessionTrackingHandler);
+		handlerCollection.addHandler(handlerList);
+		handlerCollection.addHandler(sessionRemovalHandler);
+
+		return handlerCollection;
 	}
 
 	/**
