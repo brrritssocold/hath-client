@@ -28,6 +28,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import org.eclipse.jetty.http.HttpMethod;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.ContextHandler;
@@ -42,6 +43,7 @@ import org.hath.base.http.handlers.BaseHandler;
 import org.hath.base.http.handlers.FaviconHandler;
 import org.hath.base.http.handlers.FileHandler;
 import org.hath.base.http.handlers.ProxyHandler;
+import org.hath.base.http.handlers.RequestMethodCheckHandler;
 import org.hath.base.http.handlers.RobotsHandler;
 import org.hath.base.http.handlers.ServerCommandHandler;
 import org.hath.base.http.handlers.SessionRemovalHandler;
@@ -51,6 +53,7 @@ public class HTTPServer {
 	private static final int MAX_FLOOD_ENTRY_AGE_SECONDS = 60;
 	private static final int REQUEST_TIMEOUT_SECONDS = 30;
 	private static final double OVERLOAD_PERCENTAGE = 0.8;
+	private static final HttpMethod[] allowedMethods = { HttpMethod.GET, HttpMethod.HEAD };
 
 	private HentaiAtHomeClient client;
 	@Deprecated
@@ -87,6 +90,7 @@ public class HTTPServer {
 
 		// these handlers will always be executed in-order
 		handlerCollection.addHandler(sessionTrackingHandler);
+		handlerCollection.addHandler(new RequestMethodCheckHandler(allowedMethods));
 		handlerCollection.addHandler(handlerList);
 		handlerCollection.addHandler(sessionRemovalHandler);
 

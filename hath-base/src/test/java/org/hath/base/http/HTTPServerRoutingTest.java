@@ -179,6 +179,21 @@ public class HTTPServerRoutingTest {
 		assertThat(response.getStatus(), is(HttpStatus.OK_200));
 	}
 
+	@Test
+	public void testMethodNotAllowed() throws Exception {
+		hTTPServer.allowNormalConnections();
+		Settings.updateSetting("rpc_server_ip", "127.0.0.1");
+		int commandTime = Settings.getServerTime();
+		String command = "foo";
+
+		String serverCommand = ServerCommandHandlerTest.buildServercmdRequest(commandTime, command);
+
+		ContentResponse response = httpClient
+				.POST("http://localhost:" + SERVER_TEST_PORT + "/servercmd" + serverCommand).send();
+
+		assertThat(response.getStatus(), is(HttpStatus.METHOD_NOT_ALLOWED_405));
+	}
+
 	private String generateKeystamp(String hvfile) {
 		int currentTime = Settings.getServerTime();
 		StringBuilder sb = new StringBuilder();
