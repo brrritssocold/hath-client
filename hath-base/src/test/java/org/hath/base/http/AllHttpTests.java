@@ -30,7 +30,7 @@ import org.junit.runners.Suite;
 import org.junit.runners.Suite.SuiteClasses;
 
 @RunWith(Suite.class)
-@SuiteClasses({ AllHandlerTests.class, FloodControlTest.class, HTTPServerTest.class, HTTPServerTest.class,
+@SuiteClasses({ AllHandlerTests.class, FloodControlTest.class, HTTPServerTest.class,
 		SessionTrackerTest.class,
 		SessionTrackingHandlerTest.class, HTTPRequestAttributesTest.class, HTTPResponseTest.class,
 		BaseHandlerTest.class, HTTPServerRoutingTest.class })
