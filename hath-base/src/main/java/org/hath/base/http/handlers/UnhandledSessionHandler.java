@@ -23,14 +23,30 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.http.handlers;
 
-import org.junit.runner.RunWith;
-import org.junit.runners.Suite;
-import org.junit.runners.Suite.SuiteClasses;
+import java.io.IOException;
 
-@RunWith(Suite.class)
-@SuiteClasses({ FaviconHandlerTest.class, RobotsHandlerTest.class, SpeedTestHandlerTest.class, FileHandlerTest.class,
-		ProxyHandlerTest.class, ServerCommandHandlerTest.class, SessionRemovalHandlerTest.class,
-		RequestMethodCheckHandlerTest.class, UnhandledSessionHandlerTest.class })
-public class AllHandlerTests {
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
+import org.eclipse.jetty.server.Request;
+import org.eclipse.jetty.server.handler.AbstractHandler;
+
+/**
+ * Handle requests with the given response code.
+ */
+public class UnhandledSessionHandler extends AbstractHandler {
+	private final int responseCode;
+
+	public UnhandledSessionHandler(int responseCode) {
+		this.responseCode = responseCode;
+	}
+
+	@Override
+	public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
+			throws IOException, ServletException {
+		response.reset();
+		response.setStatus(responseCode);
+		baseRequest.setHandled(true);
+	}
 }

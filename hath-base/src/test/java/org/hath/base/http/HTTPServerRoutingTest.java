@@ -194,6 +194,14 @@ public class HTTPServerRoutingTest {
 		assertThat(response.getStatus(), is(HttpStatus.METHOD_NOT_ALLOWED_405));
 	}
 
+	@Test
+	public void testInvalidRequestRoutingStatus() throws Exception {
+		hTTPServer.allowNormalConnections();
+		ContentResponse response = httpClient.GET("http://localhost:" + SERVER_TEST_PORT + "/foo");
+
+		assertThat(response.getStatus(), is(HttpStatus.NOT_FOUND_404));
+	}
+
 	private String generateKeystamp(String hvfile) {
 		int currentTime = Settings.getServerTime();
 		StringBuilder sb = new StringBuilder();

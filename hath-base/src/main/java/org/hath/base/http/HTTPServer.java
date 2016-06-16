@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jetty.http.HttpMethod;
+import org.eclipse.jetty.http.HttpStatus;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.ContextHandler;
@@ -48,6 +49,7 @@ import org.hath.base.http.handlers.RobotsHandler;
 import org.hath.base.http.handlers.ServerCommandHandler;
 import org.hath.base.http.handlers.SessionRemovalHandler;
 import org.hath.base.http.handlers.SpeedTestHandler;
+import org.hath.base.http.handlers.UnhandledSessionHandler;
 
 public class HTTPServer {
 	private static final int MAX_FLOOD_ENTRY_AGE_SECONDS = 60;
@@ -87,6 +89,7 @@ public class HTTPServer {
 		// process in-order until positive status or exception
 		handlerList.addHandler(createContextHandlerCollection());
 		handlerList.addHandler(new BaseHandler(new HTTPBandwidthMonitor()));
+		handlerList.addHandler(new UnhandledSessionHandler(HttpStatus.NOT_FOUND_404));
 
 		// these handlers will always be executed in-order
 		handlerCollection.addHandler(sessionTrackingHandler);
