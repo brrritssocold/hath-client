@@ -42,6 +42,7 @@ import org.hath.base.http.handlers.FaviconHandler;
 import org.hath.base.http.handlers.FileHandler;
 import org.hath.base.http.handlers.ProxyHandler;
 import org.hath.base.http.handlers.RobotsHandler;
+import org.hath.base.http.handlers.ServerCommandHandler;
 import org.hath.base.http.handlers.SpeedTestHandler;
 
 public class HTTPServer {
@@ -99,6 +100,7 @@ public class HTTPServer {
 		handlerCollection.addHandler(createContextHandler("/t", new SpeedTestHandler()));
 		handlerCollection.addHandler(createContextHandler("/h", new FileHandler(client.getCacheHandler())));
 		handlerCollection.addHandler(createContextHandler("/p", new ProxyHandler(client)));
+		handlerCollection.addHandler(createContextHandler("/servercmd", new ServerCommandHandler(client)));
 
 		return handlerCollection;
 	}

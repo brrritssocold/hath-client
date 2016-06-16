@@ -23,14 +23,10 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.http;
 
-import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.regex.Pattern;
 
-import org.hath.base.HentaiAtHomeClient;
-import org.hath.base.MiscTools;
 import org.hath.base.Out;
-import org.hath.base.Settings;
 import org.hath.base.http.handlers.BaseHandler;
 
 /**
@@ -46,8 +42,6 @@ public class HTTPResponse {
 	private boolean requestHeadOnly, validRequest;
 	private boolean servercmd;
 	private int responseStatusCode;
-
-	private HTTPResponseProcessor hpc;
 
 	public enum Sensing {
 		FILE_REQUEST_TOO_SHORT, FILE_REQUEST_INVALID_KEY, FILE_REQUEST_FILE_NOT_FOUND, FILE_REQUEST_FILE_LOCAL, FILE_REQUEST_FILE_STATIC, FILE_REQUEST_VALID_FILE_TOKEN, FILE_REQUEST_INVALID_FILE_TOKEN, FILE_REQUEST_FILE_NOT_LOCAL_OR_STATIC, SERVER_CMD_INVALID_RPC_SERVER, SERVER_CMD_MALFORMED_COMMAND, SERVER_CMD_KEY_INVALID, SERVER_CMD_KEY_VALID, PROXY_REQUEST_INVALID_GID_OR_PAGE_INTEGERS, PROXY_REQUEST_CHECK_PASSKEY, PROXY_REQUEST_GRANTED, PROXY_REQUEST_DENIED, PROXY_REQUEST_PASSKEY_NOT_REQUIRED, PROXY_REQUEST_PASSKEY_AS_EXPECTED, PROXY_REQUEST_PASSKEY_INVALID, PROXY_REQUEST_INVALID_ARGUMENTS, PROXY_REQUEST_LOCAL_FILE, PROXY_REQUEST_PROXY_FILE, PROXY_REQUEST_INVALID_GID_OR_PAGE, TEST_REQUEST_VALID, TEST_REQUEST_INVALID_KEY, TEST_REQUEST_EXPIRED_KEY, TEST_REQUEST_INVALID_REQUEST, ROBOTS, FAVICON, INVALID_REQUEST_LEN2, HTTP_REQUEST_NULL, HTTP_REQUEST_INVALID_LENGTH, HTTP_REQUEST_TYPE_AND_FORM_INVALID, HTTP_REQUEST_INVALID_URL
@@ -67,45 +61,6 @@ public class HTTPResponse {
 
 	private void hitSensingPoint(Sensing point) {
 		sensingPointsHit.add(point);
-	}
-
-	private HTTPResponseProcessor processRemoteAPICommand(String command, String additional) {
-		Hashtable<String,String> addTable = MiscTools.parseAdditional(additional);
-		HentaiAtHomeClient client = session.getHTTPServer().getHentaiAtHomeClient();
-
-		try {
-			if(command.equalsIgnoreCase("still_alive")) {
-				return new HTTPResponseProcessorText("I feel FANTASTIC and I'm still alive");
-			} else if(command.equalsIgnoreCase("cache_list")) {
-				return new HTTPResponseProcessorCachelist(client.getCacheHandler());
-			} else if(command.equalsIgnoreCase("cache_files")) {
-				return new HTTPResponseProcessorText(client.getServerHandler().downloadFilesFromServer(addTable));
-			} else if(command.equalsIgnoreCase("proxy_test")) {
-				String ipaddr = addTable.get("ipaddr");
-				int port = Integer.parseInt(addTable.get("port"));
-				String fileid = addTable.get("fileid");
-				String keystamp = addTable.get("keystamp");
-				return new HTTPResponseProcessorText(client.getServerHandler().doProxyTest(ipaddr, port, fileid, keystamp));
-			} else if(command.equalsIgnoreCase("threaded_proxy_test")) {
-				String ipaddr = addTable.get("ipaddr");
-				int port = Integer.parseInt(addTable.get("port"));
-				int testsize = Integer.parseInt(addTable.get("testsize"));
-				int testcount = Integer.parseInt(addTable.get("testcount"));
-				int testtime = Integer.parseInt(addTable.get("testtime"));
-				String testkey = addTable.get("testkey");
-				return new HTTPResponseProcessorText(client.getServerHandler().doThreadedProxyTest(ipaddr, port, testsize, testcount, testtime, testkey));
-			} else if(command.equalsIgnoreCase("speed_test")) {
-				String testsize = addTable.get("testsize");
-				return new HTTPResponseProcessorSpeedtest(testsize != null ? Integer.parseInt(testsize) : 1000000);
-			} else if(command.equalsIgnoreCase("refresh_settings")) {
-				return new HTTPResponseProcessorText(client.getServerHandler().refreshServerSettings()+"");
-			}
-		} catch(Exception e) {
-			e.printStackTrace();
-			Out.warning(session + " Failed to process command");
-		}
-
-		return new HTTPResponseProcessorText("INVALID_COMMAND");
 	}
 
 	public void parseRequest(String request, boolean localNetworkAccess) {
@@ -139,11 +94,7 @@ public class HTTPResponse {
 				Out.warning(session + " The requested URL is invalid or not supported.");
 				hitSensingPoint(Sensing.HTTP_REQUEST_INVALID_URL);
 			} else {
-				if (urlparts[1].equals("servercmd")) {
-					processServerCommand(urlparts);
-					return;
-				}
-				else if(urlparts.length == 2) {
+				if (urlparts.length == 2) {
 						Out.warning(session + " Invalid request type '" + urlparts[1] + "'.");
 						hitSensingPoint(Sensing.INVALID_REQUEST_LEN2);
 				}
@@ -158,49 +109,6 @@ public class HTTPResponse {
 
 		Out.warning(session + " Invalid HTTP request.");
 		responseStatusCode = 400;
-	}
-
-	protected void processServerCommand(String[] urlparts) {
-		// form: /servercmd/$command/$additional/$time/$key
-
-		if(!Settings.isValidRPCServer(session.getSocketInetAddress())) {
-			Out.warning(session + " Got a servercmd from an unauthorized IP address: Denied");
-			responseStatusCode = 403;
-			hitSensingPoint(Sensing.SERVER_CMD_INVALID_RPC_SERVER);
-			return;
-		}
-		else if(urlparts.length < 6) {
-			Out.warning(session + " Got a malformed servercmd: Denied");
-			responseStatusCode = 403;
-			hitSensingPoint(Sensing.SERVER_CMD_MALFORMED_COMMAND);
-			return;
-		}
-		else {
-			String command = urlparts[2];
-			String additional = urlparts[3];
-			int commandTime = Integer.parseInt(urlparts[4]);
-			String key = urlparts[5];
-
-			int correctedTime = Settings.getServerTime();
-
-			if((Math.abs(commandTime - correctedTime) < Settings.MAX_KEY_TIME_DRIFT) && calculateServercmdKey(command, additional, commandTime).equals(key)) {
-				responseStatusCode = 200;
-				servercmd = true;
-				hpc = processRemoteAPICommand(command, additional);
-				hitSensingPoint(Sensing.SERVER_CMD_KEY_VALID);
-				return;
-			}
-			else {
-				Out.warning(session + " Got a servercmd with expired or incorrect key: Denied");
-				responseStatusCode = 403;
-				hitSensingPoint(Sensing.SERVER_CMD_KEY_INVALID);
-				return;
-			}
-		}
-	}
-
-	protected String calculateServercmdKey(String command, String additional, int commandTime) {
-		return MiscTools.getSHAString("hentai@home-servercmd-" + command + "-" + additional + "-" + Settings.getClientID() + "-" + commandTime + "-" + Settings.getClientKey());
 	}
 
 	// accessors

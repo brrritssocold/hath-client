@@ -45,6 +45,7 @@ import org.hath.base.ServerHandler;
 import org.hath.base.Settings;
 import org.hath.base.http.handlers.FileHandler;
 import org.hath.base.http.handlers.ProxyHandlerTest;
+import org.hath.base.http.handlers.ServerCommandHandlerTest;
 import org.hath.base.http.handlers.SpeedTestHandler;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -159,6 +160,21 @@ public class HTTPServerRoutingTest {
 		ContentResponse response = httpClient
 				.GET("http://localhost:" + SERVER_TEST_PORT + "/p"
 						+ proxyRequest);
+
+		assertThat(response.getStatus(), is(HttpStatus.OK_200));
+	}
+
+	@Test
+	public void testServerCommandRoutingStatus() throws Exception {
+		hTTPServer.allowNormalConnections();
+		Settings.updateSetting("rpc_server_ip", "127.0.0.1");
+		int commandTime = Settings.getServerTime();
+		String command = "foo";
+
+		String serverCommand = ServerCommandHandlerTest.buildServercmdRequest(commandTime, command);
+
+		ContentResponse response = httpClient
+				.GET("http://localhost:" + SERVER_TEST_PORT + "/servercmd" + serverCommand);
 
 		assertThat(response.getStatus(), is(HttpStatus.OK_200));
 	}

@@ -29,7 +29,7 @@ import org.junit.runners.Suite.SuiteClasses;
 
 @RunWith(Suite.class)
 @SuiteClasses({ FaviconHandlerTest.class, RobotsHandlerTest.class, SpeedTestHandlerTest.class, FileHandlerTest.class,
-		ProxyHandlerTest.class })
+		ProxyHandlerTest.class, ServerCommandHandlerTest.class })
 public class AllHandlerTests {
 
 }
