@@ -31,11 +31,16 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
+import org.hath.base.http.HTTPRequestAttributes;
+import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Handle requests with the given response code.
  */
 public class SimpleStatusHandler extends AbstractHandler {
+	private static final Logger logger = LoggerFactory.getLogger(SimpleStatusHandler.class);
 	private final int responseCode;
 
 	public SimpleStatusHandler(int responseCode) {
@@ -45,6 +50,10 @@ public class SimpleStatusHandler extends AbstractHandler {
 	@Override
 	public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
 			throws IOException, ServletException {
+		logger.trace("Handling request with simple status code");
+		logger.trace("Session {}, Request: {}",
+				HTTPRequestAttributes.getAttribute(request, IntegerAttributes.SESSION_ID), request);
+
 		response.setStatus(responseCode);
 		baseRequest.setHandled(true);
 	}
