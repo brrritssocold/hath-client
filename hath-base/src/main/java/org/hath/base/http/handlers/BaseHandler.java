@@ -62,7 +62,7 @@ public class BaseHandler extends AbstractHandler {
 	private HTTPServer httpServer;
 	private int connId;
 	private boolean localNetworkAccess;
-	private long sessionStartTime, lastPacketSend;
+	private long sessionStartTime, lastPacketSend; //TODO replace with guava stopwatch
 	private HTTPBandwidthMonitor bandwidthMonitor;
 
 	public BaseHandler(HTTPBandwidthMonitor bandwidthMonitor) {
@@ -188,6 +188,7 @@ public class BaseHandler extends AbstractHandler {
 
 	protected void createHeader(HttpServletResponse response, int contentLength) {
 		// we'll create a new date formatter for each session instead of synchronizing on a shared formatter. (sdf is not thread-safe)
+		// TODO replace with DateTimeFormatter (thread-safe)
 		SimpleDateFormat sdf = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss", java.util.Locale.US);
 		sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
 
