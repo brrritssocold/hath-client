@@ -79,6 +79,11 @@ public class BaseHandler extends AbstractHandler {
 			
 			hpc = HTTPRequestAttributes.getResponseProcessor(request);
 
+			if (hpc == null) {
+				Out.warning("Got request without ResponseProcessor: " + request.toString());
+				return;
+			}
+
 			int contentLength = hpc.getContentLength();
 			int statusCode = response.getStatus();
 			response.setContentType(hpc.getContentType());

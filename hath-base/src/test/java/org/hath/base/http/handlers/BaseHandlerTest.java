@@ -23,6 +23,8 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.http.handlers;
 
+import static org.mockito.Matchers.anyBoolean;
+import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.contains;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
@@ -41,7 +43,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.eclipse.jetty.server.Request;
 import org.hath.base.Settings;
 import org.hath.base.http.HTTPBandwidthMonitor;
-import org.hath.base.http.HTTPRequestAttributes;
+import org.hath.base.http.HTTPRequestAttributes.BooleanAttributes;
 import org.hath.base.http.HTTPRequestAttributes.ClassAttributes;
 import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
 import org.hath.base.http.HTTPResponseProcessor;
@@ -98,7 +100,7 @@ public class BaseHandlerTest {
 		when(baseRequest.getReader().readLine()).thenReturn("GET / HTTP/1.1", "");
 		when(bandwidthMonitor.getActualPacketSize()).thenReturn(300);
 
-		when(request.getAttribute(HTTPRequestAttributes.LOCAL_NETWORK_ACCESS)).thenReturn(true);
+		when(request.getAttribute(BooleanAttributes.LOCAL_NETWORK_ACCESS.toString())).thenReturn(true);
 		setHttpResponseProcessor(hpcMock);
 		when(request.getRemoteAddr()).thenReturn(REMOTE_ADDRESS);
 		when(request.getAttribute(IntegerAttributes.SESSION_ID.toString())).thenReturn(2);
@@ -143,7 +145,7 @@ public class BaseHandlerTest {
 		hpcMock = mock(HTTPResponseProcessorFile.class);
 		when(hpcMock.getContentLength()).thenReturn(42);
 		when(hpcMock.getBytes()).thenReturn(new byte[42]);
-		when(request.getAttribute(HTTPRequestAttributes.LOCAL_NETWORK_ACCESS)).thenReturn(false);
+		when(request.getAttribute(BooleanAttributes.LOCAL_NETWORK_ACCESS.toString())).thenReturn(false);
 
 		setHttpResponseProcessor(hpcMock);
 
@@ -234,5 +236,32 @@ public class BaseHandlerTest {
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
 
 		verify(response, never()).setContentLength(eq(42));
+	}
+
+	@Test
+	public void testResponseProcessorNullContentLength() throws Exception {
+		setHttpResponseProcessor(null);
+
+		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
+
+		verify(response, never()).setContentLength(anyInt());
+	}
+
+	@Test
+	public void testResponseProcessorNullStatus() throws Exception {
+		setHttpResponseProcessor(null);
+
+		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
+
+		verify(response, never()).setStatus(anyInt());
+	}
+
+	@Test
+	public void testResponseProcessorNullHandled() throws Exception {
+		setHttpResponseProcessor(null);
+
+		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
+
+		verify(baseRequest, never()).setHandled(anyBoolean());
 	}
 }
