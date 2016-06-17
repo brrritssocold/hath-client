@@ -74,4 +74,7 @@
 		<appender-ref ref="ASYNC_ERR_FILE" />
 		<appender-ref ref="ASYNC_STDOUT" />
 	</root>
+
+	<!-- Logging level for the Jetty HTTP server -->
+	<logger name="org.eclipse.jetty" level="WARN" />
 </configuration>

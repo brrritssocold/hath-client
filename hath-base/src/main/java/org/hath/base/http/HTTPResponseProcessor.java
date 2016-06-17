@@ -23,10 +23,17 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.http;
 
+import java.io.IOException;
+import java.util.LinkedList;
+
+import javax.servlet.http.HttpServletResponse;
+
+import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.Settings;
 
 public abstract class HTTPResponseProcessor {
 	private String header = "";
+	private LinkedList<HeaderPair> headersToAdd = new LinkedList<>();
 
 	public String getContentType() {
 		return Settings.CONTENT_TYPE_DEFAULT;
@@ -36,22 +43,38 @@ public abstract class HTTPResponseProcessor {
 		return 0;
 	}
 	
-	public int initialize() {
-		return 0;
+	public void initialize(HttpServletResponse response) {
 	}
 	
 	public void cleanup() {}
 
-	public abstract byte[] getBytes() throws Exception;
-	public abstract byte[] getBytesRange(int len) throws Exception;
-	
+	public void updateResponse(HttpServletResponse response) throws IOException {
+		response.setContentLength(getContentLength());
+		response.setContentType(getContentType());
 
-	public String getHeader() {
-		return this.header;
+		for (HeaderPair pair : headersToAdd) {
+			response.addHeader(pair.name, pair.value);
+		}
+
+		try {
+			response.getOutputStream().write(getBytes());
+		} catch (Exception e) {
+			e.printStackTrace();
+			HentaiAtHomeClient.dieWithError("Lazy programmers don't use specific exceptions");
+		}
 	}
 
-	public void addHeaderField(String name, String value) {
-		// TODO: encode the value if needed.
-		this.header += name + ": " + value + "\r\n";
+	public abstract byte[] getBytes() throws Exception;
+
+	public abstract byte[] getBytesRange(int len) throws Exception;
+	
+	protected class HeaderPair {
+		public HeaderPair(String name, String value) {
+			this.name = name;
+			this.value = value;
+		}
+
+		public String name;
+		public String value;
 	}
 }

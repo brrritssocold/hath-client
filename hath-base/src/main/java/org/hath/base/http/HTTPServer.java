@@ -23,57 +23,122 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.http;
 
-import java.net.InetAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Enumeration;
-import java.util.Hashtable;
-import java.util.List;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
+import org.eclipse.jetty.http.HttpMethod;
+import org.eclipse.jetty.http.HttpStatus;
+import org.eclipse.jetty.server.Connector;
+import org.eclipse.jetty.server.Handler;
+import org.eclipse.jetty.server.HttpConfiguration;
+import org.eclipse.jetty.server.HttpConnectionFactory;
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.server.handler.ContextHandler;
+import org.eclipse.jetty.server.handler.ContextHandlerCollection;
+import org.eclipse.jetty.server.handler.HandlerCollection;
+import org.eclipse.jetty.server.handler.HandlerList;
 import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.Out;
 import org.hath.base.Settings;
-import org.hath.base.Stats;
+import org.hath.base.http.handlers.FaviconHandler;
+import org.hath.base.http.handlers.FileHandler;
+import org.hath.base.http.handlers.ProxyHandler;
+import org.hath.base.http.handlers.RequestMethodCheckHandler;
+import org.hath.base.http.handlers.ResponseProcessorHandler;
+import org.hath.base.http.handlers.RobotsHandler;
+import org.hath.base.http.handlers.ServerCommandHandler;
+import org.hath.base.http.handlers.SessionRemovalHandler;
+import org.hath.base.http.handlers.SessionTrackingHandler;
+import org.hath.base.http.handlers.SpeedTestHandler;
+import org.hath.base.http.handlers.UnhandledSessionHandler;
 
-public class HTTPServer implements Runnable {
+public class HTTPServer {
+	private static final int MAX_FLOOD_ENTRY_AGE_SECONDS = 60;
+	private static final int REQUEST_TIMEOUT_SECONDS = 30;
+	private static final double OVERLOAD_PERCENTAGE = 0.8;
+	private static final HttpMethod[] allowedMethods = { HttpMethod.GET, HttpMethod.HEAD };
+
 	private HentaiAtHomeClient client;
-	private HTTPBandwidthMonitor bandwidthMonitor;
-	private ServerSocket ss;
-	private Thread myThread;
-	private List<HTTPSession> sessions;
-	private int currentConnId;	
-	private boolean allowNormalConnections;
-	private Hashtable<String,FloodControlEntry> floodControlTable;
-	private Executor sessionThreadPool;
+	private Server httpServer;
+	private SessionTrackingHandler sessionTrackingHandler;
 	
 	public HTTPServer(HentaiAtHomeClient client) {
 		this.client = client;
-		bandwidthMonitor = new HTTPBandwidthMonitor();
-		sessions = Collections.checkedList(new ArrayList<HTTPSession>(), HTTPSession.class);
-		ss = null;
-		myThread = null;
-		currentConnId = 0;
-		allowNormalConnections = false;
-		floodControlTable = new Hashtable<String,FloodControlEntry>();
-		sessionThreadPool = Executors.newCachedThreadPool();
 	}
-	
+
+	public Handler setupHandlers() {
+		HandlerList handlerList = new HandlerList();
+		HandlerCollection handlerCollection = new HandlerCollection();
+
+		SessionTracker sessionTracker = new SessionTracker(REQUEST_TIMEOUT_SECONDS, TimeUnit.SECONDS,
+				Settings.getMaxConnections(), OVERLOAD_PERCENTAGE);
+		FloodControl floodControl = new FloodControl(MAX_FLOOD_ENTRY_AGE_SECONDS, TimeUnit.SECONDS);
+
+		sessionTrackingHandler = new SessionTrackingHandler(client, floodControl, sessionTracker);
+		SessionRemovalHandler sessionRemovalHandler = new SessionRemovalHandler(sessionTracker);
+
+		// process in-order until positive status or exception
+		handlerList.addHandler(createContextHandlerCollection());
+		handlerList.addHandler(new ResponseProcessorHandler(new HTTPBandwidthMonitor()));
+		handlerList.addHandler(new UnhandledSessionHandler(HttpStatus.NOT_FOUND_404));
+
+		// these handlers will always be executed in-order
+		handlerCollection.addHandler(sessionTrackingHandler);
+		handlerCollection.addHandler(new RequestMethodCheckHandler(allowedMethods));
+		handlerCollection.addHandler(handlerList);
+		handlerCollection.addHandler(sessionRemovalHandler);
+
+		return handlerCollection;
+	}
+
+	/**
+	 * This {@link ContextHandlerCollection} is used to route the requests to
+	 * the respective handlers.
+	 */
+	private ContextHandlerCollection createContextHandlerCollection() {
+		ContextHandlerCollection handlerCollection = new ContextHandlerCollection();
+
+		handlerCollection.addHandler(createContextHandler("/favicon.ico", new FaviconHandler()));
+		handlerCollection.addHandler(createContextHandler("/robots.txt", new RobotsHandler()));
+
+		handlerCollection.addHandler(createContextHandler("/t", new SpeedTestHandler()));
+		handlerCollection.addHandler(createContextHandler("/h", new FileHandler(client.getCacheHandler())));
+		handlerCollection.addHandler(createContextHandler("/p", new ProxyHandler(client)));
+		handlerCollection.addHandler(createContextHandler("/servercmd", new ServerCommandHandler(client)));
+
+		return handlerCollection;
+	}
+
+	private ContextHandler createContextHandler(String contextPath, Handler handler) {
+		ContextHandler contextHandler = new ContextHandler(contextPath);
+		contextHandler.setHandler(handler);
+
+		return contextHandler;
+	}
+
 	public boolean startConnectionListener(int port) {
 		try {
 			Out.info("Starting up the internal HTTP Server...");
 		
-			if(ss != null) {
+			if (httpServer != null && httpServer.isRunning()) {
 				stopConnectionListener();
 			}
 			
-			ss = new ServerSocket(port);
-			myThread = new Thread(this);
-			myThread.start();
+			httpServer = new Server();
+			httpServer.setStopTimeout(TimeUnit.MILLISECONDS.convert(15, TimeUnit.SECONDS));
+			HttpConfiguration httpConfig = new HttpConfiguration();
+			httpConfig.setSendServerVersion(false);
+
+			HttpConnectionFactory httpConnectionFactory = new HttpConnectionFactory(httpConfig);
+
+			ServerConnector httpConnector = new ServerConnector(httpServer, httpConnectionFactory);
+			httpConnector.setPort(port);
 			
+			httpServer.setConnectors(new Connector[] { httpConnector });
+			
+			httpServer.setHandler(setupHandlers());
+			httpServer.start();
+
 			Out.info("Internal HTTP Server was successfully started, and is listening on port " + port);
 			
 			return true;
@@ -94,193 +159,18 @@ public class HTTPServer implements Runnable {
 	}
 	
 	public void stopConnectionListener() {
-		if(ss != null) {
+		Out.info("Shutting down the internal HTTP Server...");
+
+		if (httpServer != null) {
 			try {
-				ss.close();	// will cause ss.accept() to throw an exception, terminating the accept thread
-			} catch(Exception e) {}
-			ss = null;
-		}
-	}
-	
-	public void pruneFloodControlTable() {
-		List<String> toPrune = Collections.checkedList(new ArrayList<String>(), String.class);
-
-		synchronized(floodControlTable) {
-			Enumeration<String> keys = floodControlTable.keys();
-			
-			while(keys.hasMoreElements()) {
-				String key = keys.nextElement();
-				if(floodControlTable.get(key).isStale()) {
-					toPrune.add(key);
-				}
-			}
-			
-			for(String key : toPrune) {
-				floodControlTable.remove(key);
-			}
-		}
-
-		toPrune.clear();
-		toPrune = null;
-		System.gc();
-	}
-	
-	public void nukeOldConnections(boolean killall) {
-		synchronized(sessions) {
-			// in some rare cases, the connection is unable to remove itself from the session list. if so, it will return true for doTimeoutCheck, meaning that we will have to clear it out from here instead
-			List<HTTPSession> remove = Collections.checkedList(new ArrayList<HTTPSession>(), HTTPSession.class);
-			
-			for(HTTPSession session : sessions) {
-				if(session.doTimeoutCheck(killall)) {
-					remove.add(session);
-				}
-			}
-			
-			for(HTTPSession session : remove) {
-				sessions.remove(session);
+				httpServer.stop();
+			} catch (Exception e) {
+				Out.error("Failed to stop internal HTTP Server: " + e);
 			}
 		}
 	}
 	
 	public void allowNormalConnections() {
-		allowNormalConnections = true;
-	}
-
-	public void executeSession(HTTPSession session) {
-		sessionThreadPool.execute(session);
-	}
-
-	public void run() {
-		try {
-			while(true) {
-				Socket s = ss.accept();
-				
-				synchronized(sessions) {
-					boolean forceClose = false;
-
-					//  private network: localhost, 127.x.y.z, 10.0.0.0 - 10.255.255.255, 172.16.0.0 - 172.31.255.255,  192.168.0.0 - 192.168.255.255, 169.254.0.0 -169.254.255.255
-					
-					InetAddress addr = s.getInetAddress();
-					String addrString = addr.toString();
-					String myInetAddr = Settings.getClientHost().replace("::ffff:", "");
-					boolean localNetworkAccess = java.util.regex.Pattern.matches("^((" + myInetAddr + ")|(localhost)|(127\\.)|(10\\.)|(192\\.168\\.)|(172\\.((1[6-9])|(2[0-9])|(3[0-1]))\\.)|(169\\.254\\.)|(::1)|(0:0:0:0:0:0:0:1)|(fc)|(fd)).*$", addr.getHostAddress());
-					boolean apiServerAccess = Settings.isValidRPCServer(addr);
-
-					if(!apiServerAccess && !allowNormalConnections) {
-						Out.warning("Rejecting connection request during startup.");
-						forceClose = true;						
-					} else if(!apiServerAccess && !localNetworkAccess) {
-						// connections from the API Server and the local network are not subject to the max connection limit or the flood control
-						
-						int maxConnections = Settings.getMaxConnections();
-						int currentConnections = sessions.size();
-
-						if(currentConnections > maxConnections) {
-							Out.warning("Exceeded the maximum allowed number of incoming connections (" + maxConnections + ").");
-							forceClose = true;
-						}
-						else {
-							if(currentConnections > maxConnections * 0.8) {
-								// let the dispatcher know that we're close to the breaking point. this will make it back off for 30 sec, and temporarily turns down the dispatch rate to half.
-								client.getServerHandler().notifyOverload();
-							}
-						
-							// this flood control will stop clients from opening more than ten connections over a (roughly) five second floating window, and forcibly block them for 60 seconds if they do.
-							FloodControlEntry fce = null;						
-							synchronized(floodControlTable) {
-								fce = floodControlTable.get(addrString);
-								if(fce == null) {
-									fce = new FloodControlEntry();
-									floodControlTable.put(addrString, fce);
-								}
-							}
-						
-							if(!fce.isBlocked()) {
-								if(!fce.hit()) {
-									Out.warning("Flood control activated for  " + addrString + " (blocking for 60 seconds)");
-									forceClose = true;
-								}
-							}
-							else {
-								forceClose = true;
-							}
-						}
-					}
-
-					if(forceClose) {
-						try { s.close(); } catch(Exception e) { /* LALALALALA */ }					
-					}
-					else {
-						// all is well. keep truckin'
-						HTTPSession hs = new HTTPSession(s, getNewConnId(), localNetworkAccess, this);
-						sessions.add(hs);
-						Stats.setOpenConnections(sessions.size());
-						hs.handleSession();											
-					}
-				}
-			}
-		} catch(java.io.IOException e) {
-			if(!client.isShuttingDown()) {
-				Out.error("ServerSocket terminated unexpectedly!");
-				HentaiAtHomeClient.dieWithError(e);
-			} else {
-				Out.info("ServerSocket was closed and will no longer accept new connections.");
-			}
-
-			ss = null;
-		}
-	}
-	
-	private synchronized int getNewConnId() {
-		return ++currentConnId;
-	}
-	
-	public void removeHTTPSession(HTTPSession httpSession) {
-		synchronized(sessions) {
-			sessions.remove(httpSession);
-			Stats.setOpenConnections(sessions.size());
-		}
-	}
-	
-	public HTTPBandwidthMonitor getBandwidthMonitor() {
-		return bandwidthMonitor;
-	}
-
-	public HentaiAtHomeClient getHentaiAtHomeClient() {
-		return client;
-	}
-	
-	private class FloodControlEntry {
-		private int connectCount;
-		private long lastConnect;
-		private long blocktime;
-	
-		public FloodControlEntry() {
-			this.connectCount = 0;
-			this.lastConnect = 0;
-			this.blocktime = 0;
-		}
-		
-		public boolean isStale() {
-			return lastConnect < System.currentTimeMillis() - 60000;
-		}
-		
-		public boolean isBlocked() {
-			return blocktime > System.currentTimeMillis();
-		}
-		
-		public boolean hit() {
-			long nowtime = System.currentTimeMillis();
-			connectCount = Math.max(0, connectCount - (int) Math.floor((nowtime - lastConnect) / 1000)) + 1;
-			lastConnect = nowtime;
-			
-			if(connectCount > 10) {
-				blocktime = nowtime + 60000;	// block this client from connecting for 60 seconds
-				return false;
-			}
-			else {
-				return true;
-			}
-		}
+		sessionTrackingHandler.allowNormalConnections();
 	}
 }

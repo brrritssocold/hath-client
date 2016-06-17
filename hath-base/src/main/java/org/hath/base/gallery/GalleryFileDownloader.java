@@ -23,13 +23,20 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.gallery;
 
-import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.InputStream;
+import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLConnection;
 import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.concurrent.TimeUnit;
 
+import org.eclipse.jetty.client.HttpClient;
+import org.eclipse.jetty.client.api.Request;
+import org.eclipse.jetty.client.api.Response;
+import org.eclipse.jetty.client.util.InputStreamResponseListener;
+import org.eclipse.jetty.http.HttpField;
+import org.eclipse.jetty.http.HttpHeader;
 import org.hath.base.CacheHandler;
 import org.hath.base.FileTools;
 import org.hath.base.HVFile;
@@ -60,9 +67,23 @@ public class GalleryFileDownloader implements Runnable {
 
 	private int contentLength;
 	private Thread myThread;
-	private URLConnection connection;
+	private HttpClient httpClient;
+	private Request request;
+	private Response response;
+	private InputStreamResponseListener isrl;
 	
 	private int downloadState;
+	private int readTimeoutMilli = 30000;
+	private int connectTimeoutMilli = 10000;
+
+	public LinkedList<Sensing> sensingPointHits = new LinkedList<>();
+	public enum Sensing {
+		CONTENT_LENGTH_MISMATCH, CONTENT_LENGTH_GREATER_10MB, CONTENT_LENGTH_MATCH, INTI_FAIL, BYTES_READ, FILE_SAVED_TO_CACHE, FILE_NOT_SAVED_TO_CACHE, CORRUPT_FILE, INCOMPLETE_FILE
+	};
+
+	private void hitSensingPoint(Sensing point) {
+		sensingPointHits.add(point);
+	}
 
 	public GalleryFileDownloader(HentaiAtHomeClient client, String fileid, String token, int gid, int page, String filename, boolean skipHath) {
 		this.client = client;
@@ -80,42 +101,72 @@ public class GalleryFileDownloader implements Runnable {
 	}
 	
 	public int initialize() {
+		try {
+			initialize(new URL("http", Settings.getRequestServer(), "/r/" + fileid + "/" + token + "/" + gid + "-"
+					+ page + "/" + filename + (skipHath ? "?nl=1" : "")));
+		} catch (MalformedURLException e) {
+			e.printStackTrace();
+		}
+
+		downloadState = DOWNLOAD_FAILED_INIT;
+		return 500;
+	}
+
+	public int initialize(URL source, int readTimeout, int connectTimeout) {
+		this.readTimeoutMilli = readTimeout;
+		this.connectTimeoutMilli = connectTimeout;
+		return initialize(source);
+	}
+
+	public int initialize(URL source) {
 		// we'll need to run this in a private thread so we can push data to the originating client at the same time we download it (pass-through), so we'll use a specialized version of the stuff found in FileDownloader
 		// this also handles negotiating file browse limits with the server
 		Out.info("Gallery File Download Request initializing for " + fileid + "...");
-		
+
 		try {
 			boolean retry = false;
 			int retval = 0;
 			int tempLength = 0;
-			
+
+			httpClient = new HttpClient();
+			httpClient.setConnectTimeout(connectTimeoutMilli);
+			httpClient.setIdleTimeout(readTimeoutMilli);
+			httpClient.start();
+			httpClient.setUserAgentField(new HttpField(HttpHeader.USER_AGENT,
+					"Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.12) Gecko/20080201 Firefox/2.0.0.12"));
+
 			do {
 				retry = false;
 			
-				URL source = new URL("http", Settings.getRequestServer(), "/r/" + fileid + "/" + token + "/" + gid + "-" + page + "/" + filename + (skipHath ? "?nl=1" : ""));	
-				
 				Out.debug("GalleryFileDownloader: Requesting file download from " + source);
+
+				request = httpClient.newRequest(source.toURI()).header("Hath-Request",
+						Settings.getClientID() + "-" + MiscTools.getSHAString(Settings.getClientKey() + fileid));
+
+				isrl = new InputStreamResponseListener();
+				request.send(isrl);
 				
-				connection = source.openConnection();
-				connection.setConnectTimeout(10000);
-				connection.setReadTimeout(30000);	// this doesn't always seem to work however, so we'll do it somewhat differently..
-				connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.12) Gecko/20080201 Firefox/2.0.0.12");
-				connection.setRequestProperty("Hath-Request", Settings.getClientID() + "-" + MiscTools.getSHAString(Settings.getClientKey() + fileid));
-				connection.connect();
-				
-				tempLength = connection.getContentLength();
-				
-				if(tempLength < 0) {
-					Out.warning("Request host did not send Content-Length, aborting transfer." + " (" + connection + ")");
+				response = isrl.get(readTimeoutMilli, TimeUnit.MILLISECONDS);
+				if (!response.getHeaders().contains(HttpHeader.CONTENT_LENGTH)) {
+					tempLength = -1;
+				} else {
+					tempLength = response.getHeaders().getField(HttpHeader.CONTENT_LENGTH).getIntValue();
+				}
+
+				if (tempLength < 0) {
+					Out.warning("Request host did not send Content-Length, aborting transfer." + " (" + request + ")");
 					Out.warning("Note: A common reason for this is running firewalls with outgoing restrictions or programs like PeerGuardian/PeerBlock. Verify that the remote host is not blocked.");
 					retval = 502;
 				}
 				else if(tempLength > 10485760) {
-					Out.warning("Content-Length is larger than 10 MB, aborting transfer." + " (" + connection + ")");
+					Out.warning("Content-Length is larger than 10 MB, aborting transfer." + " (" + request + ")");
 					retval = 502;
+					hitSensingPoint(Sensing.CONTENT_LENGTH_GREATER_10MB);
 				}
 				else if(tempLength != requestedHVFile.getSize()) {
-					Out.warning("Reported contentLength " + contentLength + " does not match expected length of file " + fileid + " (" + connection + ")");
+					Out.warning("Reported contentLength " + contentLength + " does not match expected length of file "
+							+ fileid + " (" + request + ")");
+					hitSensingPoint(Sensing.CONTENT_LENGTH_MISMATCH);
 					
 					// this could be more solid, but it's not important. this will only be tested if there is a fail, and even if the fail somehow matches the size of the error images, the server won't actually increase the limit unless we're close to it.
 					if(retval == 0 && (tempLength == 28658 || tempLength == 1009)) {
@@ -126,6 +177,7 @@ public class GalleryFileDownloader implements Runnable {
 					}
 				} else {
 					retval = 0;
+					hitSensingPoint(Sensing.CONTENT_LENGTH_MATCH);
 				}
 			} while(retry);
 			
@@ -146,6 +198,7 @@ public class GalleryFileDownloader implements Runnable {
 			return 200;
 		} catch(Exception e) {
 			e.printStackTrace();
+			hitSensingPoint(Sensing.INTI_FAIL);
 		}
 		
 		downloadState = DOWNLOAD_FAILED_INIT;
@@ -153,79 +206,14 @@ public class GalleryFileDownloader implements Runnable {
 	}
 
 	public void run() {
-		int trycounter = 3;
-		boolean complete = false;
-		boolean success = false;
-
-		do {
-			InputStream is = null;
-			BufferedInputStream bis = null;
-		
-			try {
-				is = connection.getInputStream();
-				bis = new BufferedInputStream(is);
-				
-				long downloadStart = System.currentTimeMillis();
-				int time = 0; // counts the approximate time (in nanofortnights) since last byte was received
-				int bytestatcounter = 0;
-
-				// note: this may seen unnecessarily hackjob-ish, but because the built-in timeouts were unreliable at best (at the time of testing), this was a way to deal with the uncertainties of the interwebs. not exactly C10K stuff, but it works.
-				while(writeoff < contentLength) {
-					if(bis.available() > 0) {
-						// read-data loop..
-						
-						time = 0;
-						int b = bis.read();
-
-						if(b >= 0) {
-							databuffer[writeoff++] = (byte) b;
-							
-							if(++bytestatcounter > 1000) {
-								Stats.bytesRcvd(bytestatcounter);
-								bytestatcounter -= 1000;
-							}
-						}
-						else {
-							// b == -1 => EOF
-							Out.warning("\nServer sent premature EOF, aborting.. (" + writeoff + " of " + contentLength + " bytes received)");
-							throw new java.net.SocketException("Unexpected end of file from server");
-						}
-					}
-					else {
-						// wait-for-data loop...
-					
-						if(System.currentTimeMillis() - downloadStart > 300000) {
-							Out.warning("\nDownload time limit has expired, aborting...");
-							throw new java.net.SocketTimeoutException("Download timed out");							
-						}
-						else if(time > 30000) {
-							Out.warning("\nTimeout detected waiting for byte " + writeoff + ", aborting..");
-							throw new java.net.SocketTimeoutException("Read timed out");
-						}
-
-						time += 5;
-						Thread.sleep(5);
-					}
-				}
-				
-				Stats.bytesRcvd(bytestatcounter);
-				Stats.fileRcvd();
-				complete = true;
-			} catch(Exception e) {
-				writeoff = 0;
-				Arrays.fill(databuffer, (byte) 0);
-				Out.debug("Retrying.. (" + trycounter + " tries left)");
-			} finally {
-				try { bis.close(); } catch(Exception e2) {}
-				try { is.close(); } catch(Exception e3) {}		
-			}
-		} while(!complete && --trycounter > 0);
-
+		boolean success = readData();
 		
 		if(writeoff != getContentLength()) {
-			Out.debug("Requested file " + fileid + " is incomplete, and was not stored.");				
+			Out.debug("Requested file " + fileid + " is incomplete, and was not stored.");
+			hitSensingPoint(Sensing.INCOMPLETE_FILE);
 		} else if(! MiscTools.getSHAString(databuffer).equals(requestedHVFile.getHash())) {
-			Out.debug("Requested file " + fileid + " is corrupt, and was not stored.");				
+			Out.debug("Requested file " + fileid + " is corrupt, and was not stored.");
+			hitSensingPoint(Sensing.CORRUPT_FILE);
 		} else {
 			try {
 				CacheHandler cacheHandler = client.getCacheHandler();
@@ -237,10 +225,12 @@ public class GalleryFileDownloader implements Runnable {
 					cacheHandler.addPendingRegisterFile(requestedHVFile);
 					Out.debug("Requested file " + fileid + " was successfully stored in cache.");
 					success = true;
+					hitSensingPoint(Sensing.FILE_SAVED_TO_CACHE);
 				}
 				else {
 					tmpfile.delete();
 					Out.debug("Requested file " + fileid + " exists or cannot be cached, and was dropped.");
+					hitSensingPoint(Sensing.FILE_NOT_SAVED_TO_CACHE);
 				}
 				
 				Out.info("Gallery File Download Request complete for " + fileid);
@@ -254,6 +244,51 @@ public class GalleryFileDownloader implements Runnable {
 		} else {
 			downloadState = DOWNLOAD_FAILED_CONN;
 		}
+	}
+
+	protected boolean readData() {
+		int trycounter = 3;
+		boolean complete = false;
+		boolean success = false;
+
+		do {
+			try (InputStream is = isrl.getInputStream()) {
+				int bytestatcounter = 0;
+
+				// note: this may seen unnecessarily hackjob-ish, but because the built-in timeouts were unreliable at best (at the time of testing), this was a way to deal with the uncertainties of the interwebs. not exactly C10K stuff, but it works.
+				while(writeoff < contentLength) {
+						// read-data loop..
+						
+					int b = is.read();
+
+						if(b >= 0) {
+							databuffer[writeoff++] = (byte) b;
+							
+							if(++bytestatcounter > 1000) {
+								Stats.bytesRcvd(bytestatcounter);
+								bytestatcounter -= 1000;
+								hitSensingPoint(Sensing.BYTES_READ);
+							}
+						}
+						else {
+							// b == -1 => EOF
+							Out.warning("\nServer sent premature EOF, aborting.. (" + writeoff + " of " + contentLength + " bytes received)");
+							throw new java.net.SocketException("Unexpected end of file from server");
+						}
+				}
+				
+				Stats.bytesRcvd(bytestatcounter);
+				Stats.fileRcvd();
+				complete = true;
+			} catch(Exception e) {
+				e.printStackTrace();
+				writeoff = 0;
+				Arrays.fill(databuffer, (byte) 0);
+				Out.debug("Retrying.. (" + trycounter + " tries left)");
+			}
+			// TODO does this even work?
+		} while(!complete && --trycounter > 0);
+		return success;
 	}
 	
 	public String getContentType() {
