@@ -35,11 +35,14 @@ import org.hath.base.Out;
 import org.hath.base.http.HTTPRequestAttributes;
 import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
 import org.hath.base.http.SessionTracker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This handler removes handled sessions from the session tracker.
  */
 public class SessionRemovalHandler extends AbstractHandler {
+	private static final Logger logger = LoggerFactory.getLogger(SessionRemovalHandler.class);
 	private final SessionTracker sessionTracker;
 
 	public SessionRemovalHandler(SessionTracker sessionTracker) {
@@ -52,6 +55,8 @@ public class SessionRemovalHandler extends AbstractHandler {
 
 		int session = HTTPRequestAttributes.getAttribute(request, IntegerAttributes.SESSION_ID);
 		
+		logger.trace("Removing session with id: {}, request was {}", session, request);
+
 		if (session == -1) {
 			Out.warning("Handled request with no session id!");
 		}

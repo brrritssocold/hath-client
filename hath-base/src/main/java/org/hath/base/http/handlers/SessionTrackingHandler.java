@@ -38,10 +38,12 @@ import org.hath.base.Out;
 import org.hath.base.Settings;
 import org.hath.base.Stats;
 import org.hath.base.http.FloodControl;
-import org.hath.base.http.SessionTracker;
 import org.hath.base.http.HTTPRequestAttributes.BooleanAttributes;
 import org.hath.base.http.HTTPRequestAttributes.ClassAttributes;
 import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
+import org.hath.base.http.SessionTracker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.net.InetAddresses;
 
@@ -49,6 +51,7 @@ import com.google.common.net.InetAddresses;
  * Creates and tracks sessions and enforces limits.
  */
 public class SessionTrackingHandler extends AbstractHandler {
+	private static final Logger logger = LoggerFactory.getLogger(SessionTrackingHandler.class);
 	private boolean allowNormalConnections;
 	private HentaiAtHomeClient client;
 	private FloodControl floodControl;
@@ -131,5 +134,8 @@ public class SessionTrackingHandler extends AbstractHandler {
 		request.setAttribute(IntegerAttributes.SESSION_ID.toString(), sessionID);
 		sessionTracker.add(sessionID, baseRequest);
 		Stats.setOpenConnections((int) sessionTracker.activeSessions());
+		logger.trace("Tracking new session with id {}, local: {}, API:{}", sessionID, localNetworkAccess,
+				apiServerAccess);
+		logger.trace("Current sessions: {}/{}", sessionTracker.activeSessions(), sessionTracker.getMaxSessions());
 	}
 }
