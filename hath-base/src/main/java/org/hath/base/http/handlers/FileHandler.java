@@ -111,13 +111,14 @@ public class FileHandler extends AbstractHandler {
 
 		Hashtable<String, String> additional = MiscTools.parseAdditional(urlparts[2]);
 		// urlparts[4] will contain the filename, but we don't actively use this
-
 		if (!isKeystampValid(hvfile, additional)) {
 			logger.trace("Rejected file request due to invalid key: {}", request);
 			response.setStatus(HttpStatus.FORBIDDEN_403);
+			baseRequest.setHandled(true);
 		} else if (requestedHVFile == null) {
 			Out.warning(session + " The requested file was invalid or not found in cache.");
 			response.setStatus(HttpStatus.NOT_FOUND_404);
+			baseRequest.setHandled(true);
 		} else {
 			String fileid = requestedHVFile.getFileid();
 
@@ -140,12 +141,14 @@ public class FileHandler extends AbstractHandler {
 				} else {
 					logger.trace("Could not find static range request in file tokens: {}", fileid);
 					response.setStatus(HttpStatus.NOT_FOUND_404);
+					baseRequest.setHandled(true);
 				}
 			} else {
 				// file does not exist, and is not in one of the client's static
 				// ranges
 				logger.trace("Could not find requested file {}", requestedHVFile.getFileid());
 				response.setStatus(HttpStatus.NOT_FOUND_404);
+				baseRequest.setHandled(true);
 			}
 		}
 	}
