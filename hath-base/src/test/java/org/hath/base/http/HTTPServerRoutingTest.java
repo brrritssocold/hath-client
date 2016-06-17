@@ -63,8 +63,6 @@ public class HTTPServerRoutingTest {
 	private static final int SERVER_TEST_PORT = 42421;
 
 	private static HentaiAtHomeClient mockClient;
-	@Mock(answer = Answers.RETURNS_DEEP_STUBS)
-	private static HTTPSessionFactory mockSessionFactory;
 	@Mock
 	private static ServerHandler mockServerHandler;
 	@Mock(answer = Answers.RETURNS_DEEP_STUBS)
@@ -84,7 +82,7 @@ public class HTTPServerRoutingTest {
 		when(mockClient.getCacheHandler()).thenReturn(cacheHandlerMock);
 		when(cacheHandlerMock.getHVFile(anyString(), anyBoolean())).thenReturn(hvFileMock);
 
-		hTTPServer = new HTTPServer(mockClient, mockSessionFactory);
+		hTTPServer = new HTTPServer(mockClient);
 
 		hTTPServer.startConnectionListener(SERVER_TEST_PORT);
 		httpClient = new HttpClient();

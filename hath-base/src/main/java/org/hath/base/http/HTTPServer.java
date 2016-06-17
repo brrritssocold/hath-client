@@ -23,8 +23,6 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.http;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -70,15 +68,9 @@ public class HTTPServer {
 	private SessionTrackingHandler sessionTrackingHandler;
 	
 	public HTTPServer(HentaiAtHomeClient client) {
-		this(client, new HTTPSessionFactory());
+		this.client = client;
 	}
 
-	public HTTPServer(HentaiAtHomeClient client, HTTPSessionFactory factory) {
-		this.client = client;
-		bandwidthMonitor = new HTTPBandwidthMonitor();
-		sessions = Collections.checkedList(new ArrayList<BaseHandler>(), BaseHandler.class);
-	}
-	
 	public Handler setupHandlers() {
 		HandlerList handlerList = new HandlerList();
 		HandlerCollection handlerCollection = new HandlerCollection();
@@ -179,24 +171,6 @@ public class HTTPServer {
 				httpServer.stop();
 			} catch (Exception e) {
 				Out.error("Failed to stop internal HTTP Server: " + e);
-			}
-		}
-	}
-	
-	@Deprecated
-	public void nukeOldConnections(boolean killall) {
-		synchronized(sessions) {
-			// in some rare cases, the connection is unable to remove itself from the session list. if so, it will return true for doTimeoutCheck, meaning that we will have to clear it out from here instead
-			List<BaseHandler> remove = Collections.checkedList(new ArrayList<BaseHandler>(), BaseHandler.class);
-			
-			for(BaseHandler session : sessions) {
-				if(session.doTimeoutCheck(killall)) {
-					remove.add(session);
-				}
-			}
-			
-			for(BaseHandler session : remove) {
-				sessions.remove(session);
 			}
 		}
 	}

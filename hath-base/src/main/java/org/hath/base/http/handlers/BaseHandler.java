@@ -44,14 +44,12 @@ import org.hath.base.Settings;
 import org.hath.base.Stats;
 import org.hath.base.http.HTTPBandwidthMonitor;
 import org.hath.base.http.HTTPRequestAttributes;
-import org.hath.base.http.HTTPResponse;
-import org.hath.base.http.HTTPResponseFactory;
+import org.hath.base.http.HTTPRequestAttributes.BooleanAttributes;
+import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
 import org.hath.base.http.HTTPResponseProcessor;
 import org.hath.base.http.HTTPResponseProcessorFile;
 import org.hath.base.http.HTTPResponseProcessorProxy;
 import org.hath.base.http.HTTPServer;
-import org.hath.base.http.HTTPRequestAttributes.BooleanAttributes;
-import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
 
 import com.google.common.net.HttpHeaders;
 
@@ -65,20 +63,11 @@ public class BaseHandler extends AbstractHandler {
 	private int connId;
 	private boolean localNetworkAccess;
 	private long sessionStartTime, lastPacketSend;
-	private HTTPResponse hr;
-	private HTTPResponseFactory responseFactory;
 	private HTTPBandwidthMonitor bandwidthMonitor;
 
 	public BaseHandler(HTTPBandwidthMonitor bandwidthMonitor) {
 		sessionStartTime = System.currentTimeMillis();
 		this.bandwidthMonitor = bandwidthMonitor;
-	}
-
-	@Deprecated
-	public BaseHandler(HTTPBandwidthMonitor bandwidthMonitor, HTTPResponseFactory responseFactory) {
-		sessionStartTime = System.currentTimeMillis();
-		this.bandwidthMonitor = bandwidthMonitor;
-		this.responseFactory = responseFactory;
 	}
 
 	@Override
@@ -212,30 +201,6 @@ public class BaseHandler extends AbstractHandler {
 			response.setHeader(HttpHeaders.CACHE_CONTROL, "public, max-age=31536000");
 			response.setContentLength(contentLength);
 		}
-	}
-
-	@Deprecated
-	public boolean doTimeoutCheck(boolean forceKill) {
-		if(mySocket.isClosed()) {
-			//  the connecion was already closed and should be removed by the HTTPServer instance.
-			return true;
-		}
-		else {
-			long nowtime = System.currentTimeMillis();
-			int startTimeout = hr != null ? (hr.isServercmd() ? 1800000 : 180000) : 30000;
-
-			if(forceKill || (sessionStartTime > 0 && sessionStartTime < nowtime - startTimeout) || (lastPacketSend > 0 && lastPacketSend < nowtime - 30000)) {
-				// DIE DIE DIE
-				//Out.info(this + " The connection has exceeded its time limits: timing out.");
-				try {
-					mySocket.close();
-				} catch(Exception e) {
-					Out.debug(e.toString());
-				}
-			}
-		}
-
-		return false;
 	}
 
 	// accessors

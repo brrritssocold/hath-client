@@ -25,14 +25,12 @@ package org.hath.base.http;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
-import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.ServerHandler;
 import org.hath.base.Settings;
-import org.hath.base.http.handlers.BaseHandler;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -43,27 +41,20 @@ public class HTTPServerTest {
 	private static final int SERVER_TEST_PORT = 42421;
 
 	private HentaiAtHomeClient mockClient;
-	private HTTPSessionFactory mockSessionFactory;
-	private BaseHandler mockSession;
 	private ServerHandler mockServerHandler;
 	private HTTPServer hTTPServer;
 
 	@Before
 	public void setUp() throws Exception {
 		mockClient = mock(HentaiAtHomeClient.class, Mockito.RETURNS_DEEP_STUBS);
-		mockSessionFactory = mock(HTTPSessionFactory.class);
-		mockSession = mock(BaseHandler.class);
 		mockServerHandler = mock(ServerHandler.class);
 		
 		when(mockClient.isShuttingDown()).thenReturn(true);
 
 		Settings.updateSetting("host", "123.123.123.123");
 
-		hTTPServer = new HTTPServer(mockClient, mockSessionFactory);
+		hTTPServer = new HTTPServer(mockClient);
 
-		when(mockSessionFactory.create(any(), any())).thenReturn(mockSession,
-				mockSession);
-		
 		when(mockClient.getServerHandler()).thenReturn(mockServerHandler);
 
 		hTTPServer.startConnectionListener(SERVER_TEST_PORT);

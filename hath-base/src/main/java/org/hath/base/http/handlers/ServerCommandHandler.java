@@ -40,7 +40,6 @@ import org.hath.base.Out;
 import org.hath.base.Settings;
 import org.hath.base.http.HTTPRequestAttributes;
 import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
-import org.hath.base.http.HTTPResponse.Sensing;
 import org.hath.base.http.HTTPResponseProcessor;
 import org.hath.base.http.HTTPResponseProcessorCachelist;
 import org.hath.base.http.HTTPResponseProcessorSpeedtest;
@@ -52,6 +51,10 @@ public class ServerCommandHandler extends AbstractHandler {
 	public final LinkedList<Sensing> sensingPointsHit = new LinkedList<>();
 	private final HentaiAtHomeClient client;
 
+	public enum Sensing {
+		SERVER_CMD_INVALID_RPC_SERVER, SERVER_CMD_MALFORMED_COMMAND, SERVER_CMD_KEY_VALID, SERVER_CMD_KEY_INVALID
+	}
+	
 	public ServerCommandHandler(HentaiAtHomeClient client) {
 		this.client = client;
 	}

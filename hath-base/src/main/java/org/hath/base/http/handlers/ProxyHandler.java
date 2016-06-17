@@ -41,7 +41,6 @@ import org.hath.base.Settings;
 import org.hath.base.http.HTTPRequestAttributes;
 import org.hath.base.http.HTTPRequestAttributes.BooleanAttributes;
 import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
-import org.hath.base.http.HTTPResponse.Sensing;
 import org.hath.base.http.HTTPResponseProcessorFile;
 import org.hath.base.http.HTTPResponseProcessorProxy;
 
@@ -49,6 +48,10 @@ public class ProxyHandler extends AbstractHandler {
 	private HentaiAtHomeClient client;
 	private Pattern rawRequestParser;
 	public LinkedList<Sensing> sensingPointsHit = new LinkedList<>();
+
+	public enum Sensing {
+		PROXY_REQUEST_DENIED, PROXY_REQUEST_GRANTED, PROXY_REQUEST_PASSKEY_NOT_REQUIRED, PROXY_REQUEST_CHECK_PASSKEY, PROXY_REQUEST_PASSKEY_AS_EXPECTED, PROXY_REQUEST_PASSKEY_INVALID, PROXY_REQUEST_INVALID_ARGUMENTS, PROXY_REQUEST_LOCAL_FILE, PROXY_REQUEST_PROXY_FILE, PROXY_REQUEST_INVALID_GID_OR_PAGE, PROXY_REQUEST_INVALID_GID_OR_PAGE_INTEGERS
+	}
 
 	private void hitSensingPoint(Sensing point) {
 		sensingPointsHit.add(point);

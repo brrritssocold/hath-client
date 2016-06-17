@@ -36,7 +36,7 @@ import org.eclipse.jetty.http.HttpStatus;
 import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.Settings;
 import org.hath.base.http.HTTPRequestAttributes.BooleanAttributes;
-import org.hath.base.http.HTTPResponse.Sensing;
+import org.hath.base.http.handlers.ServerCommandHandler.Sensing;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;

@@ -23,7 +23,6 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.http.handlers;
 
-import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.contains;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
@@ -39,19 +38,16 @@ import java.util.TimeZone;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.eclipse.jetty.http.HttpStatus;
 import org.eclipse.jetty.server.Request;
 import org.hath.base.Settings;
 import org.hath.base.http.HTTPBandwidthMonitor;
 import org.hath.base.http.HTTPRequestAttributes;
-import org.hath.base.http.HTTPResponseFactory;
+import org.hath.base.http.HTTPRequestAttributes.ClassAttributes;
+import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
 import org.hath.base.http.HTTPResponseProcessor;
 import org.hath.base.http.HTTPResponseProcessorFile;
 import org.hath.base.http.HTTPResponseProcessorProxy;
 import org.hath.base.http.HTTPServer;
-import org.hath.base.http.HTTPRequestAttributes.ClassAttributes;
-import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
-import org.hath.base.http.handlers.BaseHandler;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -70,8 +66,6 @@ public class BaseHandlerTest {
 	
 	@Mock
 	private HTTPBandwidthMonitor bandwidthMonitor;
-	@Mock(answer = Answers.RETURNS_DEEP_STUBS)
-	private HTTPResponseFactory responseFactory;
 	@Mock
 	private Socket socket;
 	@Mock
@@ -91,7 +85,7 @@ public class BaseHandlerTest {
 	public void setUp() throws Exception {
 		setDefaultBehavior();
 
-		cut = new BaseHandler(bandwidthMonitor, responseFactory);
+		cut = new BaseHandler(bandwidthMonitor);
 		cut.setHttpServer(httpServer);
 	}
 
@@ -101,8 +95,6 @@ public class BaseHandlerTest {
 	}
 
 	private void setDefaultBehavior() throws Exception {
-		when(responseFactory.create(any()).getResponseStatusCode()).thenReturn(HttpStatus.OK_200);
-
 		when(socket.getInetAddress()).thenReturn(InetAddresses.forString(EXTERNAL_ADDRESS));
 
 		when(baseRequest.getReader().readLine()).thenReturn("GET / HTTP/1.1", "");
@@ -177,7 +169,6 @@ public class BaseHandlerTest {
 
 	@Test
 	public void testHeaderOnlyRequest() throws Exception {
-		when(responseFactory.create(any()).isRequestHeadOnly()).thenReturn(true);
 		when(baseRequest.isHead()).thenReturn(true);
 
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);

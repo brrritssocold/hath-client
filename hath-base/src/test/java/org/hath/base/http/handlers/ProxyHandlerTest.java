@@ -38,7 +38,7 @@ import org.hath.base.Settings;
 import org.hath.base.http.HTTPRequestAttributes.BooleanAttributes;
 import org.hath.base.http.HTTPRequestAttributes.ClassAttributes;
 import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
-import org.hath.base.http.HTTPResponse.Sensing;
+import org.hath.base.http.handlers.ProxyHandler.Sensing;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Answers;

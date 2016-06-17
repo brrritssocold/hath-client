@@ -217,7 +217,6 @@ public class HentaiAtHomeClient implements Runnable {
 				}
 				
 				cacheHandler.flushRecentlyAccessed();
-				httpServer.nukeOldConnections(false);				
 				Stats.shiftBytesSentHistory();
 
 				++threadSkipCounter;
@@ -311,11 +310,6 @@ public class HentaiAtHomeClient implements Runnable {
 				try {
 					Thread.sleep(25000);
 				} catch(java.lang.InterruptedException e) {}
-				
-				if(Stats.getOpenConnections() > 0) {
-					httpServer.nukeOldConnections(true);		
-					Out.info("All connections cleared.");			
-				}			
 			}
 			
 			if(cacheHandler != null) {
