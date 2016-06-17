@@ -179,6 +179,7 @@ public class ResponseProcessorHandler extends AbstractHandler {
 		} catch(Exception e) {
 			Out.info(info + "The connection was interrupted or closed by the remote host.");
 			Out.debug(e == null ? "(no exception)" : e.getMessage());
+			baseRequest.setHandled(true);
 		} finally {
 			if(hpc != null) {
 				hpc.cleanup();
