@@ -332,6 +332,22 @@ public class Settings {
 		return clientID;
 	}
 	
+	/**
+	 * For testing only!
+	 */
+	@Deprecated
+	public static void setClientID(int clientID) {
+		Settings.clientID = clientID;
+	}
+
+	/**
+	 * For testing only!
+	 */
+	@Deprecated
+	public static void setClientKey(String clientKey) {
+		Settings.clientKey = clientKey;
+	}
+
 	public static String getClientKey() {
 		return clientKey;
 	}
@@ -469,5 +485,12 @@ public class Settings {
 		}
 		
 		return 0;
+	}
+
+	/**
+	 * For testing purposes only!
+	 */
+	public static void clearRPCServers() {
+		rpcServers = null;
 	}
 }

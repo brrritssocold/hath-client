@@ -26,7 +26,7 @@
 		<file>data/err_out</file>
 		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
 			<!-- daily rollover -->
-			<fileNamePattern>data/err_out.%d.gz</fileNamePattern>
+			<fileNamePattern>data/log_err.%d.gz</fileNamePattern>
 
 			<!-- keep 30 days' worth of history -->
 			<maxHistory>30</maxHistory>
@@ -74,4 +74,7 @@
 		<appender-ref ref="ASYNC_ERR_FILE" />
 		<appender-ref ref="ASYNC_STDOUT" />
 	</root>
+
+	<!-- Logging level for the Jetty HTTP server -->
+	<logger name="org.eclipse.jetty" level="WARN" />
 </configuration>

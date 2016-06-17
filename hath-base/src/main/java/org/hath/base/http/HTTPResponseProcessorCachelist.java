@@ -25,10 +25,14 @@ package org.hath.base.http;
 
 import java.util.LinkedList;
 
+import javax.servlet.http.HttpServletResponse;
+
+import org.eclipse.jetty.http.HttpStatus;
 import org.hath.base.CacheHandler;
 import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.Out;
 import org.hath.base.Settings;
+import org.hath.base.Stats;
 
 public class HTTPResponseProcessorCachelist extends HTTPResponseProcessor {
 	private CacheHandler cacheHandler;
@@ -40,10 +44,13 @@ public class HTTPResponseProcessorCachelist extends HTTPResponseProcessor {
 		this.cacheHandler = cacheHandler;
 	}
 	
-	public int initialize() {
+	@Override
+	public void initialize(HttpServletResponse response) {
 		// note: this class is only safe to use during startup while the client is still single-threaded
 		// any cache additions or deletions between the initial file length is calculated and this class is invoked will make things fail
 
+		Stats.setProgramStatus("Building and sending cache list to server...");
+		
 		segmentIndex = 0;
 		segmentCount = cacheHandler.getSegmentCount();
 		
@@ -51,17 +58,20 @@ public class HTTPResponseProcessorCachelist extends HTTPResponseProcessor {
 		
 		Out.info("Sending cache list, and waiting for the server to register the cached files.. (this could take a while)");
 		
-		return 200;
+		response.setStatus(HttpStatus.OK_200);
 	}
 
+	@Override
 	public int getContentLength() {
 		return cacheHandler.getStartupCachedFilesStrlen();
 	}
 	
+	@Override
 	public byte[] getBytes() {
 		return getBytesRange(cacheHandler.getStartupCachedFilesStrlen());
 	}
 	
+	@Override
 	public byte[] getBytesRange(int len) {
 		while( fileidBuffer.length() < len ) {
 			Out.info("Retrieving segment " + segmentIndex + " of " + segmentCount);
