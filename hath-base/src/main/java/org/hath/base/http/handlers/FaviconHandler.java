@@ -43,5 +43,6 @@ public class FaviconHandler extends AbstractHandler {
 		response.setHeader(HttpHeaders.LOCATION, "http://g.e-hentai.org/favicon.ico");
 		response.setStatus(HttpStatus.MOVED_PERMANENTLY_301);
 		response.setContentType("text/html");
+		baseRequest.setHandled(true);
 	}
 }
