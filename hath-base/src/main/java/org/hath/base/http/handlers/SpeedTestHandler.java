@@ -73,8 +73,6 @@ public class SpeedTestHandler extends AbstractHandler {
 			response.setStatus(HttpStatus.OK_200);
 			request.setAttribute(ClassAttributes.HTTPResponseProcessor.toString(),
 					new HTTPResponseProcessorSpeedtest(testsize));
-
-			baseRequest.setHandled(true); //FIXME remove after basehandler is done
 		}
 	}
 
