@@ -26,7 +26,6 @@ package org.hath.base.http.handlers;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.anyListOf;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -188,8 +187,6 @@ public class FileHandlerTest extends HandlerJunitTest {
 
 		when(hvFileMock.getLocalFileRef().exists()).thenReturn(false);
 		when(hvFileMock.getFileid()).thenReturn(fileid);
-		when(sessionMock.getHTTPServer().getHentaiAtHomeClient().getServerHandler()
-				.getFileTokens(anyListOf(String.class))).thenReturn(tokens);
 		when(clientMock.getServerHandler().getFileTokens(any())).thenReturn(tokens);
 		addToStaticRange(fileid);
 

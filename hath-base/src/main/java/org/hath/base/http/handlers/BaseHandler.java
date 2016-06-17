@@ -24,8 +24,6 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 package org.hath.base.http.handlers;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
@@ -49,7 +47,6 @@ import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
 import org.hath.base.http.HTTPResponseProcessor;
 import org.hath.base.http.HTTPResponseProcessorFile;
 import org.hath.base.http.HTTPResponseProcessorProxy;
-import org.hath.base.http.HTTPServer;
 
 import com.google.common.net.HttpHeaders;
 
@@ -58,8 +55,6 @@ import com.google.common.net.HttpHeaders;
  * requests based on local or external origin and enforces the bandwidth limit.
  */
 public class BaseHandler extends AbstractHandler {
-	private Socket mySocket;
-	private HTTPServer httpServer;
 	private int connId;
 	private boolean localNetworkAccess;
 	private long sessionStartTime, lastPacketSend; //TODO replace with guava stopwatch
@@ -82,7 +77,6 @@ public class BaseHandler extends AbstractHandler {
 			connId = HTTPRequestAttributes.getAttribute(request, IntegerAttributes.SESSION_ID);
 			localNetworkAccess = HTTPRequestAttributes.getAttribute(request, BooleanAttributes.LOCAL_NETWORK_ACCESS);
 			
-			// TODO replace this with helper class
 			hpc = HTTPRequestAttributes.getResponseProcessor(request);
 
 			int contentLength = hpc.getContentLength();
@@ -202,24 +196,6 @@ public class BaseHandler extends AbstractHandler {
 			response.setHeader(HttpHeaders.CACHE_CONTROL, "public, max-age=31536000");
 			response.setContentLength(contentLength);
 		}
-	}
-
-	// accessors
-
-	public HTTPServer getHTTPServer() {
-		return httpServer;
-	}
-
-	public void setHttpServer(HTTPServer httpServer) {
-		this.httpServer = httpServer;
-	}
-
-	public InetAddress getSocketInetAddress() {
-		return mySocket.getInetAddress();
-	}
-
-	public boolean isLocalNetworkAccess() {
-		return localNetworkAccess;
 	}
 
 	private String info(String remoteIp) {

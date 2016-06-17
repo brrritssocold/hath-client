@@ -86,7 +86,6 @@ public class BaseHandlerTest {
 		setDefaultBehavior();
 
 		cut = new BaseHandler(bandwidthMonitor);
-		cut.setHttpServer(httpServer);
 	}
 
 	private void setHttpResponseProcessor(HTTPResponseProcessor hpc) {
@@ -142,8 +141,6 @@ public class BaseHandlerTest {
 
 	@Test
 	public void testNonLocalAccessIsFileRequest() throws Exception {
-		cut.setHttpServer(httpServer);
-
 		hpcMock = mock(HTTPResponseProcessorFile.class);
 		when(hpcMock.getContentLength()).thenReturn(42);
 		when(hpcMock.getBytes()).thenReturn(new byte[42]);
