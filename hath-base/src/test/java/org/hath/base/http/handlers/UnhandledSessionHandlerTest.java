@@ -21,18 +21,33 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base.http;
+package org.hath.base.http.handlers;
 
-import org.hath.base.http.handlers.AllHandlerTests;
-import org.junit.runner.RunWith;
-import org.junit.runners.Suite;
-import org.junit.runners.Suite.SuiteClasses;
+import static org.mockito.Mockito.verify;
 
-@RunWith(Suite.class)
-@SuiteClasses({ AllHandlerTests.class, FloodControlTest.class, HTTPServerTest.class,
-		SessionTrackerTest.class,
-		HTTPRequestAttributesTest.class, 
-		HTTPServerRoutingTest.class })
-public class AllHttpTests {
+import org.junit.Before;
+import org.junit.Test;
 
+public class UnhandledSessionHandlerTest extends HandlerJunitTest {
+	private static final int TEST_STATUS = 42;
+	private UnhandledSessionHandler cut;
+
+	@Before
+	public void setUp() throws Exception {
+		cut = new UnhandledSessionHandler(TEST_STATUS);
+	}
+
+	@Test
+	public void testHandleStatus() throws Exception {
+		cut.handle(target, baseRequest, request, response);
+
+		verify(response).setStatus(TEST_STATUS);
+	}
+
+	@Test
+	public void testHandleIsHandled() throws Exception {
+		cut.handle(target, baseRequest, request, response);
+
+		verify(baseRequest).setHandled(true);
+	}
 }

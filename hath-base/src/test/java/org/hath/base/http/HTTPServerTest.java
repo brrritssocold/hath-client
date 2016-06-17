@@ -25,7 +25,6 @@ package org.hath.base.http;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
-import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -42,27 +41,20 @@ public class HTTPServerTest {
 	private static final int SERVER_TEST_PORT = 42421;
 
 	private HentaiAtHomeClient mockClient;
-	private HTTPSessionFactory mockSessionFactory;
-	private BaseHandler mockSession;
 	private ServerHandler mockServerHandler;
 	private HTTPServer hTTPServer;
 
 	@Before
 	public void setUp() throws Exception {
 		mockClient = mock(HentaiAtHomeClient.class, Mockito.RETURNS_DEEP_STUBS);
-		mockSessionFactory = mock(HTTPSessionFactory.class);
-		mockSession = mock(BaseHandler.class);
 		mockServerHandler = mock(ServerHandler.class);
 		
 		when(mockClient.isShuttingDown()).thenReturn(true);
 
 		Settings.updateSetting("host", "123.123.123.123");
 
-		hTTPServer = new HTTPServer(mockClient, mockSessionFactory);
+		hTTPServer = new HTTPServer(mockClient);
 
-		when(mockSessionFactory.create(any(), any())).thenReturn(mockSession,
-				mockSession);
-		
 		when(mockClient.getServerHandler()).thenReturn(mockServerHandler);
 
 		hTTPServer.startConnectionListener(SERVER_TEST_PORT);
@@ -124,12 +116,5 @@ public class HTTPServerTest {
 	@Test
 	public void testGetBandwidthMonitor() throws Exception {
 		throw new RuntimeException("not yet implemented");
-	}
-
-	@Test
-	public void testGetHentaiAtHomeClient() throws Exception {
-		HentaiAtHomeClient client = hTTPServer.getHentaiAtHomeClient();
-
-		assertThat(client, is(mockClient));
 	}
 }

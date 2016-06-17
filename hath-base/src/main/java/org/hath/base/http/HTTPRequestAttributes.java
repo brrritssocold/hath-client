@@ -25,18 +25,9 @@ package org.hath.base.http;
 
 import javax.servlet.http.HttpServletRequest;
 
-public class HTTPRequestAttributes {
-	/**
-	 * Use {@link BooleanAttributes#LOCAL_NETWORK_ACCESS} instead
-	 */
-	@Deprecated
-	public static final String LOCAL_NETWORK_ACCESS = "org.hath.base.http.localNetworkAccess";
-	/**
-	 * Use {@link BooleanAttributes#API_SERVER_ACCESS} instead
-	 */
-	@Deprecated
-	public static final String API_SERVER_ACCESS = "org.hath.base.http.apiServerAccess";
+import org.hath.base.HentaiAtHomeClient;
 
+public class HTTPRequestAttributes {
 	public enum BooleanAttributes {
 		LOCAL_NETWORK_ACCESS("org.hath.base.http.localNetworkAccess"), API_SERVER_ACCESS(
 				"org.hath.base.http.apiServerAccess");
@@ -59,6 +50,22 @@ public class HTTPRequestAttributes {
 		private final String attributeName;
 
 		private IntegerAttributes(final String attributeName) {
+			this.attributeName = attributeName;
+		}
+
+		@Override
+		public String toString() {
+			return this.attributeName;
+		}
+	};
+
+	public enum ClassAttributes {
+		HTTPResponseProcessor("org.hath.base.http.httpResponseProcessor"), HentaiAtHomeClient(
+				"org.hath.base.HentaiAtHomeClient");
+
+		private final String attributeName;
+
+		private ClassAttributes(final String attributeName) {
 			this.attributeName = attributeName;
 		}
 
@@ -94,15 +101,35 @@ public class HTTPRequestAttributes {
 	 *            the request containing the attribute
 	 * @param attribute
 	 *            to be read
-	 * @return the value of the attribute, or 0 if not set
+	 * @return the value of the attribute, or -1 if not set
 	 */
 	public static int getAttribute(HttpServletRequest request, IntegerAttributes attribute) {
 		Object attr = request.getAttribute(attribute.toString());
 
 		if (attr == null) {
-			return 0;
+			return -1;
 		}
 
 		return (int) attr;
+	}
+
+	public static HTTPResponseProcessor getResponseProcessor(HttpServletRequest request) {
+		Object attr = request.getAttribute(ClassAttributes.HTTPResponseProcessor.toString());
+
+		return (HTTPResponseProcessor) attr;
+	}
+
+	public static void setResponseProcessor(HttpServletRequest request, HTTPResponseProcessor hpc) {
+		request.setAttribute(ClassAttributes.HTTPResponseProcessor.toString(), hpc);
+	}
+
+	public static HentaiAtHomeClient getClient(HttpServletRequest request) {
+		Object attr = request.getAttribute(ClassAttributes.HentaiAtHomeClient.toString());
+
+		return (HentaiAtHomeClient) attr;
+	}
+
+	public static void setClient(HttpServletRequest request, HentaiAtHomeClient client) {
+		request.setAttribute(ClassAttributes.HentaiAtHomeClient.toString(), client);
 	}
 }

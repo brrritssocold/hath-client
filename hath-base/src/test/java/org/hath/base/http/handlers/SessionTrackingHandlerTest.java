@@ -21,7 +21,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base.http;
+package org.hath.base.http.handlers;
 
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
@@ -36,7 +36,10 @@ import org.eclipse.jetty.http.HttpStatus;
 import org.eclipse.jetty.server.Request;
 import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.Settings;
+import org.hath.base.http.FloodControl;
+import org.hath.base.http.HTTPRequestAttributes.BooleanAttributes;
 import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
+import org.hath.base.http.SessionTracker;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -125,7 +128,7 @@ public class SessionTrackingHandlerTest {
 
 		cut.handle(DEFAULT_TARGET, baseRequestMock, requestMock, responseMock);
 
-		verify(requestMock).setAttribute(HTTPRequestAttributes.LOCAL_NETWORK_ACCESS, true);
+		verify(requestMock).setAttribute(BooleanAttributes.LOCAL_NETWORK_ACCESS.toString(), true);
 	}
 
 	@Test
@@ -135,7 +138,7 @@ public class SessionTrackingHandlerTest {
 
 		cut.handle(DEFAULT_TARGET, baseRequestMock, requestMock, responseMock);
 
-		verify(requestMock).setAttribute(HTTPRequestAttributes.API_SERVER_ACCESS, true);
+		verify(requestMock).setAttribute(BooleanAttributes.API_SERVER_ACCESS.toString(), true);
 	}
 
 	@Test

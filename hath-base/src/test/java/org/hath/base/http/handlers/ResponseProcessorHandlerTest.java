@@ -21,9 +21,10 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base.http;
+package org.hath.base.http.handlers;
 
-import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyBoolean;
+import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.contains;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
@@ -39,10 +40,16 @@ import java.util.TimeZone;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.eclipse.jetty.http.HttpStatus;
 import org.eclipse.jetty.server.Request;
 import org.hath.base.Settings;
+import org.hath.base.http.HTTPBandwidthMonitor;
+import org.hath.base.http.HTTPRequestAttributes.BooleanAttributes;
+import org.hath.base.http.HTTPRequestAttributes.ClassAttributes;
 import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
+import org.hath.base.http.HTTPResponseProcessor;
+import org.hath.base.http.HTTPResponseProcessorFile;
+import org.hath.base.http.HTTPResponseProcessorProxy;
+import org.hath.base.http.HTTPServer;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -54,15 +61,13 @@ import com.google.common.net.HttpHeaders;
 import com.google.common.net.InetAddresses;
 
 @RunWith(MockitoJUnitRunner.class)
-public class BaseHandlerTest {
+public class ResponseProcessorHandlerTest {
 	private static final String EXTERNAL_ADDRESS = "123.123.123.123";
 	private static final String REMOTE_ADDRESS = "233.233.233.233";
 	private static final String DEFAULT_TARGET = "/";
 	
 	@Mock
 	private HTTPBandwidthMonitor bandwidthMonitor;
-	@Mock(answer = Answers.RETURNS_DEEP_STUBS)
-	private HTTPResponseFactory responseFactory;
 	@Mock
 	private Socket socket;
 	@Mock
@@ -73,30 +78,34 @@ public class BaseHandlerTest {
 	HttpServletRequest request;
 	@Mock(answer = Answers.RETURNS_DEEP_STUBS)
 	HttpServletResponse response;
+	@Mock
+	HTTPResponseProcessor hpcMock;
 
-	private BaseHandler cut;
+	private ResponseProcessorHandler cut;
 
 	@Before
 	public void setUp() throws Exception {
 		setDefaultBehavior();
 
-		cut = new BaseHandler(bandwidthMonitor, responseFactory);
-		cut.setHttpServer(httpServer);
+		cut = new ResponseProcessorHandler(bandwidthMonitor);
+	}
+
+	private void setHttpResponseProcessor(HTTPResponseProcessor hpc) {
+		when(request.getAttribute(ClassAttributes.HTTPResponseProcessor.toString())).thenReturn(hpc);
 	}
 
 	private void setDefaultBehavior() throws Exception {
-		when(responseFactory.create(any()).getResponseStatusCode()).thenReturn(HttpStatus.OK_200);
-		when(responseFactory.create(any()).getHTTPResponseProcessor().getContentLength()).thenReturn(42);
-		when(responseFactory.create(any()).getHTTPResponseProcessor().getContentType()).thenReturn("text/xml");
-
 		when(socket.getInetAddress()).thenReturn(InetAddresses.forString(EXTERNAL_ADDRESS));
 
 		when(baseRequest.getReader().readLine()).thenReturn("GET / HTTP/1.1", "");
 		when(bandwidthMonitor.getActualPacketSize()).thenReturn(300);
 
-		when(request.getAttribute(HTTPRequestAttributes.LOCAL_NETWORK_ACCESS)).thenReturn(true);
+		when(request.getAttribute(BooleanAttributes.LOCAL_NETWORK_ACCESS.toString())).thenReturn(true);
+		setHttpResponseProcessor(hpcMock);
 		when(request.getRemoteAddr()).thenReturn(REMOTE_ADDRESS);
 		when(request.getAttribute(IntegerAttributes.SESSION_ID.toString())).thenReturn(2);
+
+		when(hpcMock.getContentLength()).thenReturn(42);
 	}
 
 	@Test
@@ -109,49 +118,46 @@ public class BaseHandlerTest {
 
 	@Test
 	public void testLocalAccessIsProxyRequest() throws Exception {
-		HTTPResponseProcessor rp = mock(HTTPResponseProcessorProxy.class);
-		when(rp.getContentLength()).thenReturn(42);
-		when(rp.getBytesRange(eq(42))).thenReturn(new byte[42]);
-		when(responseFactory.create(any()).getHTTPResponseProcessor())
-				.thenReturn(rp);
+		hpcMock = mock(HTTPResponseProcessorProxy.class);
+		when(hpcMock.getContentLength()).thenReturn(42);
+		when(hpcMock.getBytesRange(eq(42))).thenReturn(new byte[42]);
+		setHttpResponseProcessor(hpcMock);
 
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
 
-		verify(rp).getBytesRange(eq(42));
+		verify(hpcMock).getBytesRange(eq(42));
 	}
 
 	@Test
 	public void testLocalAccessIsFileRequest() throws Exception {
-		HTTPResponseProcessor rp = mock(HTTPResponseProcessorFile.class);
-		when(rp.getContentLength()).thenReturn(42);
-		when(rp.getBytes()).thenReturn(new byte[42]);
-		when(responseFactory.create(any()).getHTTPResponseProcessor())
-				.thenReturn(rp);
+		hpcMock = mock(HTTPResponseProcessorFile.class);
+		when(hpcMock.getContentLength()).thenReturn(42);
+		when(hpcMock.getBytes()).thenReturn(new byte[42]);
+		setHttpResponseProcessor(hpcMock);
 
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
 
-		verify(rp).getBytes();
+		verify(hpcMock).getBytes();
 	}
 
 	@Test
 	public void testNonLocalAccessIsFileRequest() throws Exception {
-		cut.setHttpServer(httpServer);
+		hpcMock = mock(HTTPResponseProcessorFile.class);
+		when(hpcMock.getContentLength()).thenReturn(42);
+		when(hpcMock.getBytes()).thenReturn(new byte[42]);
+		when(request.getAttribute(BooleanAttributes.LOCAL_NETWORK_ACCESS.toString())).thenReturn(false);
 
-		HTTPResponseProcessor rp = mock(HTTPResponseProcessorFile.class);
-		when(rp.getContentLength()).thenReturn(42);
-		when(rp.getBytes()).thenReturn(new byte[42]);
-		when(responseFactory.create(any()).getHTTPResponseProcessor()).thenReturn(rp);
-		when(request.getAttribute(HTTPRequestAttributes.LOCAL_NETWORK_ACCESS)).thenReturn(false);
+		setHttpResponseProcessor(hpcMock);
 
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
 
 		verify(bandwidthMonitor).getActualPacketSize();
-		verify(rp).getBytesRange(eq(42));
+		verify(hpcMock).getBytesRange(eq(42));
 	}
 
 	@Test
 	public void testZeroContentLength() throws Exception {
-		when(responseFactory.create(any()).getHTTPResponseProcessor().getContentLength()).thenReturn(0);
+		when(hpcMock.getContentLength()).thenReturn(0);
 
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
 
@@ -161,19 +167,11 @@ public class BaseHandlerTest {
 
 	@Test
 	public void testHeaderOnlyRequest() throws Exception {
-		when(responseFactory.create(any()).isRequestHeadOnly()).thenReturn(true);
 		when(baseRequest.isHead()).thenReturn(true);
 
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
 
 		verify(baseRequest).setHandled(eq(true));
-	}
-
-	@Test
-	public void testHeaderStatusCode() throws Exception {
-		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
-
-		verify(response).setStatus(HttpStatus.OK_200);
 	}
 
 	@Test
@@ -224,7 +222,7 @@ public class BaseHandlerTest {
 	
 	@Test
 	public void testHeaderCacheControlNoContent() throws Exception {
-		when(responseFactory.create(any()).getHTTPResponseProcessor().getContentLength()).thenReturn(0);
+		when(hpcMock.getContentLength()).thenReturn(0);
 
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
 
@@ -233,10 +231,37 @@ public class BaseHandlerTest {
 
 	@Test
 	public void testHeaderContentLengthNoContent() throws Exception {
-		when(responseFactory.create(any()).getHTTPResponseProcessor().getContentLength()).thenReturn(0);
+		when(hpcMock.getContentLength()).thenReturn(0);
 
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
 
 		verify(response, never()).setContentLength(eq(42));
+	}
+
+	@Test
+	public void testResponseProcessorNullContentLength() throws Exception {
+		setHttpResponseProcessor(null);
+
+		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
+
+		verify(response, never()).setContentLength(anyInt());
+	}
+
+	@Test
+	public void testResponseProcessorNullStatus() throws Exception {
+		setHttpResponseProcessor(null);
+
+		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
+
+		verify(response, never()).setStatus(anyInt());
+	}
+
+	@Test
+	public void testResponseProcessorNullHandled() throws Exception {
+		setHttpResponseProcessor(null);
+
+		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
+
+		verify(baseRequest, never()).setHandled(anyBoolean());
 	}
 }

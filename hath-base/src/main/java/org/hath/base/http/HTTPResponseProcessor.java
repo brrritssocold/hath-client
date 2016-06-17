@@ -43,14 +43,12 @@ public abstract class HTTPResponseProcessor {
 		return 0;
 	}
 	
-	public int initialize() {
-		return 0;
+	public void initialize(HttpServletResponse response) {
 	}
 	
 	public void cleanup() {}
 
 	public void updateResponse(HttpServletResponse response) throws IOException {
-		response.setStatus(initialize());
 		response.setContentLength(getContentLength());
 		response.setContentType(getContentType());
 
@@ -66,32 +64,10 @@ public abstract class HTTPResponseProcessor {
 		}
 	}
 
-	/**
-	 * Subclasses should update the response object directly
-	 */
-	@Deprecated
 	public abstract byte[] getBytes() throws Exception;
 
-	/**
-	 * Subclasses should update the response object directly
-	 */
-	@Deprecated
 	public abstract byte[] getBytesRange(int len) throws Exception;
 	
-	/**
-	 * Subclasses should update the response object directly
-	 */
-	@Deprecated
-	public String getHeader() {
-		return this.header;
-	}
-
-	public void addHeaderField(String name, String value) {
-		// TODO: encode the value if needed.
-		this.header += name + ": " + value + "\r\n";
-		headersToAdd.add(new HeaderPair(name, value));
-	}
-
 	protected class HeaderPair {
 		public HeaderPair(String name, String value) {
 			this.name = name;

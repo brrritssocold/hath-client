@@ -23,40 +23,99 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.http;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import org.eclipse.jetty.http.HttpMethod;
+import org.eclipse.jetty.http.HttpStatus;
+import org.eclipse.jetty.server.Connector;
+import org.eclipse.jetty.server.Handler;
+import org.eclipse.jetty.server.HttpConfiguration;
+import org.eclipse.jetty.server.HttpConnectionFactory;
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.server.handler.ContextHandler;
+import org.eclipse.jetty.server.handler.ContextHandlerCollection;
+import org.eclipse.jetty.server.handler.HandlerCollection;
+import org.eclipse.jetty.server.handler.HandlerList;
 import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.Out;
 import org.hath.base.Settings;
-import org.hath.base.Stats;
+import org.hath.base.http.handlers.FaviconHandler;
+import org.hath.base.http.handlers.FileHandler;
+import org.hath.base.http.handlers.ProxyHandler;
+import org.hath.base.http.handlers.RequestMethodCheckHandler;
+import org.hath.base.http.handlers.ResponseProcessorHandler;
+import org.hath.base.http.handlers.RobotsHandler;
+import org.hath.base.http.handlers.ServerCommandHandler;
+import org.hath.base.http.handlers.SessionRemovalHandler;
+import org.hath.base.http.handlers.SessionTrackingHandler;
+import org.hath.base.http.handlers.SpeedTestHandler;
+import org.hath.base.http.handlers.UnhandledSessionHandler;
 
 public class HTTPServer {
 	private static final int MAX_FLOOD_ENTRY_AGE_SECONDS = 60;
 	private static final int REQUEST_TIMEOUT_SECONDS = 30;
 	private static final double OVERLOAD_PERCENTAGE = 0.8;
+	private static final HttpMethod[] allowedMethods = { HttpMethod.GET, HttpMethod.HEAD };
 
 	private HentaiAtHomeClient client;
-	@Deprecated
-	private HTTPBandwidthMonitor bandwidthMonitor;
 	private Server httpServer;
-	@Deprecated
-	private List<BaseHandler> sessions;
 	private SessionTrackingHandler sessionTrackingHandler;
 	
 	public HTTPServer(HentaiAtHomeClient client) {
-		this(client, new HTTPSessionFactory());
+		this.client = client;
 	}
 
-	public HTTPServer(HentaiAtHomeClient client, HTTPSessionFactory factory) {
-		this.client = client;
-		bandwidthMonitor = new HTTPBandwidthMonitor();
-		sessions = Collections.checkedList(new ArrayList<BaseHandler>(), BaseHandler.class);
+	public Handler setupHandlers() {
+		HandlerList handlerList = new HandlerList();
+		HandlerCollection handlerCollection = new HandlerCollection();
+
+		SessionTracker sessionTracker = new SessionTracker(REQUEST_TIMEOUT_SECONDS, TimeUnit.SECONDS,
+				Settings.getMaxConnections(), OVERLOAD_PERCENTAGE);
+		FloodControl floodControl = new FloodControl(MAX_FLOOD_ENTRY_AGE_SECONDS, TimeUnit.SECONDS);
+
+		sessionTrackingHandler = new SessionTrackingHandler(client, floodControl, sessionTracker);
+		SessionRemovalHandler sessionRemovalHandler = new SessionRemovalHandler(sessionTracker);
+
+		// process in-order until positive status or exception
+		handlerList.addHandler(createContextHandlerCollection());
+		handlerList.addHandler(new ResponseProcessorHandler(new HTTPBandwidthMonitor()));
+		handlerList.addHandler(new UnhandledSessionHandler(HttpStatus.NOT_FOUND_404));
+
+		// these handlers will always be executed in-order
+		handlerCollection.addHandler(sessionTrackingHandler);
+		handlerCollection.addHandler(new RequestMethodCheckHandler(allowedMethods));
+		handlerCollection.addHandler(handlerList);
+		handlerCollection.addHandler(sessionRemovalHandler);
+
+		return handlerCollection;
 	}
-	
+
+	/**
+	 * This {@link ContextHandlerCollection} is used to route the requests to
+	 * the respective handlers.
+	 */
+	private ContextHandlerCollection createContextHandlerCollection() {
+		ContextHandlerCollection handlerCollection = new ContextHandlerCollection();
+
+		handlerCollection.addHandler(createContextHandler("/favicon.ico", new FaviconHandler()));
+		handlerCollection.addHandler(createContextHandler("/robots.txt", new RobotsHandler()));
+
+		handlerCollection.addHandler(createContextHandler("/t", new SpeedTestHandler()));
+		handlerCollection.addHandler(createContextHandler("/h", new FileHandler(client.getCacheHandler())));
+		handlerCollection.addHandler(createContextHandler("/p", new ProxyHandler(client)));
+		handlerCollection.addHandler(createContextHandler("/servercmd", new ServerCommandHandler(client)));
+
+		return handlerCollection;
+	}
+
+	private ContextHandler createContextHandler(String contextPath, Handler handler) {
+		ContextHandler contextHandler = new ContextHandler(contextPath);
+		contextHandler.setHandler(handler);
+
+		return contextHandler;
+	}
+
 	public boolean startConnectionListener(int port) {
 		try {
 			Out.info("Starting up the internal HTTP Server...");
@@ -65,16 +124,19 @@ public class HTTPServer {
 				stopConnectionListener();
 			}
 			
-			httpServer = new Server(port);
+			httpServer = new Server();
 			httpServer.setStopTimeout(TimeUnit.MILLISECONDS.convert(15, TimeUnit.SECONDS));
+			HttpConfiguration httpConfig = new HttpConfiguration();
+			httpConfig.setSendServerVersion(false);
 
-			SessionTracker sessionTracker = new SessionTracker(REQUEST_TIMEOUT_SECONDS, TimeUnit.SECONDS,
-					Settings.getMaxConnections(), OVERLOAD_PERCENTAGE);
-			FloodControl floodControl = new FloodControl(MAX_FLOOD_ENTRY_AGE_SECONDS, TimeUnit.SECONDS);
+			HttpConnectionFactory httpConnectionFactory = new HttpConnectionFactory(httpConfig);
 
-			sessionTrackingHandler = new SessionTrackingHandler(client, floodControl, sessionTracker);
+			ServerConnector httpConnector = new ServerConnector(httpServer, httpConnectionFactory);
+			httpConnector.setPort(port);
 			
-			httpServer.setHandler(sessionTrackingHandler);
+			httpServer.setConnectors(new Connector[] { httpConnector });
+			
+			httpServer.setHandler(setupHandlers());
 			httpServer.start();
 
 			Out.info("Internal HTTP Server was successfully started, and is listening on port " + port);
@@ -108,43 +170,7 @@ public class HTTPServer {
 		}
 	}
 	
-	@Deprecated
-	public void nukeOldConnections(boolean killall) {
-		synchronized(sessions) {
-			// in some rare cases, the connection is unable to remove itself from the session list. if so, it will return true for doTimeoutCheck, meaning that we will have to clear it out from here instead
-			List<BaseHandler> remove = Collections.checkedList(new ArrayList<BaseHandler>(), BaseHandler.class);
-			
-			for(BaseHandler session : sessions) {
-				if(session.doTimeoutCheck(killall)) {
-					remove.add(session);
-				}
-			}
-			
-			for(BaseHandler session : remove) {
-				sessions.remove(session);
-			}
-		}
-	}
-	
 	public void allowNormalConnections() {
 		sessionTrackingHandler.allowNormalConnections();
-	}
-
-	@Deprecated
-	public void removeHTTPSession(BaseHandler httpSession) {
-		synchronized(sessions) {
-			sessions.remove(httpSession);
-			Stats.setOpenConnections(sessions.size());
-		}
-	}
-	
-	@Deprecated
-	public HTTPBandwidthMonitor getBandwidthMonitor() {
-		return bandwidthMonitor;
-	}
-
-	@Deprecated
-	public HentaiAtHomeClient getHentaiAtHomeClient() {
-		return client;
 	}
 }

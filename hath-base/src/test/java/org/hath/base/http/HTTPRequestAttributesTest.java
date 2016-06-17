@@ -24,12 +24,17 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 package org.hath.base.http;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import javax.servlet.http.HttpServletRequest;
 
+import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.http.HTTPRequestAttributes.BooleanAttributes;
+import org.hath.base.http.HTTPRequestAttributes.ClassAttributes;
 import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -69,7 +74,7 @@ public class HTTPRequestAttributesTest {
 
 	@Test
 	public void testGetAttributeIntNotSet() throws Exception {
-		assertThat(HTTPRequestAttributes.getAttribute(request, IntegerAttributes.SESSION_ID), is(0));
+		assertThat(HTTPRequestAttributes.getAttribute(request, IntegerAttributes.SESSION_ID), is(-1));
 	}
 
 	@Test
@@ -84,5 +89,56 @@ public class HTTPRequestAttributesTest {
 		when(request.getAttribute(IntegerAttributes.SESSION_ID.toString())).thenReturn("foobar");
 
 		HTTPRequestAttributes.getAttribute(request, IntegerAttributes.SESSION_ID);
+	}
+
+	@Test
+	public void testGetResponseProcessorSet() throws Exception {
+		HTTPResponseProcessor mockProcessor = mock(HTTPResponseProcessor.class);
+		when(request.getAttribute(ClassAttributes.HTTPResponseProcessor.toString())).thenReturn(mockProcessor);
+		
+		HTTPResponseProcessor result = HTTPRequestAttributes.getResponseProcessor(request);
+
+		assertThat(result, is(mockProcessor));
+	}
+
+	@Test
+	public void testGetResponseProcessorNotSet() throws Exception {
+		HTTPResponseProcessor result = HTTPRequestAttributes.getResponseProcessor(request);
+
+		assertThat(result, nullValue());
+	}
+
+	@Test
+	public void testGetClientSet() throws Exception {
+		HentaiAtHomeClient clientMock = mock(HentaiAtHomeClient.class);
+		when(request.getAttribute(ClassAttributes.HentaiAtHomeClient.toString())).thenReturn(clientMock);
+
+		HentaiAtHomeClient result = HTTPRequestAttributes.getClient(request);
+
+		assertThat(result, is(clientMock));
+	}
+
+	@Test
+	public void testGetClientNotSet() throws Exception {
+		HentaiAtHomeClient result = HTTPRequestAttributes.getClient(request);
+
+		assertThat(result, nullValue());
+	}
+
+	@Test
+	public void testSetResponseProcessor() throws Exception {
+		HTTPResponseProcessor processorMock = mock(HTTPResponseProcessor.class);
+
+		HTTPRequestAttributes.setResponseProcessor(request, processorMock);
+
+		verify(request).setAttribute(ClassAttributes.HTTPResponseProcessor.toString(), processorMock);
+	}
+
+	@Test
+	public void testSetClient() throws Exception {
+		HentaiAtHomeClient clientMock = mock(HentaiAtHomeClient.class);
+		HTTPRequestAttributes.setClient(request, clientMock);
+
+		verify(request).setAttribute(ClassAttributes.HentaiAtHomeClient.toString(), clientMock);
 	}
 }
