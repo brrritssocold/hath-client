@@ -84,6 +84,7 @@ public class ResponseProcessorHandler extends AbstractHandler {
 				return;
 			}
 
+			hpc.initialize(response);
 			int contentLength = hpc.getContentLength();
 			int statusCode = response.getStatus();
 			response.setContentType(hpc.getContentType());
