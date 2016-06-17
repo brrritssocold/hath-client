@@ -204,6 +204,6 @@ public class ResponseProcessorHandler extends AbstractHandler {
 	}
 
 	private String info(String remoteIp) {
-		return "{" + connId + String.format("%1$-17s", remoteIp + "}");
+		return "{" + connId + "/" + String.format("%1$-17s", remoteIp + "}");
 	}
 }
