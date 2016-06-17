@@ -21,12 +21,24 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base.http;
+package org.hath.base.http.handlers;
 
-import java.net.Socket;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
-public class HTTPSessionFactory {
-	public HTTPSession create(Socket socket, int connectionID, boolean localNetworkAccess, HTTPServer httpServer) {
-		return new HTTPSession(socket, connectionID, localNetworkAccess, httpServer);
-	}
+import org.eclipse.jetty.server.Request;
+import org.junit.runner.RunWith;
+import org.mockito.Answers;
+import org.mockito.Mock;
+import org.mockito.runners.MockitoJUnitRunner;
+
+@RunWith(MockitoJUnitRunner.class)
+public abstract class HandlerJunitTest {
+	protected String target = "/";
+	@Mock(answer = Answers.RETURNS_DEEP_STUBS)
+	protected Request baseRequest;
+	@Mock
+	protected HttpServletRequest request;
+	@Mock(answer = Answers.RETURNS_DEEP_STUBS)
+	protected HttpServletResponse response;
 }

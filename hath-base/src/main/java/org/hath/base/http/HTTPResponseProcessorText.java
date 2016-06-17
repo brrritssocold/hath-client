@@ -60,6 +60,7 @@ public class HTTPResponseProcessorText extends HTTPResponseProcessor {
 		contentType = mimeType + "; charset=" + charset.name();
 	}
 	
+	@Override
 	public int getContentLength() {
 		if(responseBytes != null) {
 			return responseBytes.length;
@@ -69,14 +70,17 @@ public class HTTPResponseProcessorText extends HTTPResponseProcessor {
 		}
 	}
 
+	@Override
 	public String getContentType() {
 		return this.contentType;
 	}
 	
+	@Override
 	public byte[] getBytes() {
 		return responseBytes;
 	}
 	
+	@Override
 	public byte[] getBytesRange(int len) {
 		byte[] range = Arrays.copyOfRange(responseBytes, off, Math.min(responseBytes.length, off + len));
 		off += len;

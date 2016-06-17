@@ -25,6 +25,10 @@ package org.hath.base.http;
 
 import java.util.Random;
 
+import javax.servlet.http.HttpServletResponse;
+
+import org.hath.base.Stats;
+
 public class HTTPResponseProcessorSpeedtest extends HTTPResponseProcessor {	
 	int testsize = 0;
 	Random rand;
@@ -34,14 +38,22 @@ public class HTTPResponseProcessorSpeedtest extends HTTPResponseProcessor {
 		rand = new Random();
 	}
 
+	@Override
+	public void initialize(HttpServletResponse response) {
+		Stats.setProgramStatus("Running speed tests...");
+	}
+
+	@Override
 	public int getContentLength() {
 		return testsize;
 	}
 	
+	@Override
 	public byte[] getBytes() {
 		return getRandomBytes(testsize);
 	}
 	
+	@Override
 	public byte[] getBytesRange(int len) {
 		return getRandomBytes(len);
 	}
