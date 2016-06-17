@@ -45,7 +45,6 @@ public class UnhandledSessionHandler extends AbstractHandler {
 	@Override
 	public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
 			throws IOException, ServletException {
-		response.reset();
 		response.setStatus(responseCode);
 		baseRequest.setHandled(true);
 	}
