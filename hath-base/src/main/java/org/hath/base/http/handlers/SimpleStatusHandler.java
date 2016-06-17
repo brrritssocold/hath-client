@@ -23,31 +23,29 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.http.handlers;
 
-import static org.mockito.Mockito.verify;
+import java.io.IOException;
 
-import org.junit.Before;
-import org.junit.Test;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
-public class UnhandledSessionHandlerTest extends HandlerJunitTest {
-	private static final int TEST_STATUS = 42;
-	private UnhandledSessionHandler cut;
+import org.eclipse.jetty.server.Request;
+import org.eclipse.jetty.server.handler.AbstractHandler;
 
-	@Before
-	public void setUp() throws Exception {
-		cut = new UnhandledSessionHandler(TEST_STATUS);
+/**
+ * Handle requests with the given response code.
+ */
+public class SimpleStatusHandler extends AbstractHandler {
+	private final int responseCode;
+
+	public SimpleStatusHandler(int responseCode) {
+		this.responseCode = responseCode;
 	}
 
-	@Test
-	public void testHandleStatus() throws Exception {
-		cut.handle(target, baseRequest, request, response);
-
-		verify(response).setStatus(TEST_STATUS);
-	}
-
-	@Test
-	public void testHandleIsHandled() throws Exception {
-		cut.handle(target, baseRequest, request, response);
-
-		verify(baseRequest).setHandled(true);
+	@Override
+	public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
+			throws IOException, ServletException {
+		response.setStatus(responseCode);
+		baseRequest.setHandled(true);
 	}
 }

@@ -30,7 +30,7 @@ import org.junit.runners.Suite.SuiteClasses;
 @RunWith(Suite.class)
 @SuiteClasses({ FaviconHandlerTest.class, RobotsHandlerTest.class, SpeedTestHandlerTest.class, FileHandlerTest.class,
 		ProxyHandlerTest.class, ServerCommandHandlerTest.class, SessionRemovalHandlerTest.class,
-		RequestMethodCheckHandlerTest.class, UnhandledSessionHandlerTest.class, SessionTrackingHandlerTest.class,
+		RequestMethodCheckHandlerTest.class, SimpleStatusHandlerTest.class, SessionTrackingHandlerTest.class,
 		ResponseProcessorHandlerTest.class })
 public class AllHandlerTests {
 

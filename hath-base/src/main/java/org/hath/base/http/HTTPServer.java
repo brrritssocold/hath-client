@@ -50,7 +50,7 @@ import org.hath.base.http.handlers.ServerCommandHandler;
 import org.hath.base.http.handlers.SessionRemovalHandler;
 import org.hath.base.http.handlers.SessionTrackingHandler;
 import org.hath.base.http.handlers.SpeedTestHandler;
-import org.hath.base.http.handlers.UnhandledSessionHandler;
+import org.hath.base.http.handlers.SimpleStatusHandler;
 
 public class HTTPServer {
 	private static final int MAX_FLOOD_ENTRY_AGE_SECONDS = 60;
@@ -80,7 +80,7 @@ public class HTTPServer {
 		// process in-order until positive status or exception
 		handlerList.addHandler(createContextHandlerCollection());
 		handlerList.addHandler(new ResponseProcessorHandler(new HTTPBandwidthMonitor()));
-		handlerList.addHandler(new UnhandledSessionHandler(HttpStatus.NOT_FOUND_404));
+		handlerList.addHandler(new SimpleStatusHandler(HttpStatus.NOT_FOUND_404));
 
 		// these handlers will always be executed in-order
 		handlerCollection.addHandler(sessionTrackingHandler);
