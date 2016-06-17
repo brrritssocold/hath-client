@@ -116,6 +116,7 @@ public class SessionTrackingHandler extends AbstractHandler {
 					// let the dispatcher know that we're close to the breaking
 					// point. this will make it back off for 30 sec, and
 					// temporarily turns down the dispatch rate to half.
+					Out.warning("Server is overloaded, notifying the dispatcher...");
 					client.getServerHandler().notifyOverload();
 				}
 
