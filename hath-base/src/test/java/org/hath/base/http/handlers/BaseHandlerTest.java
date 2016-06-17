@@ -89,8 +89,7 @@ public class BaseHandlerTest {
 	}
 
 	private void setHttpResponseProcessor(HTTPResponseProcessor hpc) {
-		// TODO replace me with helper
-		when(request.getAttribute(ClassAttributes.HTTPResponseProcessor.toString())).thenReturn(hpcMock);
+		when(request.getAttribute(ClassAttributes.HTTPResponseProcessor.toString())).thenReturn(hpc);
 	}
 
 	private void setDefaultBehavior() throws Exception {
