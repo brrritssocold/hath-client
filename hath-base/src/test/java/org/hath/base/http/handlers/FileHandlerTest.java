@@ -56,7 +56,7 @@ public class FileHandlerTest extends HandlerJunitTest {
 	private InetAddress client_address;
 
 	@Mock(answer = Answers.RETURNS_DEEP_STUBS)
-	private BaseHandler sessionMock;
+	private ResponseProcessorHandler sessionMock;
 
 	@Mock(answer = Answers.RETURNS_DEEP_STUBS)
 	private HVFile hvFileMock;

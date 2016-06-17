@@ -61,7 +61,7 @@ public class ProxyHandlerTest extends HandlerJunitTest {
 	private HVFile hvFileMock;
 
 	@Mock(answer = Answers.RETURNS_DEEP_STUBS)
-	private BaseHandler sessionMock;
+	private ResponseProcessorHandler sessionMock;
 
 	@Before
 	public void setUp() throws Exception {

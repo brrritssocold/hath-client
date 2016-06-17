@@ -42,7 +42,7 @@ import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.Out;
 import org.hath.base.Settings;
 import org.hath.base.Stats;
-import org.hath.base.http.handlers.BaseHandler;
+import org.hath.base.http.handlers.ResponseProcessorHandler;
 import org.hath.base.http.handlers.FaviconHandler;
 import org.hath.base.http.handlers.FileHandler;
 import org.hath.base.http.handlers.ProxyHandler;
@@ -65,7 +65,7 @@ public class HTTPServer {
 	private HTTPBandwidthMonitor bandwidthMonitor;
 	private Server httpServer;
 	@Deprecated
-	private List<BaseHandler> sessions;
+	private List<ResponseProcessorHandler> sessions;
 	private SessionTrackingHandler sessionTrackingHandler;
 	
 	public HTTPServer(HentaiAtHomeClient client) {
@@ -85,7 +85,7 @@ public class HTTPServer {
 
 		// process in-order until positive status or exception
 		handlerList.addHandler(createContextHandlerCollection());
-		handlerList.addHandler(new BaseHandler(new HTTPBandwidthMonitor()));
+		handlerList.addHandler(new ResponseProcessorHandler(new HTTPBandwidthMonitor()));
 		handlerList.addHandler(new UnhandledSessionHandler(HttpStatus.NOT_FOUND_404));
 
 		// these handlers will always be executed in-order
@@ -181,7 +181,7 @@ public class HTTPServer {
 	}
 
 	@Deprecated
-	public void removeHTTPSession(BaseHandler httpSession) {
+	public void removeHTTPSession(ResponseProcessorHandler httpSession) {
 		synchronized(sessions) {
 			sessions.remove(httpSession);
 			Stats.setOpenConnections(sessions.size());

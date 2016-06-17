@@ -54,13 +54,13 @@ import com.google.common.net.HttpHeaders;
  * Writes data from {@link HTTPResponseProcessor} into the response. Handles
  * requests based on local or external origin and enforces the bandwidth limit.
  */
-public class BaseHandler extends AbstractHandler {
+public class ResponseProcessorHandler extends AbstractHandler {
 	private int connId;
 	private boolean localNetworkAccess;
 	private long sessionStartTime, lastPacketSend; //TODO replace with guava stopwatch
 	private HTTPBandwidthMonitor bandwidthMonitor;
 
-	public BaseHandler(HTTPBandwidthMonitor bandwidthMonitor) {
+	public ResponseProcessorHandler(HTTPBandwidthMonitor bandwidthMonitor) {
 		sessionStartTime = System.currentTimeMillis();
 		this.bandwidthMonitor = bandwidthMonitor;
 	}

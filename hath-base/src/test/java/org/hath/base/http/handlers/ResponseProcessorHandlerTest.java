@@ -61,7 +61,7 @@ import com.google.common.net.HttpHeaders;
 import com.google.common.net.InetAddresses;
 
 @RunWith(MockitoJUnitRunner.class)
-public class BaseHandlerTest {
+public class ResponseProcessorHandlerTest {
 	private static final String EXTERNAL_ADDRESS = "123.123.123.123";
 	private static final String REMOTE_ADDRESS = "233.233.233.233";
 	private static final String DEFAULT_TARGET = "/";
@@ -81,13 +81,13 @@ public class BaseHandlerTest {
 	@Mock
 	HTTPResponseProcessor hpcMock;
 
-	private BaseHandler cut;
+	private ResponseProcessorHandler cut;
 
 	@Before
 	public void setUp() throws Exception {
 		setDefaultBehavior();
 
-		cut = new BaseHandler(bandwidthMonitor);
+		cut = new ResponseProcessorHandler(bandwidthMonitor);
 	}
 
 	private void setHttpResponseProcessor(HTTPResponseProcessor hpc) {
