@@ -50,6 +50,7 @@ import org.hath.base.http.handlers.RequestMethodCheckHandler;
 import org.hath.base.http.handlers.RobotsHandler;
 import org.hath.base.http.handlers.ServerCommandHandler;
 import org.hath.base.http.handlers.SessionRemovalHandler;
+import org.hath.base.http.handlers.SessionTrackingHandler;
 import org.hath.base.http.handlers.SpeedTestHandler;
 import org.hath.base.http.handlers.UnhandledSessionHandler;
 
