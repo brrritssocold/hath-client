@@ -28,17 +28,6 @@ import javax.servlet.http.HttpServletRequest;
 import org.hath.base.HentaiAtHomeClient;
 
 public class HTTPRequestAttributes {
-	/**
-	 * Use {@link BooleanAttributes#LOCAL_NETWORK_ACCESS} instead
-	 */
-	@Deprecated
-	public static final String LOCAL_NETWORK_ACCESS = "org.hath.base.http.localNetworkAccess";
-	/**
-	 * Use {@link BooleanAttributes#API_SERVER_ACCESS} instead
-	 */
-	@Deprecated
-	public static final String API_SERVER_ACCESS = "org.hath.base.http.apiServerAccess";
-
 	public enum BooleanAttributes {
 		LOCAL_NETWORK_ACCESS("org.hath.base.http.localNetworkAccess"), API_SERVER_ACCESS(
 				"org.hath.base.http.apiServerAccess");

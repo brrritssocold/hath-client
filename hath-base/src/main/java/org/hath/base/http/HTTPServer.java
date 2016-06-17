@@ -23,7 +23,6 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.http;
 
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jetty.http.HttpMethod;
@@ -41,12 +40,11 @@ import org.eclipse.jetty.server.handler.HandlerList;
 import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.Out;
 import org.hath.base.Settings;
-import org.hath.base.Stats;
-import org.hath.base.http.handlers.ResponseProcessorHandler;
 import org.hath.base.http.handlers.FaviconHandler;
 import org.hath.base.http.handlers.FileHandler;
 import org.hath.base.http.handlers.ProxyHandler;
 import org.hath.base.http.handlers.RequestMethodCheckHandler;
+import org.hath.base.http.handlers.ResponseProcessorHandler;
 import org.hath.base.http.handlers.RobotsHandler;
 import org.hath.base.http.handlers.ServerCommandHandler;
 import org.hath.base.http.handlers.SessionRemovalHandler;
@@ -61,11 +59,7 @@ public class HTTPServer {
 	private static final HttpMethod[] allowedMethods = { HttpMethod.GET, HttpMethod.HEAD };
 
 	private HentaiAtHomeClient client;
-	@Deprecated
-	private HTTPBandwidthMonitor bandwidthMonitor;
 	private Server httpServer;
-	@Deprecated
-	private List<ResponseProcessorHandler> sessions;
 	private SessionTrackingHandler sessionTrackingHandler;
 	
 	public HTTPServer(HentaiAtHomeClient client) {
@@ -178,23 +172,5 @@ public class HTTPServer {
 	
 	public void allowNormalConnections() {
 		sessionTrackingHandler.allowNormalConnections();
-	}
-
-	@Deprecated
-	public void removeHTTPSession(ResponseProcessorHandler httpSession) {
-		synchronized(sessions) {
-			sessions.remove(httpSession);
-			Stats.setOpenConnections(sessions.size());
-		}
-	}
-	
-	@Deprecated
-	public HTTPBandwidthMonitor getBandwidthMonitor() {
-		return bandwidthMonitor;
-	}
-
-	@Deprecated
-	public HentaiAtHomeClient getHentaiAtHomeClient() {
-		return client;
 	}
 }

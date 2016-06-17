@@ -117,11 +117,4 @@ public class HTTPServerTest {
 	public void testGetBandwidthMonitor() throws Exception {
 		throw new RuntimeException("not yet implemented");
 	}
-
-	@Test
-	public void testGetHentaiAtHomeClient() throws Exception {
-		HentaiAtHomeClient client = hTTPServer.getHentaiAtHomeClient();
-
-		assertThat(client, is(mockClient));
-	}
 }
