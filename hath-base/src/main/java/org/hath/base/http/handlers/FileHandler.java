@@ -46,8 +46,11 @@ import org.hath.base.http.HTTPRequestAttributes.BooleanAttributes;
 import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
 import org.hath.base.http.HTTPResponseProcessorFile;
 import org.hath.base.http.HTTPResponseProcessorProxy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class FileHandler extends AbstractHandler {
+	private static final Logger logger = LoggerFactory.getLogger(FileHandler.class);
 	private final CacheHandler cacheHandler;
 
 	private boolean isKeystampValid(String hvfile, Hashtable<String, String> additional) {
@@ -80,11 +83,12 @@ public class FileHandler extends AbstractHandler {
 	@Override
 	public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
 			throws IOException, ServletException {
-
+		logger.trace("Handling file request ", request);
 		// TODO replace with util method
 		String[] urlparts = target.replace("%3d", "=").split("/");
 
 		if (urlparts.length < 3) {
+			logger.trace("Request was too short! {}", target);
 			response.setStatus(HttpStatus.BAD_REQUEST_400);
 			baseRequest.setHandled(true);
 			return;
@@ -109,6 +113,7 @@ public class FileHandler extends AbstractHandler {
 		// urlparts[4] will contain the filename, but we don't actively use this
 
 		if (!isKeystampValid(hvfile, additional)) {
+			logger.trace("Rejected file request due to invalid key: {}", request);
 			response.setStatus(HttpStatus.FORBIDDEN_403);
 		} else if (requestedHVFile == null) {
 			Out.warning(session + " The requested file was invalid or not found in cache.");
@@ -117,24 +122,29 @@ public class FileHandler extends AbstractHandler {
 			String fileid = requestedHVFile.getFileid();
 
 			if (requestedHVFile.getLocalFileRef().exists()) {
+				logger.trace("Sending requested file {}", fileid);
 				HTTPRequestAttributes.setResponseProcessor(request, new HTTPResponseProcessorFile(requestedHVFile));
 			} else if (Settings.isStaticRange(fileid)) {
 				// non-existent file in a static range. do an on-demand request
 				// of the file from the image servers
+				logger.trace("Requested file is in the static range");
 				List<String> requestTokens = new ArrayList<String>();
 				requestTokens.add(fileid);
 
 				Hashtable<String, String> tokens = client.getServerHandler().getFileTokens(requestTokens);
 
 				if (tokens.containsKey(fileid)) {
+					logger.trace("Creating proxy for static range file request: {}", fileid);
 					HTTPRequestAttributes.setResponseProcessor(request,
 							new HTTPResponseProcessorProxy(client, fileid, tokens.get(fileid), 1, 1, "ondemand"));
 				} else {
+					logger.trace("Could not find static range request in file tokens: {}", fileid);
 					response.setStatus(HttpStatus.NOT_FOUND_404);
 				}
 			} else {
 				// file does not exist, and is not in one of the client's static
 				// ranges
+				logger.trace("Could not find requested file {}", requestedHVFile.getFileid());
 				response.setStatus(HttpStatus.NOT_FOUND_404);
 			}
 		}

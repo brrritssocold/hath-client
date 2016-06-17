@@ -47,6 +47,8 @@ import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
 import org.hath.base.http.HTTPResponseProcessor;
 import org.hath.base.http.HTTPResponseProcessorFile;
 import org.hath.base.http.HTTPResponseProcessorProxy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.net.HttpHeaders;
 
@@ -55,6 +57,7 @@ import com.google.common.net.HttpHeaders;
  * requests based on local or external origin and enforces the bandwidth limit.
  */
 public class ResponseProcessorHandler extends AbstractHandler {
+	private static final Logger logger = LoggerFactory.getLogger(ResponseProcessorHandler.class);
 	private int connId;
 	private boolean localNetworkAccess;
 	private long sessionStartTime, lastPacketSend; //TODO replace with guava stopwatch
@@ -68,6 +71,7 @@ public class ResponseProcessorHandler extends AbstractHandler {
 	@Override
 	public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
 			throws IOException, ServletException {
+		logger.trace("Handling response request");
 		ServletOutputStream bs = response.getOutputStream();
 
 		HTTPResponseProcessor hpc = null;
@@ -81,6 +85,7 @@ public class ResponseProcessorHandler extends AbstractHandler {
 
 			if (hpc == null) {
 				Out.warning("Got request without ResponseProcessor: " + request.toString());
+				logger.trace("Status: {}, isHandled: {}", response.getStatus(), baseRequest.isHandled());
 				return;
 			}
 
@@ -115,6 +120,7 @@ public class ResponseProcessorHandler extends AbstractHandler {
 					// there is no pony to write (probably a redirect). flush the socket and finish.
 					baseRequest.setHandled(true);
 					printProcessingFinished(info, contentLength, startTime);
+				logger.trace("Response content length is 0");
 					return;
 			}
 					if(localNetworkAccess && (hpc instanceof HTTPResponseProcessorFile || hpc instanceof HTTPResponseProcessorProxy)) {

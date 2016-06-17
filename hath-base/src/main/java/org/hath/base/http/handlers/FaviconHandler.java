@@ -32,14 +32,19 @@ import javax.servlet.http.HttpServletResponse;
 import org.eclipse.jetty.http.HttpStatus;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.net.HttpHeaders;
 
 public class FaviconHandler extends AbstractHandler {
+	private static final Logger logger = LoggerFactory.getLogger(FaviconHandler.class);
 
 	@Override
 	public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
 			throws IOException, ServletException {
+		logger.trace("Handling Favicon request {}", request);
+
 		response.setHeader(HttpHeaders.LOCATION, "http://g.e-hentai.org/favicon.ico");
 		response.setStatus(HttpStatus.MOVED_PERMANENTLY_301);
 		response.setContentType("text/html");

@@ -43,8 +43,11 @@ import org.hath.base.http.HTTPRequestAttributes.BooleanAttributes;
 import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
 import org.hath.base.http.HTTPResponseProcessorFile;
 import org.hath.base.http.HTTPResponseProcessorProxy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ProxyHandler extends AbstractHandler {
+	private static final Logger logger = LoggerFactory.getLogger(ProxyHandler.class);
 	private HentaiAtHomeClient client;
 	private Pattern rawRequestParser;
 	public LinkedList<Sensing> sensingPointsHit = new LinkedList<>();
@@ -70,6 +73,7 @@ public class ProxyHandler extends AbstractHandler {
 
 	@Override
 	public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response) {
+		logger.trace("Handling proxy request");
 	// new proxy request type, used implicitly when the password field is set
 	// form: /p/fileid=asdf;token=asdf;gid=123;page=321;passkey=asdf/filename
 
@@ -78,7 +82,9 @@ public class ProxyHandler extends AbstractHandler {
 		Matcher matcher = rawRequestParser.matcher(rawRequest);
 
 		if (matcher.matches()) {
-			target = matcher.group(1);
+			String reparse = matcher.group(1);
+			logger.trace("Reparsing proxy request. target: {}, raw: {}, reparse: {}", target, rawRequest, reparse);
+			target = reparse;
 		}
 	// we allow access depending on the proxy mode retrieved from the server when the client is first started.
 	// 0 = disabled
@@ -146,15 +152,17 @@ public class ProxyHandler extends AbstractHandler {
 				int page = Integer.parseInt(szPage);
 
 				if(gid > 0 && page > 0) {
+
 						HVFile requestedHVFile = client.getCacheHandler().getHVFile(fileid, true);
 
 					if( (requestedHVFile != null) && (requestedHVFile.getLocalFileRef().exists()) ) {
-
+							logger.trace("Creating file response for local file");
 							HTTPRequestAttributes.setResponseProcessor(request,
 									new HTTPResponseProcessorFile(requestedHVFile));
 							hitSensingPoint(Sensing.PROXY_REQUEST_LOCAL_FILE);
 					}
 					else {
+							logger.trace("Creating proxy response for remote file");
 							HTTPRequestAttributes.setResponseProcessor(request,
 									new HTTPResponseProcessorProxy(client, fileid, token, gid, page, filename));
 							hitSensingPoint(Sensing.PROXY_REQUEST_PROXY_FILE);
