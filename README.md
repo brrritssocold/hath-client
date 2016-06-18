@@ -7,10 +7,14 @@ Note that this package only contains the Hentai@Home Client, which is coded spec
 ## Changes
  - Mavenized project
  - SQLite dependency managed with Maven
- - Split Base code and GUI related code into separate projects
+ - Split Base code and GUI related code into separate modules
  - Replaced most logging code with SLF4J and logback
  - Create shaded executable jar files
  - Minor code cleanup
+ - Replaced custom HTTP server with embedded jetty
+ - Split parsing code into several handlers
+ - Replaced custom HTTP client with jetty-client
+ - Additional logging code for debugging
  
 ## Building
 In order to build Hentai@Home, you need the following:
