@@ -31,6 +31,7 @@ import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.when;
 
 import java.net.InetAddress;
+import java.util.regex.Matcher;
 
 import org.hath.base.HVFile;
 import org.hath.base.HentaiAtHomeClient;
@@ -112,6 +113,16 @@ public class ProxyHandlerTest extends HandlerJunitTest {
 		sb.append("/");
 		sb.append(filename);
 
+		return sb.toString();
+	}
+
+	private static String buildRawProxyRequest(String proxyRequest) {
+		StringBuilder sb = new StringBuilder();
+
+		sb.append("Request(GET //127.128.129.130:60000/p");
+		sb.append(proxyRequest);
+		sb.append(")@1234abcd");
+		
 		return sb.toString();
 	}
 
@@ -207,6 +218,26 @@ public class ProxyHandlerTest extends HandlerJunitTest {
 				response);
 
 		assertSensingPoint(Sensing.PROXY_REQUEST_LOCAL_FILE);
+	}
+
+	@Test
+	public void testParseRequestProxyValidRequestReparse() throws Exception {
+		String rawRequest = buildRawProxyRequest(
+				buildProxyRequest(VALID_FILEID, VALID_TOKEN, "42", "1", null, "foobar"));
+
+		Matcher result = cut.reparse(rawRequest);
+
+		assertThat(result.matches(), is(true));
+	}
+
+	@Test
+	public void testParseRequestProxyValidRequestReparse_pInFileName() throws Exception {
+		String rawRequest = buildRawProxyRequest(
+				buildProxyRequest(VALID_FILEID, VALID_TOKEN, "42", "p5.jpg", null, "foobar"));
+
+		Matcher result = cut.reparse(rawRequest);
+
+		assertThat(result.matches(), is(true));
 	}
 
 	@Test

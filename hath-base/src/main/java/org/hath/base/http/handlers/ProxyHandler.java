@@ -62,13 +62,17 @@ public class ProxyHandler extends AbstractHandler {
 
 	public ProxyHandler(HentaiAtHomeClient client) {
 		this.client = client;
-		this.rawRequestParser = Pattern.compile("^(?:Request\\(GET.*\\/p)(.*)(?:\\)@[\\d\\w]*)$");
+		this.rawRequestParser = Pattern.compile("^(?:Request\\(GET.*\\/p)(\\/.*)(?:\\)@[\\d\\w]*)$");
 	}
 
 	public static String calculateProxyKey(String fileid) {
 		return MiscTools.getSHAString(fileid + "I think we can put our differences behind us."
 				+ MiscTools.getSHAString(Settings.getClientKey() + "For science.").substring(0, 10) + "You monster.")
 				.substring(0, 10);
+	}
+
+	protected Matcher reparse(String rawRequest) {
+		return rawRequestParser.matcher(rawRequest);
 	}
 
 	@Override
@@ -79,7 +83,7 @@ public class ProxyHandler extends AbstractHandler {
 
 		String rawRequest = request.toString();
 
-		Matcher matcher = rawRequestParser.matcher(rawRequest);
+		Matcher matcher = reparse(rawRequest);
 
 		if (matcher.matches()) {
 			String reparse = matcher.group(1);
