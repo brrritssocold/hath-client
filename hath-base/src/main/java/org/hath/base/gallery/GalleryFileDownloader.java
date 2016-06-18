@@ -129,8 +129,6 @@ public class GalleryFileDownloader implements Runnable {
 			int tempLength = 0;
 
 			httpClient = new HttpClient();
-			httpClient.setConnectTimeout(connectTimeoutMilli);
-			httpClient.setIdleTimeout(readTimeoutMilli);
 			httpClient.start();
 			httpClient.setUserAgentField(new HttpField(HttpHeader.USER_AGENT,
 					"Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.12) Gecko/20080201 Firefox/2.0.0.12"));
@@ -141,7 +139,9 @@ public class GalleryFileDownloader implements Runnable {
 				Out.debug("GalleryFileDownloader: Requesting file download from " + source);
 
 				request = httpClient.newRequest(source.toURI()).header("Hath-Request",
-						Settings.getClientID() + "-" + MiscTools.getSHAString(Settings.getClientKey() + fileid));
+						Settings.getClientID() + "-" + MiscTools.getSHAString(Settings.getClientKey() + fileid))
+						.idleTimeout(readTimeoutMilli, TimeUnit.MILLISECONDS)
+						.timeout(connectTimeoutMilli, TimeUnit.MILLISECONDS);
 
 				isrl = new InputStreamResponseListener();
 				request.send(isrl);
