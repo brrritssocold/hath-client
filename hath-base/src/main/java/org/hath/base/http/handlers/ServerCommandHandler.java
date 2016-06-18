@@ -110,6 +110,8 @@ public class ServerCommandHandler extends AbstractHandler {
 			if (!isCommandKeyValid(command, additional, commandTime, key)) {
 				Out.warning(session + " Got a servercmd with incorrect key: Denied (expected "
 						+ calculateServercmdKey(command, additional, commandTime) + " but got " + key);
+				logger.trace("command: {} additional: {} commandTime: {}", command, additional, commandTime);
+				
 				response.setStatus(HttpStatus.FORBIDDEN_403);
 				baseRequest.setHandled(true);
 				hitSensingPoint(Sensing.SERVER_CMD_KEY_INVALID);
