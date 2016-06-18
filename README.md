@@ -1,6 +1,9 @@
 # HatH Client
+
 [![Build Status](https://travis-ci.org/brrritssocold/hath-client.svg?branch=master)](https://travis-ci.org/brrritssocold/hath-client)
 [![Coverage Status](https://coveralls.io/repos/github/brrritssocold/hath-client/badge.svg?branch=master)](https://coveralls.io/github/brrritssocold/hath-client?branch=master)
+
+
 Make sure to read and understand the license for this program, found in the file LICENSE or at http://www.gnu.org/licenses/gpl.txt, before you start playing with it.
 
 Note that this package only contains the Hentai@Home Client, which is coded specifically for E-Hentai Galleries. The server-side systems are highly dependent on the setup of a given site, and must be coded specially if it's to be used for other sites.
