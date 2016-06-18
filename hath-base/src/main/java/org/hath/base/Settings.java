@@ -27,6 +27,8 @@ import java.io.File;
 import java.net.InetAddress;
 import java.util.Hashtable;
 
+import org.eclipse.jetty.client.HttpClient;
+
 public class Settings {
 	public static final String NEWLINE = System.getProperty("line.separator");
 	
@@ -90,6 +92,8 @@ public class Settings {
 	
 	private static Hashtable<String, Integer> staticRanges = null;
 	
+	private static HttpClient httpClient = null;
+
 	public static void setActiveClient(HentaiAtHomeClient client) {
 		activeClient = client;
 	}
@@ -492,5 +496,27 @@ public class Settings {
 	 */
 	public static void clearRPCServers() {
 		rpcServers = null;
+	}
+
+	/**
+	 * Get an existing {@link HttpClient} instance. If no instance exists, a new one will be created and started.
+	 * Existing but stopped instances will be restarted.
+	 * 
+	 * @return a running {@link HttpClient} instance.
+	 */
+	public static synchronized HttpClient getHttpClient() {
+			if (httpClient == null) {
+				httpClient = new HttpClient();
+			}
+
+			if (!httpClient.isRunning()) {
+				try {
+					httpClient.start();
+				} catch (Exception e) {
+					HentaiAtHomeClient.dieWithError(e);
+				}
+			}
+
+			return httpClient;
 	}
 }
