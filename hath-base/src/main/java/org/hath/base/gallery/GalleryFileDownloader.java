@@ -47,6 +47,7 @@ import org.hath.base.Settings;
 import org.hath.base.Stats;
 
 public class GalleryFileDownloader implements Runnable {
+	public static final String USER_AGENT = "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.12) Gecko/20080201 Firefox/2.0.0.12";
 	public static final int DOWNLOAD_PENDING = 0;
 	public static final int DOWNLOAD_COMPLETE = 1;
 	public static final int DOWNLOAD_FAILED_INIT = -1;
@@ -85,7 +86,30 @@ public class GalleryFileDownloader implements Runnable {
 		sensingPointHits.add(point);
 	}
 
-	public GalleryFileDownloader(HentaiAtHomeClient client, String fileid, String token, int gid, int page, String filename, boolean skipHath) {
+	/**
+	 * @deprecated Use
+	 *             {@link GalleryFileDownloader#GalleryFileDownloader(HentaiAtHomeClient, String, String, int, int, String, boolean, HttpClient)}
+	 *             instead.
+	 */
+	public GalleryFileDownloader(HentaiAtHomeClient client, String fileid, String token, int gid, int page,
+			String filename, boolean skipHath) {
+		this(client, fileid, token, gid, page, filename, skipHath, Settings.getHttpClient());
+
+		httpClient.setConnectTimeout(connectTimeoutMilli);
+		httpClient.setIdleTimeout(readTimeoutMilli);
+		httpClient.setUserAgentField(new HttpField(HttpHeader.USER_AGENT,
+				USER_AGENT));
+
+		try {
+			httpClient.start();
+		} catch (Exception e) {
+			Out.error("Failed to start HttpClient: " + e.getMessage());
+			e.printStackTrace();
+		}
+	}
+
+	public GalleryFileDownloader(HentaiAtHomeClient client, String fileid, String token, int gid, int page,
+			String filename, boolean skipHath, HttpClient httpClient) {
 		this.client = client;
 		this.fileid = fileid;
 		this.token = token;
@@ -93,6 +117,7 @@ public class GalleryFileDownloader implements Runnable {
 		this.page = page;
 		this.filename = filename;
 		this.skipHath = skipHath;
+		this.httpClient = httpClient;
 
 		this.requestedHVFile = HVFile.getHVFileFromFileid(fileid);
 		writeoff = 0;
@@ -115,6 +140,9 @@ public class GalleryFileDownloader implements Runnable {
 	public int initialize(URL source, int readTimeout, int connectTimeout) {
 		this.readTimeoutMilli = readTimeout;
 		this.connectTimeoutMilli = connectTimeout;
+		httpClient.setConnectTimeout(connectTimeoutMilli);
+		httpClient.setIdleTimeout(readTimeoutMilli);
+
 		return initialize(source);
 	}
 
@@ -128,20 +156,15 @@ public class GalleryFileDownloader implements Runnable {
 			int retval = 0;
 			int tempLength = 0;
 
-			httpClient = new HttpClient();
-			httpClient.setConnectTimeout(connectTimeoutMilli);
-			httpClient.setIdleTimeout(readTimeoutMilli);
-			httpClient.start();
-			httpClient.setUserAgentField(new HttpField(HttpHeader.USER_AGENT,
-					"Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.12) Gecko/20080201 Firefox/2.0.0.12"));
-
 			do {
 				retry = false;
 			
 				Out.debug("GalleryFileDownloader: Requesting file download from " + source);
 
 				request = httpClient.newRequest(source.toURI()).header("Hath-Request",
-						Settings.getClientID() + "-" + MiscTools.getSHAString(Settings.getClientKey() + fileid));
+						Settings.getClientID() + "-" + MiscTools.getSHAString(Settings.getClientKey() + fileid))
+						.idleTimeout(readTimeoutMilli, TimeUnit.MILLISECONDS)
+						.timeout(connectTimeoutMilli, TimeUnit.MILLISECONDS).agent(USER_AGENT);
 
 				isrl = new InputStreamResponseListener();
 				request.send(isrl);

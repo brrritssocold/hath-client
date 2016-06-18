@@ -30,7 +30,7 @@ import org.junit.runners.Suite;
 import org.junit.runners.Suite.SuiteClasses;
 
 @RunWith(Suite.class)
-@SuiteClasses({ OutTest.class, AllGalleryTests.class, AllHttpTests.class })
+@SuiteClasses({ OutTest.class, AllGalleryTests.class, AllHttpTests.class, SettingsTest.class })
 public class AllHathBaseTests {
 
 }
