@@ -44,10 +44,14 @@ import org.hath.base.http.HTTPResponseProcessor;
 import org.hath.base.http.HTTPResponseProcessorCachelist;
 import org.hath.base.http.HTTPResponseProcessorSpeedtest;
 import org.hath.base.http.HTTPResponseProcessorText;
+import org.hath.base.util.HandlerUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.net.InetAddresses;
 
 public class ServerCommandHandler extends AbstractHandler {
+	private static final Logger logger = LoggerFactory.getLogger(ServerCommandHandler.class);
 	public final LinkedList<Sensing> sensingPointsHit = new LinkedList<>();
 	private final HentaiAtHomeClient client;
 
@@ -66,6 +70,8 @@ public class ServerCommandHandler extends AbstractHandler {
 	@Override
 	public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
 			throws IOException, ServletException {
+		logger.trace("Handling server command, {}", HandlerUtils.handlerStatus(baseRequest, request, response));
+
 		// form: /servercmd/$command/$additional/$time/$key
 
 		int session = HTTPRequestAttributes.getAttribute(request, IntegerAttributes.SESSION_ID);

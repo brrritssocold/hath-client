@@ -43,6 +43,7 @@ import org.hath.base.http.HTTPRequestAttributes.BooleanAttributes;
 import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
 import org.hath.base.http.HTTPResponseProcessorFile;
 import org.hath.base.http.HTTPResponseProcessorProxy;
+import org.hath.base.util.HandlerUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,7 +78,7 @@ public class ProxyHandler extends AbstractHandler {
 
 	@Override
 	public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response) {
-		logger.trace("Handling proxy request");
+		logger.trace("Handling proxy request, {}", HandlerUtils.handlerStatus(baseRequest, request, response));
 	// new proxy request type, used implicitly when the password field is set
 	// form: /p/fileid=asdf;token=asdf;gid=123;page=321;passkey=asdf/filename
 

@@ -46,6 +46,7 @@ import org.hath.base.http.HTTPRequestAttributes.BooleanAttributes;
 import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
 import org.hath.base.http.HTTPResponseProcessorFile;
 import org.hath.base.http.HTTPResponseProcessorProxy;
+import org.hath.base.util.HandlerUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,7 +84,7 @@ public class FileHandler extends AbstractHandler {
 	@Override
 	public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
 			throws IOException, ServletException {
-		logger.trace("Handling file request ", request);
+		logger.trace("Handling file request, {}", HandlerUtils.handlerStatus(baseRequest, request, response));
 		// TODO replace with util method
 		String[] urlparts = target.replace("%3d", "=").split("/");
 

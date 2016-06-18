@@ -37,11 +37,15 @@ import org.eclipse.jetty.http.HttpStatus;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.hath.base.Out;
+import org.hath.base.util.HandlerUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Checks if the request method is allowed
  */
 public class RequestMethodCheckHandler extends AbstractHandler {
+	private static final Logger logger = LoggerFactory.getLogger(RequestMethodCheckHandler.class);
 	private final Set<String> allowedMethods = new HashSet<String>();
 
 	private void addAllowedMethod(HttpMethod method) {
@@ -61,6 +65,7 @@ public class RequestMethodCheckHandler extends AbstractHandler {
 	@Override
 	public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
 			throws IOException, ServletException {
+		logger.trace("Checking request method, {}", HandlerUtils.handlerStatus(baseRequest, request, response));
 
 		if (!isAllowedMethod(request.getMethod())) {
 			response.setStatus(HttpStatus.METHOD_NOT_ALLOWED_405);

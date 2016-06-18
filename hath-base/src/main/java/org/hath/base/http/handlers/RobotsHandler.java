@@ -33,14 +33,21 @@ import org.eclipse.jetty.http.HttpStatus;
 import org.eclipse.jetty.http.MimeTypes.Type;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
+import org.hath.base.util.HandlerUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Tells bots to get lost, they are not welcome.
  */
 public class RobotsHandler extends AbstractHandler {
+	private static final Logger logger = LoggerFactory.getLogger(RobotsHandler.class);
+
 	@Override
 	public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
 			throws IOException, ServletException {
+		logger.trace("Telling a bot to get lost, {}", HandlerUtils.handlerStatus(baseRequest, request, response));
+
 		response.setStatus(HttpStatus.OK_200);
 		response.getWriter().println("User-agent: *");
 		response.getWriter().println("Disallow: /");
