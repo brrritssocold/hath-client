@@ -92,18 +92,39 @@ public class ServerCommandHandler extends AbstractHandler {
 
 			int correctedTime = Settings.getServerTime();
 
-			if ((Math.abs(commandTime - correctedTime) < Settings.MAX_KEY_TIME_DRIFT)
-					&& calculateServercmdKey(command, additional, commandTime).equals(key)) {
-				HTTPRequestAttributes.setResponseProcessor(request,
-						processRemoteAPICommand(command, additional, session));
-				hitSensingPoint(Sensing.SERVER_CMD_KEY_VALID);
-			} else {
-				Out.warning(session + " Got a servercmd with expired or incorrect key: Denied");
+			if (!isCommandTimeValid(commandTime, correctedTime)) {
+				Out.warning(session + " Got a servercmd with expired key: Denied (was "
+						+ keyTimeDrift(commandTime, correctedTime) + ", allowed: " + Settings.MAX_KEY_TIME_DRIFT + ")");
 				response.setStatus(HttpStatus.FORBIDDEN_403);
 				baseRequest.setHandled(true);
 				hitSensingPoint(Sensing.SERVER_CMD_KEY_INVALID);
+				return;
 			}
+
+			if (!isCommandKeyValid(command, additional, commandTime, key)) {
+				Out.warning(session + " Got a servercmd with incorrect key: Denied (expected "
+						+ calculateServercmdKey(command, additional, commandTime) + " but got " + key);
+				response.setStatus(HttpStatus.FORBIDDEN_403);
+				baseRequest.setHandled(true);
+				hitSensingPoint(Sensing.SERVER_CMD_KEY_INVALID);
+				return;
+			}
+
+			HTTPRequestAttributes.setResponseProcessor(request, processRemoteAPICommand(command, additional, session));
+			hitSensingPoint(Sensing.SERVER_CMD_KEY_VALID);
 		}
+	}
+
+	private boolean isCommandKeyValid(String command, String additional, int commandTime, String key) {
+		return calculateServercmdKey(command, additional, commandTime).equals(key);
+	}
+
+	private boolean isCommandTimeValid(int commandTime, int correctedTime) {
+		return keyTimeDrift(commandTime, correctedTime) < Settings.MAX_KEY_TIME_DRIFT;
+	}
+
+	private int keyTimeDrift(int commandTime, int correctedTime) {
+		return Math.abs(commandTime - correctedTime);
 	}
 
 	private HTTPResponseProcessor processRemoteAPICommand(String command, String additional, int session) {
