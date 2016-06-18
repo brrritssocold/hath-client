@@ -37,6 +37,7 @@ import org.eclipse.jetty.client.api.Response;
 import org.eclipse.jetty.client.util.InputStreamResponseListener;
 import org.eclipse.jetty.http.HttpField;
 import org.eclipse.jetty.http.HttpHeader;
+import org.eclipse.jetty.http.HttpStatus;
 import org.hath.base.CacheHandler;
 import org.hath.base.FileTools;
 import org.hath.base.HVFile;
@@ -127,14 +128,13 @@ public class GalleryFileDownloader implements Runnable {
 	
 	public int initialize() {
 		try {
-			initialize(new URL("http", Settings.getRequestServer(), "/r/" + fileid + "/" + token + "/" + gid + "-"
+			return initialize(new URL("http", Settings.getRequestServer(), "/r/" + fileid + "/" + token + "/" + gid + "-"
 					+ page + "/" + filename + (skipHath ? "?nl=1" : "")));
 		} catch (MalformedURLException e) {
 			e.printStackTrace();
+			downloadState = DOWNLOAD_FAILED_INIT;
+			return HttpStatus.INTERNAL_SERVER_ERROR_500;
 		}
-
-		downloadState = DOWNLOAD_FAILED_INIT;
-		return 500;
 	}
 
 	public int initialize(URL source, int readTimeout, int connectTimeout) {
