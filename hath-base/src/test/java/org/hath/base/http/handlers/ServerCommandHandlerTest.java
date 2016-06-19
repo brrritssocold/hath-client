@@ -24,6 +24,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 package org.hath.base.http.handlers;
 
 import static org.hamcrest.CoreMatchers.hasItem;
+import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.never;
@@ -31,6 +32,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.net.InetAddress;
+import java.util.regex.Matcher;
 
 import org.eclipse.jetty.http.HttpStatus;
 import org.hath.base.HentaiAtHomeClient;
@@ -128,6 +130,38 @@ public class ServerCommandHandlerTest extends HandlerJunitTest {
 
 		verify(response, never()).setStatus(anyInt());
 		assertSensingPoint(Sensing.SERVER_CMD_KEY_VALID);
+	}
+
+	@Test
+	public void testhandleServerCommandValid_threaded_proxy_test() throws Exception {
+		Settings.setClientID(1234);
+		Settings.setClientKey("abcde123456ABCDE1234");
+
+		assertThat(ServerCommandHandler.calculateServercmdKey("threaded_proxy_test",
+				"ipaddr=9.10.11.12;port=1234;testsize=576000;testcount=2;testtime=1466299446;testkey=32b81f51b6029851629f27e07a3f6549f1a7c7b0",
+				1466299446), is("747cfaf59d95cab8e69be4ca7b813d1df5d387ae"));
+	}
+
+	@Test
+	public void testhandleServerCommandValidReparseMatches() throws Exception {
+
+		Matcher result = cut.reparse(
+				"Request(GET //::ffff:9.10.11.12:1234/servercmd/threaded_proxy_test/ipaddr=9.10.11.12;port=1234;testsize=576000;testcount=2;testtime=1466299446;testkey=32b81f51b6029851629f27e07a3f6549f1a7c7b0/1466299446/747cfaf59d95cab8e69be4ca7b813d1df5d387ae)@1234bc3");
+
+		result.matches();
+
+		assertThat(result.group(1), is(
+				"/threaded_proxy_test/ipaddr=9.10.11.12;port=1234;testsize=576000;testcount=2;testtime=1466299446;testkey=32b81f51b6029851629f27e07a3f6549f1a7c7b0/1466299446/747cfaf59d95cab8e69be4ca7b813d1df5d387ae"));
+	}
+
+	@Test
+	public void testhandleServerCommandValidReparseContent() throws Exception {
+		
+		Matcher result = cut.reparse(
+				"Request(GET //::ffff:9.10.11.12:1234/servercmd/threaded_proxy_test/ipaddr=9.10.11.12;port=1234;testsize=576000;testcount=2;testtime=1466299446;testkey=32b81f51b6029851629f27e07a3f6549f1a7c7b0/1466299446/747cfaf59d95cab8e69be4ca7b813d1df5d387ae)@1234bc3");
+
+		assertThat(result.matches(), is(true));
+		// is("/threaded_proxy_test/ipaddr=9.10.11.12;port=1234;testsize=576000;testcount=2;testtime=1466299446;testkey=32b81f51b6029851629f27e07a3f6549f1a7c7b0/1466299446/747cfaf59d95cab8e69be4ca7b813d1df5d387ae"));
 	}
 
 	@Test

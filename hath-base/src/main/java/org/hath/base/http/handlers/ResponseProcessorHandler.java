@@ -47,6 +47,7 @@ import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
 import org.hath.base.http.HTTPResponseProcessor;
 import org.hath.base.http.HTTPResponseProcessorFile;
 import org.hath.base.http.HTTPResponseProcessorProxy;
+import org.hath.base.util.HandlerUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,7 +72,8 @@ public class ResponseProcessorHandler extends AbstractHandler {
 	@Override
 	public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
 			throws IOException, ServletException {
-		logger.trace("Handling response request");
+		logger.trace("Handling response request, {}", HandlerUtils.handlerStatus(baseRequest, request, response));
+
 		ServletOutputStream bs = response.getOutputStream();
 
 		HTTPResponseProcessor hpc = null;

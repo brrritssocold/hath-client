@@ -34,6 +34,7 @@ import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.hath.base.http.HTTPRequestAttributes;
 import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
 import org.hath.base.http.SessionTracker;
+import org.hath.base.util.HandlerUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,7 +55,8 @@ public class SessionRemovalHandler extends AbstractHandler {
 
 		int session = HTTPRequestAttributes.getAttribute(request, IntegerAttributes.SESSION_ID);
 		
-		logger.trace("Removing session with id: {}, request was {}", session, request);
+		logger.trace("Removing session with id: {}, {}", session,
+				HandlerUtils.handlerStatus(baseRequest, request, response));
 
 		sessionTracker.remove(session);
 	}

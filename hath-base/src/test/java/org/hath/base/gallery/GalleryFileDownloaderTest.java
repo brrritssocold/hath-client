@@ -43,6 +43,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.eclipse.jetty.http.HttpStatus;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
@@ -150,7 +151,20 @@ public class GalleryFileDownloaderTest {
 
 	@Test
 	public void testInitialize() throws Exception {
-		cut.initialize(testURL);
+		assertThat(cut.initialize(testURL), is(HttpStatus.OK_200));
+	}
+
+	@Test
+	public void testInitializeNoUrlMalformedUrl() throws Exception {
+		cut = new GalleryFileDownloader(clientMock, ",.#!@", token, gid, page, filename, false);
+		assertThat(cut.initialize(), is(HttpStatus.INTERNAL_SERVER_ERROR_500));
+	}
+
+	// FIXME fails on Linux with "connection refused"
+	@Ignore("Test fails on Linux machines")
+	@Test
+	public void testInitializeNoUrl() throws Exception {
+		assertThat(cut.initialize(), is(HttpStatus.OK_200));
 	}
 
 	@Test

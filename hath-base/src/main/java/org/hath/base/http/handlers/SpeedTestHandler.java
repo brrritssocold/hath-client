@@ -39,12 +39,18 @@ import org.hath.base.http.HTTPRequestAttributes;
 import org.hath.base.http.HTTPRequestAttributes.ClassAttributes;
 import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
 import org.hath.base.http.HTTPResponseProcessorSpeedtest;
+import org.hath.base.util.HandlerUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SpeedTestHandler extends AbstractHandler {
+	private static final Logger logger = LoggerFactory.getLogger(SpeedTestHandler.class);
 
 	@Override
 	public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
 			throws IOException, ServletException {
+		logger.trace("Handling speed test request, {}", HandlerUtils.handlerStatus(baseRequest, request, response));
+
 		// TODO replace with util method
 		String[] urlparts = target.replace("%3d", "=").split("/");
 
