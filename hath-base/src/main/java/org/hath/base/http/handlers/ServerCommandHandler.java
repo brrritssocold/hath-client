@@ -26,6 +26,8 @@ package org.hath.base.http.handlers;
 import java.io.IOException;
 import java.util.Hashtable;
 import java.util.LinkedList;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -54,6 +56,7 @@ public class ServerCommandHandler extends AbstractHandler {
 	private static final Logger logger = LoggerFactory.getLogger(ServerCommandHandler.class);
 	public final LinkedList<Sensing> sensingPointsHit = new LinkedList<>();
 	private final HentaiAtHomeClient client;
+	private Pattern rawRequestParser;
 
 	public enum Sensing {
 		SERVER_CMD_INVALID_RPC_SERVER, SERVER_CMD_MALFORMED_COMMAND, SERVER_CMD_KEY_VALID, SERVER_CMD_KEY_INVALID
@@ -61,10 +64,15 @@ public class ServerCommandHandler extends AbstractHandler {
 	
 	public ServerCommandHandler(HentaiAtHomeClient client) {
 		this.client = client;
+		this.rawRequestParser = Pattern.compile("^(?:Request\\(GET.*\\/servercmd)(\\/.*)(?:\\)@[\\d\\w]*)$");
 	}
 
 	private void hitSensingPoint(Sensing point) {
 		sensingPointsHit.add(point);
+	}
+
+	protected Matcher reparse(String rawRequest) {
+		return rawRequestParser.matcher(rawRequest);
 	}
 
 	@Override
@@ -73,6 +81,17 @@ public class ServerCommandHandler extends AbstractHandler {
 		logger.trace("Handling server command, {}", HandlerUtils.handlerStatus(baseRequest, request, response));
 
 		// form: /servercmd/$command/$additional/$time/$key
+
+		String rawRequest = request.toString();
+
+		Matcher matcher = reparse(rawRequest);
+
+		if (matcher.matches()) {
+			String reparse = matcher.group(1);
+			logger.trace("Reparsing server command request. target: {}, raw: {}, reparse: {}", target, rawRequest,
+					reparse);
+			target = reparse;
+		}
 
 		int session = HTTPRequestAttributes.getAttribute(request, IntegerAttributes.SESSION_ID);
 		// TODO replace with util method
