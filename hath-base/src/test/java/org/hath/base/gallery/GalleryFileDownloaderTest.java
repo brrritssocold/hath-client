@@ -43,6 +43,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.http.HttpStatus;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Server;
@@ -67,6 +68,7 @@ public class GalleryFileDownloaderTest {
 	private static final String VALID_TOKEN = "1-0000000000000000000000000000000000000000";
 
 	private static Server server;
+	private static HttpClient httpClient;
 	private static int testPort;
 
 	private int clientID;
@@ -87,9 +89,11 @@ public class GalleryFileDownloaderTest {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		server = new Server(0);
+		httpClient = new HttpClient();
 		testHandler = new TestHandler();
 		server.setHandler(testHandler);
 		server.start();
+		httpClient.start();
 		testPort = ((ServerConnector) server.getConnectors()[0]).getLocalPort();
 		
 		Settings.updateSetting("request_server", "localhost");
@@ -146,7 +150,7 @@ public class GalleryFileDownloaderTest {
 
 
 		testURL = buildRequestUrl(fileid, token, gid, page, filename, false);
-		cut = new GalleryFileDownloader(clientMock, fileid, token, gid, page, filename, false);
+		cut = new GalleryFileDownloader(clientMock, fileid, token, gid, page, filename, false, httpClient);
 	}
 
 	@Test
@@ -156,7 +160,7 @@ public class GalleryFileDownloaderTest {
 
 	@Test
 	public void testInitializeNoUrlMalformedUrl() throws Exception {
-		cut = new GalleryFileDownloader(clientMock, ",.#!@", token, gid, page, filename, false);
+		cut = new GalleryFileDownloader(clientMock, ",.#!@", token, gid, page, filename, false, httpClient);
 		assertThat(cut.initialize(), is(HttpStatus.INTERNAL_SERVER_ERROR_500));
 	}
 
@@ -441,7 +445,7 @@ public class GalleryFileDownloaderTest {
 		page = 2;
 		filename = "baz";
 
-		cut = new GalleryFileDownloader(clientMock, fileid, token, gid, page, filename, false);
+		cut = new GalleryFileDownloader(clientMock, fileid, token, gid, page, filename, false, httpClient);
 		testURL = buildRequestUrl(fileid, token, gid, page, filename, false);
 
 		cut.initialize(testURL);
@@ -465,7 +469,7 @@ public class GalleryFileDownloaderTest {
 		page = 2;
 		filename = "baz";
 
-		cut = new GalleryFileDownloader(clientMock, fileid, token, gid, page, filename, false);
+		cut = new GalleryFileDownloader(clientMock, fileid, token, gid, page, filename, false, httpClient);
 		testURL = buildRequestUrl(fileid, token, gid, page, filename, false);
 
 		cut.initialize(testURL);
