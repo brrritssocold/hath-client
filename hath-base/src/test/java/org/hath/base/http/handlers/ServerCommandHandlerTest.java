@@ -132,6 +132,7 @@ public class ServerCommandHandlerTest extends HandlerJunitTest {
 		assertSensingPoint(Sensing.SERVER_CMD_KEY_VALID);
 	}
 
+	@SuppressWarnings("deprecation")
 	@Test
 	public void testhandleServerCommandValid_threaded_proxy_test() throws Exception {
 		Settings.setClientID(1234);

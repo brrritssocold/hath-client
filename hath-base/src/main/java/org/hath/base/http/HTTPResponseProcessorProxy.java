@@ -27,6 +27,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.Out;
+import org.hath.base.Settings;
 import org.hath.base.gallery.GalleryFileDownloader;
 
 public class HTTPResponseProcessorProxy extends HTTPResponseProcessor {
@@ -38,7 +39,7 @@ public class HTTPResponseProcessorProxy extends HTTPResponseProcessor {
 			String filename) {
 		this.client = client;
 		readoff = 0;
-		gdf = new GalleryFileDownloader(client, fileid, token, gid, page, filename, false);
+		gdf = new GalleryFileDownloader(client, fileid, token, gid, page, filename, false, Settings.getHttpClient());
 	}
 
 	@Override

@@ -35,7 +35,6 @@ import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.api.Request;
 import org.eclipse.jetty.client.api.Response;
 import org.eclipse.jetty.client.util.InputStreamResponseListener;
-import org.eclipse.jetty.http.HttpField;
 import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.http.HttpStatus;
 import org.hath.base.CacheHandler;
@@ -85,28 +84,6 @@ public class GalleryFileDownloader implements Runnable {
 
 	private void hitSensingPoint(Sensing point) {
 		sensingPointHits.add(point);
-	}
-
-	/**
-	 * @deprecated Use
-	 *             {@link GalleryFileDownloader#GalleryFileDownloader(HentaiAtHomeClient, String, String, int, int, String, boolean, HttpClient)}
-	 *             instead.
-	 */
-	public GalleryFileDownloader(HentaiAtHomeClient client, String fileid, String token, int gid, int page,
-			String filename, boolean skipHath) {
-		this(client, fileid, token, gid, page, filename, skipHath, Settings.getHttpClient());
-
-		httpClient.setConnectTimeout(connectTimeoutMilli);
-		httpClient.setIdleTimeout(readTimeoutMilli);
-		httpClient.setUserAgentField(new HttpField(HttpHeader.USER_AGENT,
-				USER_AGENT));
-
-		try {
-			httpClient.start();
-		} catch (Exception e) {
-			Out.error("Failed to start HttpClient: " + e.getMessage());
-			e.printStackTrace();
-		}
 	}
 
 	public GalleryFileDownloader(HentaiAtHomeClient client, String fileid, String token, int gid, int page,
