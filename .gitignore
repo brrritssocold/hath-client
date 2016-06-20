@@ -8,4 +8,5 @@ target/
 
 # HatH hardcoded data directory
 /hath-base/data
+/hath-base/tmp
 /hath-gui/data
