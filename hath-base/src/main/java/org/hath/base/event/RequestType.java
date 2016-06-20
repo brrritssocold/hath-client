@@ -21,18 +21,8 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base;
+package org.hath.base.event;
 
-import org.hath.base.gallery.AllGalleryTests;
-import org.hath.base.http.AllHttpTests;
-import org.hath.base.util.AllUtilTests;
-import org.junit.runner.RunWith;
-import org.junit.runners.Suite;
-import org.junit.runners.Suite.SuiteClasses;
-
-@RunWith(Suite.class)
-@SuiteClasses({ OutTest.class, AllGalleryTests.class, AllHttpTests.class, AllUtilTests.class, SettingsTest.class,
-		HentaiAtHomeClientTest.class })
-public class AllHathBaseTests {
-
+public enum RequestType {
+	H
 }

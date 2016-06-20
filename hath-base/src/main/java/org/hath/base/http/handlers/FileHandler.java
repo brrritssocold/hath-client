@@ -41,6 +41,8 @@ import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.MiscTools;
 import org.hath.base.Out;
 import org.hath.base.Settings;
+import org.hath.base.event.RequestEvent;
+import org.hath.base.event.RequestType;
 import org.hath.base.http.HTTPRequestAttributes;
 import org.hath.base.http.HTTPRequestAttributes.BooleanAttributes;
 import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
@@ -50,9 +52,12 @@ import org.hath.base.util.HandlerUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.eventbus.EventBus;
+
 public class FileHandler extends AbstractHandler {
 	private static final Logger logger = LoggerFactory.getLogger(FileHandler.class);
 	private final CacheHandler cacheHandler;
+	private final EventBus eventBus;
 
 	private boolean isKeystampValid(String hvfile, Hashtable<String, String> additional) {
 		String[] keystampParts = additional.get("keystamp").split("-");
@@ -77,8 +82,17 @@ public class FileHandler extends AbstractHandler {
 				.substring(0, 10);
 	}
 
-	public FileHandler(CacheHandler cacheHandler) {
+	public FileHandler(CacheHandler cacheHandler, EventBus eventBus) {
 		this.cacheHandler = cacheHandler;
+		this.eventBus = eventBus;
+	}
+
+	/**
+	 * @deprecated Use {@link FileHandler#FileHandler(CacheHandler, EventBus)} instead. Events will not work with this
+	 *             constructor.
+	 */
+	public FileHandler(CacheHandler cacheHandler) {
+		this(cacheHandler, new EventBus());
 	}
 
 	@Override
@@ -126,6 +140,7 @@ public class FileHandler extends AbstractHandler {
 			if (requestedHVFile.getLocalFileRef().exists()) {
 				logger.trace("Sending requested file {}", fileid);
 				HTTPRequestAttributes.setResponseProcessor(request, new HTTPResponseProcessorFile(requestedHVFile));
+				eventBus.post(new RequestEvent(RequestType.H, target, additional));
 			} else if (Settings.isStaticRange(fileid)) {
 				// non-existent file in a static range. do an on-demand request
 				// of the file from the image servers
@@ -139,6 +154,7 @@ public class FileHandler extends AbstractHandler {
 					logger.trace("Creating proxy for static range file request: {}", fileid);
 					HTTPRequestAttributes.setResponseProcessor(request,
 							new HTTPResponseProcessorProxy(client, fileid, tokens.get(fileid), 1, 1, "ondemand"));
+					eventBus.post(new RequestEvent(RequestType.H, target, additional));
 				} else {
 					logger.trace("Could not find static range request in file tokens: {}", fileid);
 					response.setStatus(HttpStatus.NOT_FOUND_404);

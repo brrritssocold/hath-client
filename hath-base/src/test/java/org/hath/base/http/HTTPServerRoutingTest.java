@@ -33,6 +33,8 @@ import static org.mockito.Mockito.when;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedList;
+import java.util.List;
 
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.api.ContentResponse;
@@ -44,6 +46,7 @@ import org.hath.base.HVFile;
 import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.ServerHandler;
 import org.hath.base.Settings;
+import org.hath.base.event.RequestEvent;
 import org.hath.base.http.handlers.FileHandler;
 import org.hath.base.http.handlers.ProxyHandlerTest;
 import org.hath.base.http.handlers.ServerCommandHandlerTest;
@@ -58,6 +61,9 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.runners.MockitoJUnitRunner;
 
+import com.google.common.eventbus.EventBus;
+import com.google.common.eventbus.Subscribe;
+
 @RunWith(MockitoJUnitRunner.class)
 public class HTTPServerRoutingTest {
 	private static final int SERVER_TEST_PORT = 42421;
@@ -71,6 +77,8 @@ public class HTTPServerRoutingTest {
 
 	private static HTTPServer hTTPServer;
 	private static HttpClient httpClient;
+	private static EventBus eventBus;
+	private List<RequestEvent> events;
 
 	@BeforeClass
 	public static void setUpClass() throws Exception {
@@ -82,7 +90,8 @@ public class HTTPServerRoutingTest {
 		when(mockClient.getCacheHandler()).thenReturn(cacheHandlerMock);
 		when(cacheHandlerMock.getHVFile(anyString(), anyBoolean())).thenReturn(hvFileMock);
 
-		hTTPServer = new HTTPServer(mockClient);
+		eventBus = new EventBus();
+		hTTPServer = new HTTPServer(mockClient, eventBus);
 
 		hTTPServer.startConnectionListener(SERVER_TEST_PORT);
 		httpClient = new HttpClient();
@@ -95,6 +104,14 @@ public class HTTPServerRoutingTest {
 		when(mockClient.getServerHandler()).thenReturn(mockServerHandler);
 		when(mockClient.getCacheHandler()).thenReturn(cacheHandlerMock);
 		when(cacheHandlerMock.getHVFile(anyString(), anyBoolean())).thenReturn(hvFileMock);
+
+		events = new LinkedList<RequestEvent>();
+		eventBus.register(this);
+	}
+
+	@Subscribe
+	private void requestEventListener(RequestEvent event) {
+		events.add(event);
 	}
 
 	@AfterClass
@@ -157,6 +174,18 @@ public class HTTPServerRoutingTest {
 
 		assertThat(response.getHeaders().get(HttpHeader.SERVER),
 				containsString("Genetic Lifeform and Distributed Open Server"));
+	}
+
+	@Test
+	public void testFileRoutingEvent() throws Exception {
+		hTTPServer.allowNormalConnections();
+		when(hvFileMock.getLocalFileRef().exists()).thenReturn(true);
+		Path testFile = Files.createTempFile("FileRoutingTest", ".jpg");
+		when(hvFileMock.getLocalFileRef()).thenReturn(testFile.toFile());
+
+		httpClient.GET("http://localhost:" + SERVER_TEST_PORT + "/h/foo/" + generateKeystamp("foo") + "/baz");
+
+		assertThat(events.size(), is(1));
 	}
 
 	@Test

@@ -49,8 +49,10 @@ import org.hath.base.http.handlers.RobotsHandler;
 import org.hath.base.http.handlers.ServerCommandHandler;
 import org.hath.base.http.handlers.SessionRemovalHandler;
 import org.hath.base.http.handlers.SessionTrackingHandler;
-import org.hath.base.http.handlers.SpeedTestHandler;
 import org.hath.base.http.handlers.SimpleStatusHandler;
+import org.hath.base.http.handlers.SpeedTestHandler;
+
+import com.google.common.eventbus.EventBus;
 
 public class HTTPServer {
 	private static final int MAX_FLOOD_ENTRY_AGE_SECONDS = 60;
@@ -61,9 +63,19 @@ public class HTTPServer {
 	private HentaiAtHomeClient client;
 	private Server httpServer;
 	private SessionTrackingHandler sessionTrackingHandler;
+	private final EventBus eventBus;
 	
+	/**
+	 * @deprecated Use {@link #HTTPServer(HentaiAtHomeClient,EventBus)} instead. Events will not work with this
+	 *             constructor.
+	 */
 	public HTTPServer(HentaiAtHomeClient client) {
+		this(client, new EventBus());
+	}
+
+	public HTTPServer(HentaiAtHomeClient client, EventBus eventBus) {
 		this.client = client;
+		this.eventBus = eventBus;
 	}
 
 	public Handler setupHandlers() {
@@ -102,7 +114,7 @@ public class HTTPServer {
 		handlerCollection.addHandler(createContextHandler("/robots.txt", new RobotsHandler()));
 
 		handlerCollection.addHandler(createContextHandler("/t", new SpeedTestHandler()));
-		handlerCollection.addHandler(createContextHandler("/h", new FileHandler(client.getCacheHandler())));
+		handlerCollection.addHandler(createContextHandler("/h", new FileHandler(client.getCacheHandler(), eventBus)));
 		handlerCollection.addHandler(createContextHandler("/p", new ProxyHandler(client)));
 		handlerCollection.addHandler(createContextHandler("/servercmd", new ServerCommandHandler(client)));
 
