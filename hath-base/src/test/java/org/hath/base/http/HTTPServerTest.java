@@ -37,12 +37,16 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import com.google.common.eventbus.EventBus;
+
 public class HTTPServerTest {
 	private static final int SERVER_TEST_PORT = 42421;
 
 	private HentaiAtHomeClient mockClient;
 	private ServerHandler mockServerHandler;
 	private HTTPServer hTTPServer;
+
+	private EventBus eventBus;
 
 	@Before
 	public void setUp() throws Exception {
@@ -53,7 +57,8 @@ public class HTTPServerTest {
 
 		Settings.updateSetting("host", "123.123.123.123");
 
-		hTTPServer = new HTTPServer(mockClient);
+		eventBus = new EventBus();
+		hTTPServer = new HTTPServer(mockClient, eventBus);
 
 		when(mockClient.getServerHandler()).thenReturn(mockServerHandler);
 

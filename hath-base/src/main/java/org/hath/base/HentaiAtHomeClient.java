@@ -51,6 +51,8 @@ package org.hath.base;
 import org.hath.base.gallery.GalleryDownloadManager;
 import org.hath.base.http.HTTPServer;
 
+import com.google.common.eventbus.EventBus;
+
 public class HentaiAtHomeClient implements Runnable {
 	private InputQueryHandler iqh;
 	private ShutdownHook shutdownHook;
@@ -128,9 +130,10 @@ public class HentaiAtHomeClient implements Runnable {
 		Out.info("Calculated cacheListStrlen = " + cacheHandler.getStartupCachedFilesStrlen());
 
 		Stats.setProgramStatus("Starting HTTP server...");
+		EventBus eventBus = new EventBus();
 
 		// handles HTTP connections used to request images and receive commands from the server
-		httpServer = new HTTPServer(this);
+		httpServer = new HTTPServer(this, eventBus);
 		if(!httpServer.startConnectionListener(Settings.getClientPort())) {
 			setFastShutdown();
 			dieWithError("Failed to initialize HTTPServer");
