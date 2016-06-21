@@ -38,7 +38,6 @@ import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.hath.base.CacheHandler;
 import org.hath.base.HVFile;
 import org.hath.base.HentaiAtHomeClient;
-import org.hath.base.MiscTools;
 import org.hath.base.Out;
 import org.hath.base.Settings;
 import org.hath.base.event.RequestEvent;
@@ -49,6 +48,7 @@ import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
 import org.hath.base.http.HTTPResponseProcessorFile;
 import org.hath.base.http.HTTPResponseProcessorProxy;
 import org.hath.base.util.HandlerUtils;
+import org.hath.base.util.MiscTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

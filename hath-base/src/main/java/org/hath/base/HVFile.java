@@ -27,6 +27,8 @@ package org.hath.base;
 
 import java.io.File;
 
+import org.hath.base.util.MiscTools;
+
 public class HVFile {
 	private String hash;
 	private int size;

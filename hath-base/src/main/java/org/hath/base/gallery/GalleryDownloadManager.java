@@ -28,10 +28,10 @@ import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.List;
 
-import org.hath.base.FileTools;
 import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.Out;
 import org.hath.base.Settings;
+import org.hath.base.util.FileTools;
 
 public class GalleryDownloadManager implements Runnable {
 	protected HentaiAtHomeClient client;

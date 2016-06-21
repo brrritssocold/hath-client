@@ -38,13 +38,13 @@ import org.eclipse.jetty.client.util.InputStreamResponseListener;
 import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.http.HttpStatus;
 import org.hath.base.CacheHandler;
-import org.hath.base.FileTools;
 import org.hath.base.HVFile;
 import org.hath.base.HentaiAtHomeClient;
-import org.hath.base.MiscTools;
 import org.hath.base.Out;
 import org.hath.base.Settings;
 import org.hath.base.Stats;
+import org.hath.base.util.FileTools;
+import org.hath.base.util.MiscTools;
 
 public class GalleryFileDownloader implements Runnable {
 	public static final String USER_AGENT = "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.12) Gecko/20080201 Firefox/2.0.0.12";
