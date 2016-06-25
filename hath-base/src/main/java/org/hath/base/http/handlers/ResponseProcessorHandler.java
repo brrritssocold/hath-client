@@ -86,8 +86,8 @@ public class ResponseProcessorHandler extends AbstractHandler {
 			hpc = HTTPRequestAttributes.getResponseProcessor(request);
 
 			if (hpc == null) {
-				Out.warning("Got request without ResponseProcessor: " + request.toString());
-				logger.trace("Status: {}, isHandled: {}", response.getStatus(), baseRequest.isHandled());
+				Out.debug("Got request without ResponseProcessor: " + request.toString());
+				logger.debug("Status: {}, isHandled: {}", response.getStatus(), baseRequest.isHandled());
 				return;
 			}
 
