@@ -76,7 +76,6 @@ public class SpeedTestHandler extends AbstractHandler {
 			Out.warning(session + " Got a speedtest request with invalid key");
 			response.setStatus(HttpStatus.FORBIDDEN_403);
 		} else {
-			response.setStatus(HttpStatus.OK_200);
 			request.setAttribute(ClassAttributes.HTTPResponseProcessor.toString(),
 					new HTTPResponseProcessorSpeedtest(testsize));
 		}

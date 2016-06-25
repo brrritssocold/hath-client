@@ -27,6 +27,7 @@ import java.util.Random;
 
 import javax.servlet.http.HttpServletResponse;
 
+import org.eclipse.jetty.http.HttpStatus;
 import org.hath.base.Stats;
 
 public class HTTPResponseProcessorSpeedtest extends HTTPResponseProcessor {	
@@ -41,6 +42,7 @@ public class HTTPResponseProcessorSpeedtest extends HTTPResponseProcessor {
 	@Override
 	public void initialize(HttpServletResponse response) {
 		Stats.setProgramStatus("Running speed tests...");
+		response.setStatus(HttpStatus.OK_200);
 	}
 
 	@Override

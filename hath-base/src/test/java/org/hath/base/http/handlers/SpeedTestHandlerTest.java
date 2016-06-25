@@ -24,6 +24,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 package org.hath.base.http.handlers;
 
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import org.eclipse.jetty.http.HttpStatus;
@@ -47,7 +48,7 @@ public class SpeedTestHandlerTest extends HandlerJunitTest {
 		cut.handle("/" + testSize + "/" + testTime + "/" + SpeedTestHandler.calculateTestKey(testSize, testTime),
 				baseRequest, request, response);
 
-		verify(response).setStatus(eq(HttpStatus.OK_200));
+		verify(response, never()).setStatus(HttpStatus.OK_200);
 	}
 
 	@Test
