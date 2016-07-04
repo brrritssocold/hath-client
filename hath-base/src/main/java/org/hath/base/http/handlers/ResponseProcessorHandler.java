@@ -26,9 +26,10 @@ package org.hath.base.http.handlers;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.TimeZone;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 
 import javax.servlet.ServletException;
 import javax.servlet.ServletOutputStream;
@@ -62,9 +63,14 @@ public class ResponseProcessorHandler extends AbstractHandler {
 	private int connId;
 	private boolean localNetworkAccess;
 	private HTTPBandwidthMonitor bandwidthMonitor;
+	private final DateTimeFormatter dtf;
+	private final ZoneId UTCzone;
 
 	public ResponseProcessorHandler(HTTPBandwidthMonitor bandwidthMonitor) {
 		this.bandwidthMonitor = bandwidthMonitor;
+		this.dtf = new DateTimeFormatterBuilder().appendPattern("EEE, dd MMM yyyy HH:mm:ss")
+				.appendLiteral(" GMT").toFormatter(java.util.Locale.US);
+		this.UTCzone = ZoneId.of("GMT");
 	}
 
 	@Override
@@ -202,12 +208,9 @@ public class ResponseProcessorHandler extends AbstractHandler {
 
 	protected void createHeader(HttpServletResponse response, int contentLength) {
 		// we'll create a new date formatter for each session instead of synchronizing on a shared formatter. (sdf is not thread-safe)
-		// TODO replace with DateTimeFormatter (thread-safe)
-		SimpleDateFormat sdf = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss", java.util.Locale.US);
-		sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
 
 		// build the header
-		response.setHeader(HttpHeaders.DATE, sdf.format(new Date()) + " GMT");
+		response.setHeader(HttpHeaders.DATE, dtf.format(LocalDateTime.now(UTCzone)));
 		response.setHeader(HttpHeaders.SERVER,
 				"Genetic Lifeform and Distributed Open Server " + Settings.CLIENT_VERSION);
 		response.setHeader(HttpHeaders.CONNECTION, "close");
