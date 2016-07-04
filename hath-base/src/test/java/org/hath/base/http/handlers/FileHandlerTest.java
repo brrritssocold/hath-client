@@ -33,7 +33,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.net.InetAddress;
 import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.List;
@@ -55,13 +54,9 @@ import org.mockito.Mock;
 
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
-import com.google.common.net.InetAddresses;
 
 public class FileHandlerTest extends HandlerJunitTest {
-	private static final String CLIENT_IP = "110.120.130.140";
-
 	private FileHandler cut;
-	private InetAddress client_address;
 	private EventBus eventBus;
 	private List<RequestEvent> events;
 
@@ -79,8 +74,6 @@ public class FileHandlerTest extends HandlerJunitTest {
 
 	@Before
 	public void setUp() throws Exception {
-		client_address = InetAddresses.forString(CLIENT_IP);
-
 		when(request.getAttribute(BooleanAttributes.LOCAL_NETWORK_ACCESS.toString())).thenReturn(true);
 		when(request.getAttribute(ClassAttributes.HentaiAtHomeClient.toString())).thenReturn(clientMock);
 		when(request.getAttribute(IntegerAttributes.SESSION_ID.toString())).thenReturn(2);

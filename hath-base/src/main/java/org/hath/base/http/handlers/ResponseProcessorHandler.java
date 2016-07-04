@@ -61,11 +61,9 @@ public class ResponseProcessorHandler extends AbstractHandler {
 	private static final Logger logger = LoggerFactory.getLogger(ResponseProcessorHandler.class);
 	private int connId;
 	private boolean localNetworkAccess;
-	private long sessionStartTime, lastPacketSend; //TODO replace with guava stopwatch
 	private HTTPBandwidthMonitor bandwidthMonitor;
 
 	public ResponseProcessorHandler(HTTPBandwidthMonitor bandwidthMonitor) {
-		sessionStartTime = System.currentTimeMillis();
 		this.bandwidthMonitor = bandwidthMonitor;
 	}
 
@@ -160,7 +158,6 @@ public class ResponseProcessorHandler extends AbstractHandler {
 
 						while(writtenBytes < contentLength) {
 							// write a packet of data and flush.
-							lastPacketSend = System.currentTimeMillis();
 
 							int writeLen = Math.min(packetSize, contentLength - writtenBytes);
 							bs.write(hpc.getBytesRange(writeLen), 0, writeLen);

@@ -32,7 +32,6 @@ import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.Settings;
 
 public abstract class HTTPResponseProcessor {
-	private String header = "";
 	private LinkedList<HeaderPair> headersToAdd = new LinkedList<>();
 
 	public String getContentType() {
