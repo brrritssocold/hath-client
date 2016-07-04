@@ -55,6 +55,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Answers;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.runners.MockitoJUnitRunner;
 
 import com.google.common.net.HttpHeaders;
@@ -263,5 +264,16 @@ public class ResponseProcessorHandlerTest {
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
 
 		verify(baseRequest, never()).setHandled(anyBoolean());
+	}
+
+	@Test
+	public void testResponseProcessorExceptionThrown() throws Exception {
+		hpcMock = mock(HTTPResponseProcessorFile.class);
+		Mockito.doThrow(new RuntimeException("Testing")).when(hpcMock).initialize(response);
+		setHttpResponseProcessor(hpcMock);
+
+		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
+
+		verify(baseRequest).setHandled(true);
 	}
 }
