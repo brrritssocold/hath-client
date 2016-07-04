@@ -90,11 +90,10 @@ public class ResponseProcessorHandler extends AbstractHandler {
 			}
 
 			hpc.initialize(response);
-			int contentLength = hpc.getContentLength();
 			int statusCode = response.getStatus();
 			response.setContentType(hpc.getContentType());
 
-			createHeader(response, contentLength);
+			createHeader(response, hpc.getContentLength());
 		
 			response.setBufferSize(524288);
 
@@ -105,21 +104,21 @@ public class ResponseProcessorHandler extends AbstractHandler {
 				baseRequest.setHandled(true);
 				info += "Code=" + statusCode + " ";
 				Out.info(info + (target == null ? "Invalid Request" : target));
-				printProcessingFinished(info, contentLength, startTime);
+				printProcessingFinished(info, hpc.getContentLength(), startTime);
 				return;
 			}
 				// if this is a GET request, process the pony if we have one
-				info += "Code=" + statusCode + " Bytes=" + String.format("%1$-8s", contentLength) + " ";
+			info += "Code=" + statusCode + " Bytes=" + String.format("%1$-8s", hpc.getContentLength()) + " ";
 				
 				if(target != null) {
 					// skip the startup message for error requests
 					Out.info(info + target);
 				}
 
-				if(contentLength == 0) {
+			if (hpc.getContentLength() == 0) {
 					// there is no pony to write (probably a redirect). flush the socket and finish.
 					baseRequest.setHandled(true);
-					printProcessingFinished(info, contentLength, startTime);
+				printProcessingFinished(info, hpc.getContentLength(), startTime);
 				logger.trace("Response content length is 0");
 					return;
 			}
@@ -130,10 +129,10 @@ public class ResponseProcessorHandler extends AbstractHandler {
 							// split the request even though it is local. otherwise the system will stall waiting for the proxy to serve the request fully before any data at all is returned.
 							int writtenBytes = 0;
 							
-							while(writtenBytes < contentLength) {
+					while (writtenBytes < hpc.getContentLength()) {
 								// write a packet of data and flush. getBytesRange will block if new data is not yet available.
 
-								int writeLen = Math.min(Settings.TCP_PACKET_SIZE_HIGH, contentLength - writtenBytes);
+						int writeLen = Math.min(Settings.TCP_PACKET_SIZE_HIGH, hpc.getContentLength() - writtenBytes);
 								bs.write(hpc.getBytesRange(writeLen), 0, writeLen);
 								bs.flush();
 
@@ -142,7 +141,7 @@ public class ResponseProcessorHandler extends AbstractHandler {
 						}
 						else {
 							// dump the entire file and flush.
-							bs.write(hpc.getBytes(), 0, contentLength);							
+					bs.write(hpc.getBytes(), 0, hpc.getContentLength());
 							bs.flush();
 						}
 					}
@@ -156,10 +155,10 @@ public class ResponseProcessorHandler extends AbstractHandler {
 						int packetSize = bwm.getActualPacketSize();
 						int writtenBytes = 0;
 
-						while(writtenBytes < contentLength) {
+				while (writtenBytes < hpc.getContentLength()) {
 							// write a packet of data and flush.
 
-							int writeLen = Math.min(packetSize, contentLength - writtenBytes);
+					int writeLen = Math.min(packetSize, hpc.getContentLength() - writtenBytes);
 							bs.write(hpc.getBytesRange(writeLen), 0, writeLen);
 							bs.flush();
 
@@ -174,7 +173,7 @@ public class ResponseProcessorHandler extends AbstractHandler {
 					}
 
 			baseRequest.setHandled(true);
-				printProcessingFinished(info, contentLength, startTime);
+			printProcessingFinished(info, hpc.getContentLength(), startTime);
 		} catch(Exception e) {
 			Out.info(info + "The connection was interrupted or closed by the remote host.");
 			Out.debug(e == null ? "(no exception)" : e.getMessage());
