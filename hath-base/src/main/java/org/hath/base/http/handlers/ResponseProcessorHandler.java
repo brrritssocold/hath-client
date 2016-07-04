@@ -123,53 +123,10 @@ public class ResponseProcessorHandler extends AbstractHandler {
 					return;
 			}
 					if(localNetworkAccess && (hpc instanceof HTTPResponseProcessorFile || hpc instanceof HTTPResponseProcessorProxy)) {
-						Out.debug(this + " Local network access detected, skipping throttle.");
-						
-						if(hpc instanceof HTTPResponseProcessorProxy) {
-							// split the request even though it is local. otherwise the system will stall waiting for the proxy to serve the request fully before any data at all is returned.
-							int writtenBytes = 0;
-							
-					while (writtenBytes < hpc.getContentLength()) {
-								// write a packet of data and flush. getBytesRange will block if new data is not yet available.
-
-						int writeLen = Math.min(Settings.TCP_PACKET_SIZE_HIGH, hpc.getContentLength() - writtenBytes);
-								bs.write(hpc.getBytesRange(writeLen), 0, writeLen);
-								bs.flush();
-
-								writtenBytes += writeLen;
-							}
-						}
-						else {
-							// dump the entire file and flush.
-					bs.write(hpc.getBytes(), 0, hpc.getContentLength());
-							bs.flush();
-						}
+						writeToLocalNetwork(bs, hpc);
 					}
 					else {
-						// bytes written to the local network do not count against the bandwidth stats. these do, however.
-				Stats.bytesRcvd(target.getBytes(StandardCharsets.ISO_8859_1).length);
-
-						HTTPBandwidthMonitor bwm = this.bandwidthMonitor;
-						boolean disableBWM = Settings.isDisableBWM();
-						
-						int packetSize = bwm.getActualPacketSize();
-						int writtenBytes = 0;
-
-				while (writtenBytes < hpc.getContentLength()) {
-							// write a packet of data and flush.
-
-					int writeLen = Math.min(packetSize, hpc.getContentLength() - writtenBytes);
-							bs.write(hpc.getBytesRange(writeLen), 0, writeLen);
-							bs.flush();
-
-							writtenBytes += writeLen;
-
-							Stats.bytesSent(writeLen);
-							
-							if(!disableBWM) {
-								bwm.synchronizedWait();
-							}
-						}
+						writeToExternalNetwork(bs, hpc, target);
 					}
 
 			baseRequest.setHandled(true);
@@ -182,6 +139,58 @@ public class ResponseProcessorHandler extends AbstractHandler {
 			if(hpc != null) {
 				hpc.cleanup();
 			}
+		}
+	}
+
+	private void writeToExternalNetwork(ServletOutputStream bs, HTTPResponseProcessor hpc, String target)
+			throws IOException, Exception {
+		// bytes written to the local network do not count against the bandwidth stats. these do, however.
+		Stats.bytesRcvd(target.getBytes(StandardCharsets.ISO_8859_1).length);
+
+		HTTPBandwidthMonitor bwm = this.bandwidthMonitor;
+		boolean disableBWM = Settings.isDisableBWM();
+
+		int packetSize = bwm.getActualPacketSize();
+		int writtenBytes = 0;
+
+		while (writtenBytes < hpc.getContentLength()) {
+			// write a packet of data and flush.
+
+			int writeLen = Math.min(packetSize, hpc.getContentLength() - writtenBytes);
+			bs.write(hpc.getBytesRange(writeLen), 0, writeLen);
+			bs.flush();
+
+			writtenBytes += writeLen;
+
+			Stats.bytesSent(writeLen);
+
+			if (!disableBWM) {
+				bwm.synchronizedWait();
+			}
+		}
+	}
+
+	private void writeToLocalNetwork(ServletOutputStream bs, HTTPResponseProcessor hpc) throws IOException, Exception {
+		Out.debug(this + " Local network access detected, skipping throttle.");
+
+		if (hpc instanceof HTTPResponseProcessorProxy) {
+			// split the request even though it is local. otherwise the system will stall waiting for the proxy to serve
+			// the request fully before any data at all is returned.
+			int writtenBytes = 0;
+
+			while (writtenBytes < hpc.getContentLength()) {
+				// write a packet of data and flush. getBytesRange will block if new data is not yet available.
+
+				int writeLen = Math.min(Settings.TCP_PACKET_SIZE_HIGH, hpc.getContentLength() - writtenBytes);
+				bs.write(hpc.getBytesRange(writeLen), 0, writeLen);
+				bs.flush();
+
+				writtenBytes += writeLen;
+			}
+		} else {
+			// dump the entire file and flush.
+			bs.write(hpc.getBytes(), 0, hpc.getContentLength());
+			bs.flush();
 		}
 	}
 
