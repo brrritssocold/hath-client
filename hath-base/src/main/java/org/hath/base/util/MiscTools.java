@@ -21,10 +21,13 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base;
+package org.hath.base.util;
 
 import java.io.*;
 import java.util.*;
+
+import org.hath.base.HentaiAtHomeClient;
+import org.hath.base.Out;
 
 public class MiscTools {
 

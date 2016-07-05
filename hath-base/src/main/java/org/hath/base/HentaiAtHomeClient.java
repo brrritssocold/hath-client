@@ -48,8 +48,12 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
+import org.hath.base.event.ClientEvent;
+import org.hath.base.event.ClientEvent.ClientEventType;
 import org.hath.base.gallery.GalleryDownloadManager;
 import org.hath.base.http.HTTPServer;
+
+import com.google.common.eventbus.EventBus;
 
 public class HentaiAtHomeClient implements Runnable {
 	private InputQueryHandler iqh;
@@ -64,12 +68,14 @@ public class HentaiAtHomeClient implements Runnable {
 	private int threadSkipCounter;
 	private long suspendedUntil;
 	private String[] args;
+	private EventBus eventBus;
 	
 	public HentaiAtHomeClient(InputQueryHandler iqh, String[] args) {
 		this.iqh = iqh;
 		this.args = args;
 		shutdown = false;
 		reportShutdown = false;
+		eventBus = new EventBus();
 		
 		hentaiAtHomeClient = new Thread(this);
 		hentaiAtHomeClient.setName("Client Base");
@@ -130,7 +136,7 @@ public class HentaiAtHomeClient implements Runnable {
 		Stats.setProgramStatus("Starting HTTP server...");
 
 		// handles HTTP connections used to request images and receive commands from the server
-		httpServer = new HTTPServer(this);
+		httpServer = new HTTPServer(this, eventBus);
 		if(!httpServer.startConnectionListener(Settings.getClientPort())) {
 			setFastShutdown();
 			dieWithError("Failed to initialize HTTPServer");
@@ -185,6 +191,7 @@ public class HentaiAtHomeClient implements Runnable {
 		long lastThreadTime = 0;
 		
 		System.gc();
+		postClientEvent(ClientEventType.READY);
 
 		while(!shutdown) {
 			try {
@@ -224,6 +231,10 @@ public class HentaiAtHomeClient implements Runnable {
 			
 			lastThreadTime = System.currentTimeMillis() - startTime;
 		}
+	}
+
+	protected void postClientEvent(ClientEventType type) {
+		eventBus.post(new ClientEvent(type));
 	}
 	
 	public boolean isSuspended() {
@@ -270,6 +281,10 @@ public class HentaiAtHomeClient implements Runnable {
 		return clientAPI;
 	}
 
+	protected EventBus getEventBus() {
+		return eventBus;
+	}
+
 	// static crap
 
 	public static void dieWithError(Exception e) {
@@ -296,6 +311,7 @@ public class HentaiAtHomeClient implements Runnable {
 		Out.flushLogs();
 
 		if(!shutdown) {
+			postClientEvent(ClientEventType.SHUTDOWN);
 			shutdown = true;
 			Out.info("Shutting down...");
 

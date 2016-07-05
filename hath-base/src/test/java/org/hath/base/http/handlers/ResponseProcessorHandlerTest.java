@@ -23,9 +23,11 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.http.handlers;
 
+import static org.hamcrest.CoreMatchers.endsWith;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.startsWith;
+import static org.junit.Assert.assertThat;
 import static org.mockito.Matchers.anyBoolean;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.contains;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -36,9 +38,6 @@ import java.net.Socket;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 
 import org.eclipse.jetty.server.Request;
 import org.hath.base.Settings;
@@ -55,7 +54,10 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Answers;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.runners.MockitoJUnitRunner;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 
 import com.google.common.net.HttpHeaders;
 import com.google.common.net.InetAddresses;
@@ -71,27 +73,29 @@ public class ResponseProcessorHandlerTest {
 	@Mock
 	private Socket socket;
 	@Mock
-	HTTPServer httpServer;
+	private HTTPServer httpServer;
 	@Mock(answer = Answers.RETURNS_DEEP_STUBS)
-	Request baseRequest;
+	private Request baseRequest;
+
+
+	private MockHttpServletRequest request;
+	private MockHttpServletResponse response;
+
 	@Mock
-	HttpServletRequest request;
-	@Mock(answer = Answers.RETURNS_DEEP_STUBS)
-	HttpServletResponse response;
-	@Mock
-	HTTPResponseProcessor hpcMock;
+	private HTTPResponseProcessor hpcMock;
 
 	private ResponseProcessorHandler cut;
 
 	@Before
 	public void setUp() throws Exception {
+		request = new MockHttpServletRequest();
+		response = new MockHttpServletResponse();
 		setDefaultBehavior();
-
 		cut = new ResponseProcessorHandler(bandwidthMonitor);
 	}
 
 	private void setHttpResponseProcessor(HTTPResponseProcessor hpc) {
-		when(request.getAttribute(ClassAttributes.HTTPResponseProcessor.toString())).thenReturn(hpc);
+		request.setAttribute(ClassAttributes.HTTPResponseProcessor.toString(), hpc);
 	}
 
 	private void setDefaultBehavior() throws Exception {
@@ -100,10 +104,10 @@ public class ResponseProcessorHandlerTest {
 		when(baseRequest.getReader().readLine()).thenReturn("GET / HTTP/1.1", "");
 		when(bandwidthMonitor.getActualPacketSize()).thenReturn(300);
 
-		when(request.getAttribute(BooleanAttributes.LOCAL_NETWORK_ACCESS.toString())).thenReturn(true);
+		request.setAttribute(BooleanAttributes.LOCAL_NETWORK_ACCESS.toString(), true);
 		setHttpResponseProcessor(hpcMock);
-		when(request.getRemoteAddr()).thenReturn(REMOTE_ADDRESS);
-		when(request.getAttribute(IntegerAttributes.SESSION_ID.toString())).thenReturn(2);
+		request.setRemoteAddr(REMOTE_ADDRESS);
+		request.setAttribute(IntegerAttributes.SESSION_ID.toString(), 2);
 
 		when(hpcMock.getContentLength()).thenReturn(42);
 	}
@@ -145,7 +149,8 @@ public class ResponseProcessorHandlerTest {
 		hpcMock = mock(HTTPResponseProcessorFile.class);
 		when(hpcMock.getContentLength()).thenReturn(42);
 		when(hpcMock.getBytes()).thenReturn(new byte[42]);
-		when(request.getAttribute(BooleanAttributes.LOCAL_NETWORK_ACCESS.toString())).thenReturn(false);
+
+		request.setAttribute(BooleanAttributes.LOCAL_NETWORK_ACCESS.toString(), false);
 
 		setHttpResponseProcessor(hpcMock);
 
@@ -181,43 +186,43 @@ public class ResponseProcessorHandlerTest {
 
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
 
-		verify(response).setHeader(eq(HttpHeaders.DATE), contains(sdf.format(new Date())));
+		assertThat(response.getHeader(HttpHeaders.DATE), startsWith(sdf.format(new Date())));
 	}
 
 	@Test
 	public void testHeaderDateTimezone() throws Exception {
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
 
-		verify(response).setHeader(eq(HttpHeaders.DATE), contains("GMT"));
+		assertThat(response.getHeader(HttpHeaders.DATE), endsWith("GMT"));
 	}
 
 	@Test
 	public void testHeaderServer() throws Exception {
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
 
-		verify(response).setHeader(eq(HttpHeaders.SERVER),
-				eq("Genetic Lifeform and Distributed Open Server " + Settings.CLIENT_VERSION));
+		assertThat(response.getHeader(HttpHeaders.SERVER),
+				is("Genetic Lifeform and Distributed Open Server " + Settings.CLIENT_VERSION));
 	}
 
 	@Test
 	public void testHeaderConnection() throws Exception {
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
 
-		verify(response).setHeader(eq(HttpHeaders.CONNECTION), eq("close"));
+		assertThat(response.getHeader(HttpHeaders.CONNECTION), is("close"));
 	}
 
 	@Test
 	public void testHeaderCacheControl() throws Exception {
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
 
-		verify(response).setHeader(eq(HttpHeaders.CACHE_CONTROL), eq("public, max-age=31536000"));
+		assertThat(response.getHeader(HttpHeaders.CACHE_CONTROL), is("public, max-age=31536000"));
 	}
 	
 	@Test
 	public void testHeaderContentLength() throws Exception {
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
 
-		verify(response).setContentLength(eq(42));
+		assertThat(response.getContentLength(), is(42));
 	}
 	
 	@Test
@@ -226,7 +231,7 @@ public class ResponseProcessorHandlerTest {
 
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
 
-		verify(response, never()).setHeader(eq(HttpHeaders.CACHE_CONTROL), eq("public, max-age=31536000"));
+		assertThat(response.containsHeader(HttpHeaders.CACHE_CONTROL), is(false));
 	}
 
 	@Test
@@ -235,7 +240,7 @@ public class ResponseProcessorHandlerTest {
 
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
 
-		verify(response, never()).setContentLength(eq(42));
+		assertThat(response.containsHeader(HttpHeaders.CONTENT_LENGTH), is(false));
 	}
 
 	@Test
@@ -244,7 +249,7 @@ public class ResponseProcessorHandlerTest {
 
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
 
-		verify(response, never()).setContentLength(anyInt());
+		assertThat(response.containsHeader(HttpHeaders.CONTENT_LENGTH), is(false));
 	}
 
 	@Test
@@ -253,7 +258,7 @@ public class ResponseProcessorHandlerTest {
 
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
 
-		verify(response, never()).setStatus(anyInt());
+		assertThat(response.getStatus(), is(200));
 	}
 
 	@Test
@@ -263,5 +268,16 @@ public class ResponseProcessorHandlerTest {
 		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
 
 		verify(baseRequest, never()).setHandled(anyBoolean());
+	}
+
+	@Test
+	public void testResponseProcessorExceptionThrown() throws Exception {
+		hpcMock = mock(HTTPResponseProcessorFile.class);
+		Mockito.doThrow(new RuntimeException("Testing")).when(hpcMock).initialize(response);
+		setHttpResponseProcessor(hpcMock);
+
+		cut.handle(DEFAULT_TARGET, baseRequest, request, response);
+
+		verify(baseRequest).setHandled(true);
 	}
 }

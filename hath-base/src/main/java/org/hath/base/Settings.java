@@ -28,6 +28,7 @@ import java.net.InetAddress;
 import java.util.Hashtable;
 
 import org.eclipse.jetty.client.HttpClient;
+import org.hath.base.util.FileTools;
 
 public class Settings {
 	public static final String NEWLINE = System.getProperty("line.separator");

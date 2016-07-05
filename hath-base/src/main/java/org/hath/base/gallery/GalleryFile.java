@@ -25,10 +25,11 @@ package org.hath.base.gallery;
 
 import java.io.File;
 
-import org.hath.base.FileTools;
 import org.hath.base.HVFile;
 import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.Out;
+import org.hath.base.Settings;
+import org.hath.base.util.FileTools;
 
 public class GalleryFile {
 	private HentaiAtHomeClient client;
@@ -120,7 +121,8 @@ public class GalleryFile {
 		// try to download if it doesn't exist and we have a token
 		if(validToken && !fromfile.isFile()) {
 			Out.debug("Downloader: " + tofile + " - initializing GalleryFileDownloader");
-			GalleryFileDownloader gfd = new GalleryFileDownloader(client, fileid, token, gid, page, filename, retrycount > 3);
+			GalleryFileDownloader gfd = new GalleryFileDownloader(client, fileid, token, gid, page, filename, retrycount > 3,
+					Settings.getHttpClient());
 			gfd.initialize();
 			
 			int sleepTime = 1000;

@@ -26,9 +26,10 @@ package org.hath.base.http.handlers;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.TimeZone;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 
 import javax.servlet.ServletException;
 import javax.servlet.ServletOutputStream;
@@ -61,12 +62,15 @@ public class ResponseProcessorHandler extends AbstractHandler {
 	private static final Logger logger = LoggerFactory.getLogger(ResponseProcessorHandler.class);
 	private int connId;
 	private boolean localNetworkAccess;
-	private long sessionStartTime, lastPacketSend; //TODO replace with guava stopwatch
 	private HTTPBandwidthMonitor bandwidthMonitor;
+	private final DateTimeFormatter dtf;
+	private final ZoneId UTCzone;
 
 	public ResponseProcessorHandler(HTTPBandwidthMonitor bandwidthMonitor) {
-		sessionStartTime = System.currentTimeMillis();
 		this.bandwidthMonitor = bandwidthMonitor;
+		this.dtf = new DateTimeFormatterBuilder().appendPattern("EEE, dd MMM yyyy HH:mm:ss")
+				.appendLiteral(" GMT").toFormatter(java.util.Locale.US);
+		this.UTCzone = ZoneId.of("GMT");
 	}
 
 	@Override
@@ -86,17 +90,16 @@ public class ResponseProcessorHandler extends AbstractHandler {
 			hpc = HTTPRequestAttributes.getResponseProcessor(request);
 
 			if (hpc == null) {
-				Out.warning("Got request without ResponseProcessor: " + request.toString());
-				logger.trace("Status: {}, isHandled: {}", response.getStatus(), baseRequest.isHandled());
+				Out.debug("Got request without ResponseProcessor: " + request.toString());
+				logger.debug("Status: {}, isHandled: {}", response.getStatus(), baseRequest.isHandled());
 				return;
 			}
 
 			hpc.initialize(response);
-			int contentLength = hpc.getContentLength();
 			int statusCode = response.getStatus();
 			response.setContentType(hpc.getContentType());
 
-			createHeader(response, contentLength);
+			createHeader(response, hpc.getContentLength());
 		
 			response.setBufferSize(524288);
 
@@ -107,77 +110,33 @@ public class ResponseProcessorHandler extends AbstractHandler {
 				baseRequest.setHandled(true);
 				info += "Code=" + statusCode + " ";
 				Out.info(info + (target == null ? "Invalid Request" : target));
-				printProcessingFinished(info, contentLength, startTime);
+				printProcessingFinished(info, hpc.getContentLength(), startTime);
 				return;
 			}
 				// if this is a GET request, process the pony if we have one
-				info += "Code=" + statusCode + " Bytes=" + String.format("%1$-8s", contentLength) + " ";
+			info += "Code=" + statusCode + " Bytes=" + String.format("%1$-8s", hpc.getContentLength()) + " ";
 				
 				if(target != null) {
 					// skip the startup message for error requests
 					Out.info(info + target);
 				}
 
-				if(contentLength == 0) {
+			if (hpc.getContentLength() == 0) {
 					// there is no pony to write (probably a redirect). flush the socket and finish.
 					baseRequest.setHandled(true);
-					printProcessingFinished(info, contentLength, startTime);
+				printProcessingFinished(info, hpc.getContentLength(), startTime);
 				logger.trace("Response content length is 0");
 					return;
 			}
 					if(localNetworkAccess && (hpc instanceof HTTPResponseProcessorFile || hpc instanceof HTTPResponseProcessorProxy)) {
-						Out.debug(this + " Local network access detected, skipping throttle.");
-						
-						if(hpc instanceof HTTPResponseProcessorProxy) {
-							// split the request even though it is local. otherwise the system will stall waiting for the proxy to serve the request fully before any data at all is returned.
-							int writtenBytes = 0;
-							
-							while(writtenBytes < contentLength) {
-								// write a packet of data and flush. getBytesRange will block if new data is not yet available.
-
-								int writeLen = Math.min(Settings.TCP_PACKET_SIZE_HIGH, contentLength - writtenBytes);
-								bs.write(hpc.getBytesRange(writeLen), 0, writeLen);
-								bs.flush();
-
-								writtenBytes += writeLen;
-							}
-						}
-						else {
-							// dump the entire file and flush.
-							bs.write(hpc.getBytes(), 0, contentLength);							
-							bs.flush();
-						}
+						writeToLocalNetwork(bs, hpc);
 					}
 					else {
-						// bytes written to the local network do not count against the bandwidth stats. these do, however.
-				Stats.bytesRcvd(target.getBytes(StandardCharsets.ISO_8859_1).length);
-
-						HTTPBandwidthMonitor bwm = this.bandwidthMonitor;
-						boolean disableBWM = Settings.isDisableBWM();
-						
-						int packetSize = bwm.getActualPacketSize();
-						int writtenBytes = 0;
-
-						while(writtenBytes < contentLength) {
-							// write a packet of data and flush.
-							lastPacketSend = System.currentTimeMillis();
-
-							int writeLen = Math.min(packetSize, contentLength - writtenBytes);
-							bs.write(hpc.getBytesRange(writeLen), 0, writeLen);
-							bs.flush();
-
-							writtenBytes += writeLen;
-
-							Stats.bytesSent(writeLen);
-							
-							if(!disableBWM) {
-								bwm.synchronizedWait();
-							}
-						}
+						writeToExternalNetwork(bs, hpc, target);
 					}
 
 			baseRequest.setHandled(true);
-				printProcessingFinished(info, contentLength, startTime);
+			printProcessingFinished(info, hpc.getContentLength(), startTime);
 		} catch(Exception e) {
 			Out.info(info + "The connection was interrupted or closed by the remote host.");
 			Out.debug(e == null ? "(no exception)" : e.getMessage());
@@ -189,6 +148,58 @@ public class ResponseProcessorHandler extends AbstractHandler {
 		}
 	}
 
+	private void writeToExternalNetwork(ServletOutputStream bs, HTTPResponseProcessor hpc, String target)
+			throws IOException, Exception {
+		// bytes written to the local network do not count against the bandwidth stats. these do, however.
+		Stats.bytesRcvd(target.getBytes(StandardCharsets.ISO_8859_1).length);
+
+		HTTPBandwidthMonitor bwm = this.bandwidthMonitor;
+		boolean disableBWM = Settings.isDisableBWM();
+
+		int packetSize = bwm.getActualPacketSize();
+		int writtenBytes = 0;
+
+		while (writtenBytes < hpc.getContentLength()) {
+			// write a packet of data and flush.
+
+			int writeLen = Math.min(packetSize, hpc.getContentLength() - writtenBytes);
+			bs.write(hpc.getBytesRange(writeLen), 0, writeLen);
+			bs.flush();
+
+			writtenBytes += writeLen;
+
+			Stats.bytesSent(writeLen);
+
+			if (!disableBWM) {
+				bwm.synchronizedWait();
+			}
+		}
+	}
+
+	private void writeToLocalNetwork(ServletOutputStream bs, HTTPResponseProcessor hpc) throws IOException, Exception {
+		Out.debug(this + " Local network access detected, skipping throttle.");
+
+		if (hpc instanceof HTTPResponseProcessorProxy) {
+			// split the request even though it is local. otherwise the system will stall waiting for the proxy to serve
+			// the request fully before any data at all is returned.
+			int writtenBytes = 0;
+
+			while (writtenBytes < hpc.getContentLength()) {
+				// write a packet of data and flush. getBytesRange will block if new data is not yet available.
+
+				int writeLen = Math.min(Settings.TCP_PACKET_SIZE_HIGH, hpc.getContentLength() - writtenBytes);
+				bs.write(hpc.getBytesRange(writeLen), 0, writeLen);
+				bs.flush();
+
+				writtenBytes += writeLen;
+			}
+		} else {
+			// dump the entire file and flush.
+			bs.write(hpc.getBytes(), 0, hpc.getContentLength());
+			bs.flush();
+		}
+	}
+
 	private void printProcessingFinished(String info, int contentLength, long startTime) {
 		long sendTime = System.currentTimeMillis() - startTime;
 		DecimalFormat df = new DecimalFormat("0.00");
@@ -197,12 +208,9 @@ public class ResponseProcessorHandler extends AbstractHandler {
 
 	protected void createHeader(HttpServletResponse response, int contentLength) {
 		// we'll create a new date formatter for each session instead of synchronizing on a shared formatter. (sdf is not thread-safe)
-		// TODO replace with DateTimeFormatter (thread-safe)
-		SimpleDateFormat sdf = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss", java.util.Locale.US);
-		sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
 
 		// build the header
-		response.setHeader(HttpHeaders.DATE, sdf.format(new Date()) + " GMT");
+		response.setHeader(HttpHeaders.DATE, dtf.format(LocalDateTime.now(UTCzone)));
 		response.setHeader(HttpHeaders.SERVER,
 				"Genetic Lifeform and Distributed Open Server " + Settings.CLIENT_VERSION);
 		response.setHeader(HttpHeaders.CONNECTION, "close");

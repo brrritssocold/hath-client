@@ -35,17 +35,16 @@ import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.api.Request;
 import org.eclipse.jetty.client.api.Response;
 import org.eclipse.jetty.client.util.InputStreamResponseListener;
-import org.eclipse.jetty.http.HttpField;
 import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.http.HttpStatus;
 import org.hath.base.CacheHandler;
-import org.hath.base.FileTools;
 import org.hath.base.HVFile;
 import org.hath.base.HentaiAtHomeClient;
-import org.hath.base.MiscTools;
 import org.hath.base.Out;
 import org.hath.base.Settings;
 import org.hath.base.Stats;
+import org.hath.base.util.FileTools;
+import org.hath.base.util.MiscTools;
 
 public class GalleryFileDownloader implements Runnable {
 	public static final String USER_AGENT = "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.12) Gecko/20080201 Firefox/2.0.0.12";
@@ -85,28 +84,6 @@ public class GalleryFileDownloader implements Runnable {
 
 	private void hitSensingPoint(Sensing point) {
 		sensingPointHits.add(point);
-	}
-
-	/**
-	 * @deprecated Use
-	 *             {@link GalleryFileDownloader#GalleryFileDownloader(HentaiAtHomeClient, String, String, int, int, String, boolean, HttpClient)}
-	 *             instead.
-	 */
-	public GalleryFileDownloader(HentaiAtHomeClient client, String fileid, String token, int gid, int page,
-			String filename, boolean skipHath) {
-		this(client, fileid, token, gid, page, filename, skipHath, Settings.getHttpClient());
-
-		httpClient.setConnectTimeout(connectTimeoutMilli);
-		httpClient.setIdleTimeout(readTimeoutMilli);
-		httpClient.setUserAgentField(new HttpField(HttpHeader.USER_AGENT,
-				USER_AGENT));
-
-		try {
-			httpClient.start();
-		} catch (Exception e) {
-			Out.error("Failed to start HttpClient: " + e.getMessage());
-			e.printStackTrace();
-		}
 	}
 
 	public GalleryFileDownloader(HentaiAtHomeClient client, String fileid, String token, int gid, int page,

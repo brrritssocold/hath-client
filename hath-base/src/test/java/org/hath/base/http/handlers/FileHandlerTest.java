@@ -23,6 +23,8 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.http.handlers;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertThat;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyInt;
@@ -31,14 +33,17 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.net.InetAddress;
 import java.util.Hashtable;
+import java.util.LinkedList;
+import java.util.List;
 
 import org.eclipse.jetty.http.HttpStatus;
 import org.hath.base.CacheHandler;
 import org.hath.base.HVFile;
 import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.Settings;
+import org.hath.base.event.RequestEvent;
+import org.hath.base.event.RequestType;
 import org.hath.base.http.HTTPRequestAttributes.BooleanAttributes;
 import org.hath.base.http.HTTPRequestAttributes.ClassAttributes;
 import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
@@ -47,13 +52,13 @@ import org.junit.Test;
 import org.mockito.Answers;
 import org.mockito.Mock;
 
-import com.google.common.net.InetAddresses;
+import com.google.common.eventbus.EventBus;
+import com.google.common.eventbus.Subscribe;
 
 public class FileHandlerTest extends HandlerJunitTest {
-	private static final String CLIENT_IP = "110.120.130.140";
-
 	private FileHandler cut;
-	private InetAddress client_address;
+	private EventBus eventBus;
+	private List<RequestEvent> events;
 
 	@Mock(answer = Answers.RETURNS_DEEP_STUBS)
 	private ResponseProcessorHandler sessionMock;
@@ -69,14 +74,20 @@ public class FileHandlerTest extends HandlerJunitTest {
 
 	@Before
 	public void setUp() throws Exception {
-		client_address = InetAddresses.forString(CLIENT_IP);
-
 		when(request.getAttribute(BooleanAttributes.LOCAL_NETWORK_ACCESS.toString())).thenReturn(true);
 		when(request.getAttribute(ClassAttributes.HentaiAtHomeClient.toString())).thenReturn(clientMock);
 		when(request.getAttribute(IntegerAttributes.SESSION_ID.toString())).thenReturn(2);
 		when(cacheHandlerMock.getHVFile(anyString(), anyBoolean())).thenReturn(hvFileMock);
 
-		cut = new FileHandler(cacheHandlerMock);
+		events = new LinkedList<RequestEvent>();
+		eventBus = new EventBus();
+		eventBus.register(this);
+		cut = new FileHandler(cacheHandlerMock, eventBus);
+	}
+
+	@Subscribe
+	private void requestEventListner(RequestEvent event){
+		events.add(event);
 	}
 
 	private String generateKeystamp(String hvfile, int timeOffset) {
@@ -201,5 +212,62 @@ public class FileHandlerTest extends HandlerJunitTest {
 		cut.handle("/foo", baseRequest, request, response);
 
 		verify(response).setStatus(400);
+	}
+
+	@Test
+	public void testFileRequestEventCount() throws Exception {
+		when(hvFileMock.getLocalFileRef().exists()).thenReturn(true);
+
+		cut.handle("/foo/" + generateKeystamp("foo") + "/baz", baseRequest, request, response);
+
+		assertThat(events.size(), is(1));
+	}
+
+	@Test
+	public void testFileRequestEventType() throws Exception {
+		when(hvFileMock.getLocalFileRef().exists()).thenReturn(true);
+
+		cut.handle("/foo/" + generateKeystamp("foo") + "/baz", baseRequest, request, response);
+
+		RequestEvent event = events.get(0);
+		assertThat(event.getRequestType(), is(RequestType.H));
+	}
+
+	@Test
+	public void testFileRequestEventRequest() throws Exception {
+		when(hvFileMock.getLocalFileRef().exists()).thenReturn(true);
+		target = "/foo/" + generateKeystamp("foo") + "/baz";
+
+		cut.handle(target, baseRequest, request, response);
+
+		RequestEvent event = events.get(0);
+		assertThat(event.getRequest(), is(target));
+	}
+
+	@Test
+	public void testFileRequestEventAdditionalsSize() throws Exception {
+		when(hvFileMock.getLocalFileRef().exists()).thenReturn(true);
+
+		cut.handle("/foo/" + generateKeystamp("foo") + "/baz", baseRequest, request, response);
+
+		RequestEvent event = events.get(0);
+		assertThat(event.getAdditionals().size(), is(1));
+	}
+
+	@Test
+	public void testFileRequestEventStaticRange() throws Exception {
+		String fileid = "foobar";
+
+		Hashtable<String, String> tokens = new Hashtable<>();
+		tokens.put(fileid, "1");
+
+		when(hvFileMock.getLocalFileRef().exists()).thenReturn(false);
+		when(hvFileMock.getFileid()).thenReturn(fileid);
+		when(clientMock.getServerHandler().getFileTokens(any())).thenReturn(tokens);
+		addToStaticRange(fileid);
+
+		cut.handle("/" + fileid + "/" + generateKeystamp(fileid) + "/baz", baseRequest, request, response);
+
+		assertThat(events.size(), is(1));
 	}
 }

@@ -32,7 +32,6 @@ import javax.servlet.http.HttpServletResponse;
 import org.eclipse.jetty.http.HttpStatus;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
-import org.hath.base.MiscTools;
 import org.hath.base.Out;
 import org.hath.base.Settings;
 import org.hath.base.http.HTTPRequestAttributes;
@@ -40,6 +39,7 @@ import org.hath.base.http.HTTPRequestAttributes.ClassAttributes;
 import org.hath.base.http.HTTPRequestAttributes.IntegerAttributes;
 import org.hath.base.http.HTTPResponseProcessorSpeedtest;
 import org.hath.base.util.HandlerUtils;
+import org.hath.base.util.MiscTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,7 +76,6 @@ public class SpeedTestHandler extends AbstractHandler {
 			Out.warning(session + " Got a speedtest request with invalid key");
 			response.setStatus(HttpStatus.FORBIDDEN_403);
 		} else {
-			response.setStatus(HttpStatus.OK_200);
 			request.setAttribute(ClassAttributes.HTTPResponseProcessor.toString(),
 					new HTTPResponseProcessorSpeedtest(testsize));
 		}

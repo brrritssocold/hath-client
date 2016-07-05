@@ -36,6 +36,8 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.hath.base.util.FileTools;
+
 public class CacheHandler {
 
 	private HentaiAtHomeClient client;

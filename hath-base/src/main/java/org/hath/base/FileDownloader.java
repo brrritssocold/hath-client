@@ -30,6 +30,8 @@ import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
 
+import org.hath.base.util.FileTools;
+
 public class FileDownloader implements Runnable {
 	private int timeout = 30000, maxDLTime = Integer.MAX_VALUE, retries = 3;
 	private long timeDownloadStart = 0, timeFirstByte = 0, timeDownloadFinish = 0;
