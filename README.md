@@ -1,9 +1,8 @@
 # HatH Client
 
-[![Build Status](https://travis-ci.org/brrritssocold/hath-client.svg?branch=master)](https://travis-ci.org/brrritssocold/hath-client)
-[![Coverage Status](https://coveralls.io/repos/github/brrritssocold/hath-client/badge.svg?branch=master)](https://coveralls.io/github/brrritssocold/hath-client?branch=master)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/37cd1054934c4c689912992827cf5c3a)](https://www.codacy.com/app/brrritssocold/hath-client?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=brrritssocold/hath-client&amp;utm_campaign=Badge_Grade)
-
+[![Build Status](https://travis-ci.org/brrritssocold/hath-client.svg?branch=develop)](https://travis-ci.org/brrritssocold/hath-client)
+[![Coverage Status](https://coveralls.io/repos/github/brrritssocold/hath-client/badge.svg?branch=develop)](https://coveralls.io/github/brrritssocold/hath-client?branch=master)
+[![Codacy Badge](https://img.shields.io/codacy/grade/37cd1054934c4c689912992827cf5c3a/develop.svg?maxAge=2592000)](https://www.codacy.com/app/brrritssocold/hath-client?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=brrritssocold/hath-client&amp;utm_campaign=Badge_Grade)
 
 Make sure to read and understand the license for this program, found in the file LICENSE or at http://www.gnu.org/licenses/gpl.txt, before you start playing with it.
 
