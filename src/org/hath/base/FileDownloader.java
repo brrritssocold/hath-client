@@ -1,7 +1,7 @@
 /*
 
-Copyright 2008-2013 E-Hentai.org
-http://forums.e-hentai.org/
+Copyright 2008-2016 E-Hentai.org
+https://forums.e-hentai.org/
 ehentai@gmail.com
 
 This file is part of Hentai@Home.
@@ -25,73 +25,50 @@ package org.hath.base;
 
 import java.net.*;
 import java.io.*;
+import java.nio.*;
+import java.nio.channels.*;
+import java.nio.file.*;
 
 public class FileDownloader implements Runnable {
 	private int timeout = 30000, maxDLTime = Integer.MAX_VALUE, retries = 3;
 	private long timeDownloadStart = 0, timeFirstByte = 0, timeDownloadFinish = 0;
-	private byte[] bytearray = null;
+	private ByteBuffer byteBuffer = null;
+	private FileChannel outputChannel = null;
+	private HTTPBandwidthMonitor downloadLimiter = null;
+	private Path outputPath = null;
 	private URL source;
 	private Thread myThread;
 	private Object downloadLock = new Object();
-	private boolean started = false;
-	
-	public FileDownloader(URL source) {
-		this.source = source;
-	}
+	private boolean started = false, discardData = false;
 
-	public FileDownloader(URL source, int timeout) {
-		this.source = source;
-		this.timeout = timeout;
-	}
-	
 	public FileDownloader(URL source, int timeout, int maxDLTime) {
+		// everything will be written to a ByteBuffer
 		this.source = source;
 		this.timeout = timeout;
 		this.maxDLTime = maxDLTime;
 	}
 
-	public boolean saveFile(File destination) {
-		if(destination.exists()) {
-			destination.delete();
-		}
-
-		FileOutputStream fos = null;
-
-		try {
-			FileTools.checkAndCreateDir(destination.getParentFile());
-
-			if(downloadFile()) {
-				fos = new FileOutputStream(destination);
-				fos.write(bytearray, 0, bytearray.length);
-				fos.close();
-
-				return true;
-			}
-		} catch(Exception e) {
-			try { fos.close(); } catch(Exception e2) {}	// nuke file handle if open
-
-			if(e instanceof java.io.IOException && e.getMessage().equals("There is not enough space on the disk")) {
-				Out.warning("Error: No space on disk");
-			}
-			else {
-				Out.warning(e + " while saving file " + source + " to " + destination.getAbsolutePath());
-				e.printStackTrace();
-			}
-		}
-
-		return false;
+	public FileDownloader(URL source, int timeout, int maxDLTime, boolean discardData) {
+		// if discardData is true, no buffer will be allocated and the data stream will be discarded
+		this.source = source;
+		this.timeout = timeout;
+		this.maxDLTime = maxDLTime;
+		this.discardData = discardData;
 	}
 
-	public String getTextContent() {
-		if(downloadFile()) {
-			return new String(bytearray, 0, bytearray.length);
-		}
-		else {
-			return null;
-		}
+	public FileDownloader(URL source, int timeout, int maxDLTime, Path outputPath) {
+		// in this case, the data will be written directly to a channel specified by outputPath
+		this.source = source;
+		this.timeout = timeout;
+		this.maxDLTime = maxDLTime;
+		this.outputPath = outputPath;
 	}
 	
-	private boolean downloadFile() {
+	public void setDownloadLimiter(HTTPBandwidthMonitor limiter) {
+		downloadLimiter = limiter;
+	}
+
+	public boolean downloadFile() {
 		// this will block while the file is downloaded
 		if(myThread == null) {
 			// if startAsyncDownload has not been called, we invoke run() directly and skip threading
@@ -103,7 +80,7 @@ public class FileDownloader implements Runnable {
 
 		return timeDownloadFinish > 0;
 	}
-	
+
 	public void startAsyncDownload() {
 		// start a new thread to handle the download. this will return immediately
 		if(myThread == null) {
@@ -111,98 +88,156 @@ public class FileDownloader implements Runnable {
 			myThread.start();
 		}
 	}
-	
+
 	public boolean waitAsyncDownload() {
 		// synchronize on the download lock to wait for the download attempts to complete before returning
 		synchronized(downloadLock) {}
 		return timeDownloadFinish > 0;
 	}
-	
+
+	public String getResponseAsString(String charset) {
+		if(downloadFile()) {
+			if(byteBuffer != null) {
+				byteBuffer.flip();
+				byte[] temp = new byte[byteBuffer.remaining()];
+				byteBuffer.get(temp);
+
+				try {
+					return new String(temp, charset);
+				} catch(UnsupportedEncodingException e) {
+					HentaiAtHomeClient.dieWithError(e);
+				}
+			}
+		}
+
+		return null;
+	}
+
 	public long getDownloadTimeMillis() {
 		return timeFirstByte > 0 ? timeDownloadFinish - timeFirstByte : 0;
 	}
 
 	public void run() {
 		synchronized(downloadLock) {
+			boolean success = false;
+
 			if(started) {
 				return;
 			}
-			
+
 			started = true;
-		
-			while(retries-- > 0) {
+
+			while(!success && --retries >= 0) {
 				InputStream is = null;
-				BufferedInputStream bis = null;
+				ReadableByteChannel rbc = null;
 
 				try {
 					Out.info("Connecting to " + source.getHost() + "...");
-					
+
 					URLConnection connection = source.openConnection();
-					
-					connection.setConnectTimeout(10000);
-					connection.setReadTimeout(timeout);	// this doesn't always seem to work however, so we'll do it somewhat differently..
+					connection.setConnectTimeout(5000);
+					connection.setReadTimeout(timeout);
 					connection.setRequestProperty("Connection", "Close");
-					connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.12) Gecko/20080201 Firefox/2.0.0.12");
 					connection.connect();
 
-					Out.debug("Connected to " + source);
-					
 					int contentLength = connection.getContentLength();
 
 					if(contentLength < 0) {
-						// H@H note: since we control all systems in this case, we'll demand that clients and servers always send the Content-Length
-						Out.warning("Remote host did not send Content-Length, aborting transfer.");
-						return;
+						// since we control all systems in this case, we'll demand that clients and servers always send the Content-Length
+						Out.warning("Request host did not send Content-Length, aborting transfer." + " (" + connection + ")");
+						Out.warning("Note: A common reason for this is running firewalls with outgoing restrictions or programs like PeerGuardian/PeerBlock. Verify that the remote host is not blocked.");
+						throw new java.net.SocketException("Invalid or missing Content-Length");
 					}
-					else if(contentLength > 10485760) {
-						// H@H note: we don't want clients trying to provoke an outofmemory exception by returning a malformed oversized reply, so we'll limit the download size to the H@H max (10 MB). the server will never send anything this large as a response either.
-						Out.warning("Reported contentLength " + contentLength + " on request " + source + " is out of bounds!");
-						return;
-					} 
+					else if(contentLength > 10485760 && !discardData && outputPath == null) {
+						// if we're writing to a ByteBuffer, hard limit responses to 10MB
+						Out.warning("Reported contentLength " + contentLength + " exceeds max allowed size for memory buffer download");
+						throw new java.net.SocketException("Reply exceeds expected length");
+					}
+					else if(contentLength > Settings.getMaxAllowedFileSize()) {
+						Out.warning("Reported contentLength " + contentLength + " exceeds currently max allowed filesize " + Settings.getMaxAllowedFileSize());
+						throw new java.net.SocketException("Reply exceeds expected length");
+					}
 
-					Out.debug("Received contentLength=" + contentLength);
-					
-					bytearray = new byte[contentLength];
 					is = connection.getInputStream();
-					bis = new BufferedInputStream(is);
 
-					Out.info(source.getPath() + (source.getQuery() != null ? "?" + source.getQuery() : "") + ": Retrieving " + contentLength + " bytes...");
+					if(!discardData) {
+						rbc = Channels.newChannel(is);
+						//Out.debug("ReadableByteChannel for input opened");
+
+						if(outputPath == null) {
+							if(byteBuffer != null) {
+								if(byteBuffer.capacity() < contentLength) {
+									// if we are retrying and the length has increased, we have to allocate a new buffer
+									byteBuffer = null;
+								}
+							}
+
+							if(byteBuffer == null) {
+								byteBuffer = ByteBuffer.allocateDirect(contentLength);
+								//Out.debug("Allocated byteBuffer (length=" + byteBuffer.capacity() + ")");
+							}
+							else {
+								byteBuffer.clear();
+								//Out.debug("Cleared byteBuffer (length=" + byteBuffer.capacity() + ")");
+							}
+						}
+						else if(outputChannel == null) {
+							outputChannel = FileChannel.open(outputPath, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+							//Out.debug("FileChannel for output opened");
+						}
+					}
+
+					Out.info("Reading " + contentLength + " bytes from " + source);
 					timeDownloadStart = System.currentTimeMillis();
 
-					int bytecounter = 0;	// counts the number of bytes read
-					int time = 0;			// counts the approximate time (in nanofortnights) since last byte was received
+					long writeoff = 0;	// counts the number of bytes read
+					long readcount = 0;	// the number of bytes in the last read
+					int available = 0;	// the number of bytes available to read
+					int time = 0;		// counts the approximate time (in nanofortnights) since last byte was received
 
-					while(bytecounter < contentLength) {
-						int available = bis.available();
-						
+					while(writeoff < contentLength) {
+						available = is.available();
+
 						if(available > 0) {
-							// read-data loop..
-							
 							if(timeFirstByte == 0) {
 								timeFirstByte = System.currentTimeMillis();
 							}
-							
+
 							time = 0;
-							int readcount = bis.read(bytearray, bytecounter, available);
+
+							if(discardData) {
+								readcount = is.skip(available);
+								//Out.debug("Skipped " + readcount + " bytes");
+							}
+							else if(outputPath == null) {
+								readcount = rbc.read(byteBuffer);
+								//Out.debug("Added " + readcount + " bytes to byteBuffer");
+							}
+							else {
+								readcount = outputChannel.transferFrom(rbc, writeoff, (long) available);
+								//Out.debug("Wrote " + readcount + " bytes to outputChannel");
+							}
 
 							if(readcount >= 0) {
-								bytecounter += readcount;
+								writeoff += readcount;
 							}
 							else {
 								// readcount == -1 => EOF
-								Out.warning("\nServer sent premature EOF, aborting.. (" + bytecounter + " of " + contentLength + " bytes received)");
+								Out.warning("\nServer sent premature EOF, aborting.. (" + writeoff + " of " + contentLength + " bytes received)");
 								throw new java.net.SocketException("Unexpected end of file from server");
+							}
+							
+							if(downloadLimiter != null) {
+								downloadLimiter.waitForQuota(Thread.currentThread(), (int) readcount);
 							}
 						}
 						else {
-							// wait-for-data loop...
-						
 							if(System.currentTimeMillis() - timeDownloadStart > maxDLTime) {
 								Out.warning("\nDownload time limit has expired, aborting...");
-								throw new java.net.SocketTimeoutException("Download timed out");							
+								throw new java.net.SocketTimeoutException("Download timed out");
 							}
 							else if(time > timeout) {
-								Out.warning("\nTimeout detected waiting for byte " + bytecounter + ", aborting..");
+								Out.warning("\nTimeout detected waiting for byte " + writeoff + ", aborting..");
 								throw new java.net.SocketTimeoutException("Read timed out");
 							}
 
@@ -210,117 +245,52 @@ public class FileDownloader implements Runnable {
 							Thread.currentThread().sleep(5);
 						}
 					}
-					
-					Out.debug("Finished. bytecounter=" + bytecounter);
 
-					bis.close();
-					is.close();
-					
-					Stats.bytesRcvd(contentLength);
-					
 					timeDownloadFinish = System.currentTimeMillis();
-					return;
-				} catch(Exception e) {
-					try { bis.close(); } catch(Exception e2) {}
-					try { is.close(); } catch(Exception e3) {}
+					long dltime = getDownloadTimeMillis();
+					Out.debug("Finished in " + dltime + " ms" + (dltime > 0 ? ", speed=" + (writeoff / dltime) + "KB/s" : "") + ", writeoff=" + writeoff);
+					Stats.bytesRcvd(contentLength);
+					success = true;
+				}
+				catch(Exception e) {
+					if(e instanceof java.io.FileNotFoundException) {
+						Out.warning("Server returned: 404 Not Found");
+						break;
+					}
+					else if(e.getCause() instanceof java.io.FileNotFoundException) {
+						Out.warning("Server returned: 404 Not Found");
+						break;
+					}
 
-					String message = e.getMessage();
-					Throwable cause = e.getCause();
-					String causemessage = null;
+					Out.warning(e.toString());
+					Out.warning("Retrying.. (" + retries + " tries left)");
+					continue;
+				}
+				finally {
+					if(rbc != null) {
+						try {
+							rbc.close();
+						} catch(Exception e) {}
+					}
 					
-					if(cause != null) {
-						causemessage = (cause.getMessage() != null) ? cause.getMessage() : "";
-					}
-
-					if(message != null) {
-						if(message.equals("Connection timed out: connect")) {
-							Out.warning("Connection timed out getting " + source + ", retrying.. (" + retries + " tries left)");
-							continue;
-						}
-						else if(message.equals("Connection refused: connect")) {
-							Out.warning("Connection refused getting " + source + ", retrying.. (" + retries + " tries left)");
-							continue;
-						}
-						else if(message.equals("Unexpected end of file from server")) {
-							Out.warning("Connection prematurely reset getting " + source + ", retrying.. (" + retries + " tries left)");
-							continue;
-						}
-						else if(e instanceof java.io.FileNotFoundException) {
-							Out.warning("Server returned: 404 Not Found");
-							break;
-						}
-						else if(message.indexOf("403 for URL") >= 0) {
-							Out.warning("Server returned: 403 Forbidden");
-							break;
-						}
-						else if(e instanceof java.net.SocketException && message.equals("Connection reset")) {
-							Out.warning("Connection reset getting " + source + ", retrying.. (" + retries + " tries left)");
-							continue;
-						}
-						else if(e instanceof java.net.UnknownHostException) {
-							Out.warning("Unknown host " + source.getHost() + ", aborting..");
-							break;
-						}
-						else if(e instanceof java.net.SocketTimeoutException) {
-							Out.warning("Read timed out, retrying.. (" + retries + " tries left)");
-							continue;
-						}
-						else {
-							Out.warning("Unhandled exception: " + e.toString());
-							e.printStackTrace();
-							Out.warning("Retrying.. (" + retries + " tries left)");
-							continue;
-						}
-					}
-					else if(cause != null){
-						if(cause instanceof java.io.FileNotFoundException) {
-							Out.warning("Server returned: 404 Not Found");
-							break;
-						}
-						else if(causemessage.indexOf("403 for URL") >= 0) {
-							Out.warning("Server returned: 403 Forbidden");
-							break;
-						}
-						else if(causemessage.equals("Unexpected end of file from server")) {
-							Out.warning("Connection prematurely reset getting " + source + ", retrying.. (" + retries + " tries left)");
-							continue;
-						}
-						else {
-							Out.warning("Unhandled exception/cause: " + e.toString());
-							e.printStackTrace();
-							Out.warning("Retrying.. (" + retries + " tries left)");
-							continue;
-						}
-					}
-					else {
-						Out.warning("Exception with no exception message nor cause:");
-						e.printStackTrace();
-						Out.warning("Retrying.. (" + retries + " tries left)");
-						continue;
-					}
+					try {
+						is.close();
+					} catch(Exception e) {}
 				}
 			}
-		}
 
-		Out.warning("Exhaused retries or aborted getting " + source);
-		return;
-	}
-	
-	public static void main(String[] args) {
-		if(args.length != 2) {
-			System.out.println("Need source and destination.");
-		}
-		else {
-			try {
-				URL source = new URL(args[0]);
-				File dest = new File(args[1]);
+			if(outputChannel != null) {
+				try {
+					outputChannel.close();
 
-				System.out.println("Downloading file " + source);
+					if(!success) {
+						outputPath.toFile().delete();
+					}
+				} catch(Exception e) {}
+			}
 
-				FileDownloader dler = new FileDownloader(source);
-				dler.saveFile(dest);
-			} catch(Exception e) {
-				e.printStackTrace();
+			if(!success ) {
+				Out.warning("Exhaused retries or aborted getting " + source);
 			}
 		}
 	}

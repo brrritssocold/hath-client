@@ -1,7 +1,7 @@
 /*
 
-Copyright 2008-2012 E-Hentai.org
-http://forums.e-hentai.org/
+Copyright 2008-2016 E-Hentai.org
+https://forums.e-hentai.org/
 ehentai@gmail.com
 
 This file is part of Hentai@Home.
@@ -45,8 +45,10 @@ public class CakeSphere implements Runnable {
 		ServerResponse sr = ServerResponse.getServerResponse(ServerHandler.ACT_STILL_ALIVE, handler);
 		if(sr.getResponseStatus() == ServerResponse.RESPONSE_STATUS_OK) {
 			Out.debug("Successfully performed a stillAlive test for the server.");
+			Stats.serverContact();
 		}
 		else if(sr.getResponseStatus() == ServerResponse.RESPONSE_STATUS_NULL) {
+			Settings.markRPCServerFailure(sr.getFailHost());
 			Out.warning("Failed to connect to the server for the stillAlive test. This is probably a temporary connection problem.");
 		}
 		else {

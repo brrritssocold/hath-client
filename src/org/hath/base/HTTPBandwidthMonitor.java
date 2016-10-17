@@ -1,7 +1,7 @@
 /*
 
-Copyright 2008-2012 E-Hentai.org
-http://forums.e-hentai.org/
+Copyright 2008-2016 E-Hentai.org
+https://forums.e-hentai.org/
 ehentai@gmail.com
 
 This file is part of Hentai@Home.
@@ -26,38 +26,69 @@ package org.hath.base;
 import java.lang.Thread;
 
 public class HTTPBandwidthMonitor {
-	private int sleepTrigger;
+	private final int TIME_RESOLUTION = 50;
+	private final int WINDOW_LENGTH = 5;
+	private int millisPerTick, bytesPerTick;
+	private int[] tickBytes, tickSeconds;
 
 	public HTTPBandwidthMonitor() {
-		sleepTrigger = 0;
-	}
-	
-	private double getMinMillisPerPacket() {
-		return Settings.getThrottleBytesPerSec() > 0 ? (1000.0 * getActualPacketSize() / (double) Settings.getThrottleBytesPerSec()) : 0.0;
-	}
-	
-	public synchronized void synchronizedWait(Thread thread) {		
-		long sleepTime = Math.round(getMinMillisPerPacket() * ++sleepTrigger + (Math.random() - 0.5));
-		//System.out.println(sleepTime);
-		
-		if(sleepTime > 2) {
-			sleepTrigger = 0;
-			
-			try {
-				thread.sleep(sleepTime);
-			} catch(Exception e) {
-				e.printStackTrace();
-			}
-		}
+		bytesPerTick = (int) Math.ceil(Settings.getThrottleBytesPerSec() / TIME_RESOLUTION);
+		millisPerTick = (int) (1000 / TIME_RESOLUTION);
+		tickBytes = new int[TIME_RESOLUTION];
+		tickSeconds = new int[TIME_RESOLUTION];
 	}
 
-	// accessors
-	public int getActualPacketSize() {
-		if(Settings.getThrottleBytesPerSec() == 0 || Settings.getThrottleBytesPerSec() >= 15000) {
-			return Settings.TCP_PACKET_SIZE_HIGH;
-		}
-		else {
-			return Settings.TCP_PACKET_SIZE_LOW;
-		}
-	}	
+	public synchronized void waitForQuota(Thread thread, int bytecount) {
+		do {
+			long now = System.currentTimeMillis();
+			long epochSeconds = (long) (now / 1000);
+			int currentTick = (int) ((now - epochSeconds * 1000) / millisPerTick);
+			int currentSecond = (int) epochSeconds;
+			int bytesThisTick = 0, bytesLastWindow = 0, bytesLastSecond = 0;
+			int tickCounter = currentTick - TIME_RESOLUTION;
+			int tickIndex, validSecond;
+
+			while(++tickCounter <= currentTick) {
+				tickIndex = tickCounter < 0 ? TIME_RESOLUTION + tickCounter : tickCounter;
+				validSecond = tickCounter < 0 ? currentSecond - 1 : currentSecond;
+
+				if(tickSeconds[tickIndex] == validSecond) {
+					if(tickCounter == currentTick) {
+						bytesThisTick += tickBytes[tickIndex];
+					}
+					else {
+						if(tickCounter >= currentTick - WINDOW_LENGTH) {
+							bytesLastWindow += tickBytes[tickIndex];
+						}
+
+						// technically, 49/50ths of a second
+						bytesLastSecond += tickBytes[tickIndex];
+					}
+				}
+			}
+
+			if(bytesThisTick > bytesPerTick * 1.1 || bytesLastWindow > bytesPerTick * WINDOW_LENGTH * 1.05 || bytesLastSecond > bytesPerTick * TIME_RESOLUTION) {
+				//Out.debug("sleeping with currentTick=" + currentTick + " second=" + currentSecond + " bytesPerTick=" + bytesPerTick + " bytesThisTick=" + bytesThisTick + " bytesLastWindow=" + bytesLastWindow + " bytesLastSecond=" + bytesLastSecond);
+
+				try {
+					thread.sleep(10);
+				} catch(Exception e) {
+					e.printStackTrace();
+				}
+
+				continue;
+			}
+
+			//Out.debug("granted with currentTick=" + currentTick + " second=" + currentSecond + " bytesPerTick=" + bytesPerTick + " bytesThisTick=" + bytesThisTick + " bytesLastWindow=" + bytesLastWindow + " bytesLastSecond=" + bytesLastSecond);
+
+			if(tickSeconds[currentTick] != currentSecond) {
+				tickSeconds[currentTick] = currentSecond;
+				tickBytes[currentTick] = 0;
+			}
+
+			tickBytes[currentTick] += bytecount;
+
+			break;
+		} while(true);
+	}
 }

@@ -1,7 +1,7 @@
 /*
 
-Copyright 2008-2015 E-Hentai.org
-http://forums.e-hentai.org/
+Copyright 2008-2016 E-Hentai.org
+https://forums.e-hentai.org/
 ehentai@gmail.com
 
 This file is part of Hentai@Home.
@@ -27,13 +27,15 @@ import java.util.Date;
 import java.util.TimeZone;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
-import java.net.Socket;
+import java.nio.channels.SocketChannel;
 import java.net.InetAddress;
 import java.lang.Thread;
 import java.lang.StringBuilder;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
-import java.io.*;
-import java.util.regex.*;
+import java.util.regex.Pattern;
 
 public class HTTPSession implements Runnable {
 
@@ -41,7 +43,7 @@ public class HTTPSession implements Runnable {
 
 	private static final Pattern getheadPattern = Pattern.compile("^((GET)|(HEAD)).*", Pattern.CASE_INSENSITIVE);
 
-	private Socket mySocket;
+	private SocketChannel socketChannel;
 	private HTTPServer httpServer;
 	private int connId;
 	private Thread myThread;
@@ -49,12 +51,12 @@ public class HTTPSession implements Runnable {
 	private long sessionStartTime, lastPacketSend;
 	private HTTPResponse hr;
 
-	public HTTPSession(Socket s, int connId, boolean localNetworkAccess, HTTPServer httpServer) {
+	public HTTPSession(SocketChannel socketChannel, int connId, boolean localNetworkAccess, HTTPServer httpServer) {
 		sessionStartTime = System.currentTimeMillis();
-		this.mySocket = s;
+		this.socketChannel = socketChannel;
 		this.connId = connId;
-		this.httpServer = httpServer;
 		this.localNetworkAccess = localNetworkAccess;
+		this.httpServer = httpServer;
 	}
 
 	public void handleSession() {
@@ -63,51 +65,49 @@ public class HTTPSession implements Runnable {
 	}
 
 	private void connectionFinished() {
+		if(hr != null) {
+			hr.requestCompleted();
+		}
+
 		httpServer.removeHTTPSession(this);
 	}
 
 	public void run() {
-		InputStreamReader isr = null;
 		BufferedReader br = null;
-		DataOutputStream dos = null;
-		BufferedOutputStream bs = null;
-		
 		HTTPResponseProcessor hpc = null;
-		String info = this.toString() + " ";		
+		String info = this.toString() + " ";
 
 		try {
-			isr = new InputStreamReader(mySocket.getInputStream());
-			br = new BufferedReader(isr);
-			dos = new DataOutputStream(mySocket.getOutputStream());
-			bs = new BufferedOutputStream(dos);
-
-			// http "parser" follows... might wanna replace this with a more compliant one eventually ;-)
-
-			String read = null;
+			br = new BufferedReader(new InputStreamReader(socketChannel.socket().getInputStream()));
 			String request = null;
 			int rcvdBytes = 0;
 
-			// utterly ignore every single line except for the request one.
+			// we only care about the request
 			do {
-				read = br.readLine();
+				String read = br.readLine();
 
-				if(read != null) {
-					rcvdBytes += read.length();
-
-					if(getheadPattern.matcher(read).matches()) {
-						request = read.substring(0, Math.min(Settings.MAX_REQUEST_LENGTH, read.length()));
-					}
-					else if(read.isEmpty()) {
-						break;
-					}
-				}
-				else {
+				if(read == null) {
 					break;
 				}
+				else {
+					rcvdBytes += read.length();
+
+					if(read.isEmpty()) {
+						break;
+					}
+					
+					if(getheadPattern.matcher(read).matches()) {
+						request = read.substring(0, Math.min(10000, read.length()));
+					}
+				}
 			} while(true);
-		
+
+			if(!localNetworkAccess) {
+				Stats.bytesRcvd(rcvdBytes);
+			}
+
 			hr = new HTTPResponse(this);
-			
+
 			// parse the request - this will also update the response code and initialize the proper response processor
 			hr.parseRequest(request, localNetworkAccess);
 
@@ -122,7 +122,6 @@ public class HTTPSession implements Runnable {
 
 			// build the header
 			StringBuilder header = new StringBuilder(300);
-
 			header.append(getHTTPStatusHeader(statusCode));
 			header.append(hpc.getHeader());
 			header.append("Date: " + sdf.format(new Date()) + " GMT" + CRLF);
@@ -136,42 +135,55 @@ public class HTTPSession implements Runnable {
 			}
 
 			header.append(CRLF);
-		
+
 			// write the header to the socket
 			byte[] headerBytes = header.toString().getBytes(Charset.forName("ISO-8859-1"));
-			
+
 			if(contentLength > 0) {
 				try {
 					// buffer size might be limited by OS. for linux, check net.core.wmem_max
 					int bufferSize = (int) Math.min(contentLength + headerBytes.length + 32, Math.min(Settings.isUseLessMemory() ? 131072 : 524288, Math.round(0.2 * Settings.getThrottleBytesPerSec())));
-					mySocket.setSendBufferSize(bufferSize);
-					//Out.debug("Socket size for " + connId + " is now " + mySocket.getSendBufferSize() + " (requested " + bufferSize + ")");
-				} catch (Exception e) {
+					socketChannel.socket().setSendBufferSize(bufferSize);
+					//Out.debug("Socket size for " + connId + " is now " + socketChannel.socket().getSendBufferSize() + " (requested " + bufferSize + ")");
+				}
+				catch (Exception e) {
 					Out.info(e.getMessage());
 				}
 			}
 
-			bs.write(headerBytes, 0, headerBytes.length);
+			// we try to feed the SocketChannel buffers in chunks of 1460 bytes, to make the TCP/IP packets fit neatly into the 1500 byte Ethernet MTU
+			// because of this, we record the number of remainder bytes after the header has been written, and limit the first packet to 1460 sans that count
+			// we do not have any guarantees that the header won't get shipped off in a packet by itself, but generally this should improve fillrate and prevent fragmentation
+			int lingeringBytes = headerBytes.length % Settings.TCP_PACKET_SIZE;
+
+			// wrap and write the header
+			HTTPBandwidthMonitor bwm = httpServer.getBandwidthMonitor();
+			ByteBuffer tcpBuffer = ByteBuffer.wrap(headerBytes);
+			int lastWriteLen = 0;
+
+			if(bwm != null && !localNetworkAccess) {
+				bwm.waitForQuota(myThread, tcpBuffer.remaining());
+			}
+
+			while(tcpBuffer.hasRemaining()) {
+				lastWriteLen += socketChannel.write(tcpBuffer);
+			}
 			
-			// subtract the total size of the header from the size of the first data packet sent. this avoids a problem where the third packet is undersize.
-			int pendingHeaderLength = headerBytes.length;
-			
-			if(pendingHeaderLength >= Settings.TCP_PACKET_SIZE_LOW) {
-				// flush header if we're already above the desirable max data packet size. (this shouldn't actually be possible, but better safe than trying to write a negative number of bytes.)
-				bs.flush();
-				pendingHeaderLength = 0;
+			//Out.debug("Wrote " + lastWriteLen + " header bytes to socketChannel for connId=" + connId);
+
+			if(!localNetworkAccess) {
+				Stats.bytesSent(lastWriteLen);
 			}
 
 			if(hr.isRequestHeadOnly()) {
-				// if this is a HEAD request, we flush the socket and finish
-				bs.flush();				
+				// if this is a HEAD request, we are done
 				info += "Code=" + statusCode + " ";
 				Out.info(info + (request == null ? "Invalid Request" : request));
 			}
 			else {
-				// if this is a GET request, process the pony if we have one
+				// if this is a GET request, process the body if we have one
 				info += "Code=" + statusCode + " Bytes=" + String.format("%1$-8s", contentLength) + " ";
-				
+
 				if(request != null) {
 					// skip the startup message for error requests
 					Out.info(info + request);
@@ -179,78 +191,61 @@ public class HTTPSession implements Runnable {
 
 				long startTime = System.currentTimeMillis();
 
-				if(contentLength == 0) {
-					// there is no pony to write (probably a redirect). flush the socket and finish.
-					bs.flush();				
-				} else {				
-					if(localNetworkAccess && (hpc instanceof HTTPResponseProcessorFile || hpc instanceof HTTPResponseProcessorProxy)) {
-						Out.debug(this + " Local network access detected, skipping throttle.");
-						
-						if(hpc instanceof HTTPResponseProcessorProxy) {
-							// split the request even though it is local. otherwise the system will stall waiting for the proxy to serve the request fully before any data at all is returned.
-							int writtenBytes = 0;
-							
-							while(writtenBytes < contentLength) {
-								// write a packet of data and flush. getBytesRange will block if new data is not yet available.
+				if(contentLength > 0) {
+					int writtenBytes = 0;
 
-								int writeLen = Math.min(Settings.TCP_PACKET_SIZE_HIGH - pendingHeaderLength, contentLength - writtenBytes);
-								bs.write(hpc.getBytesRange(writeLen), 0, writeLen);
-								bs.flush();
+					while(writtenBytes < contentLength) {
+						lastPacketSend = System.currentTimeMillis();
+						tcpBuffer = hpc.getPreparedTCPBuffer(lingeringBytes);
+						lingeringBytes = 0;
+						lastWriteLen = 0;
 
-								writtenBytes += writeLen;
-								pendingHeaderLength = 0;
+						if(bwm != null && !localNetworkAccess) {
+							bwm.waitForQuota(myThread, tcpBuffer.remaining());
+						}
+
+						while(tcpBuffer.hasRemaining()) {
+							lastWriteLen += socketChannel.write(tcpBuffer);
+
+							// we should be blocking, but if we're not, loop until the buffer is empty
+							if(tcpBuffer.hasRemaining()) {
+								myThread.sleep(1);
 							}
 						}
-						else {
-							// dump the entire file and flush.
-							bs.write(hpc.getBytes(), 0, contentLength);							
-							bs.flush();
-						}
-					}
-					else {
-						// bytes written to the local network do not count against the bandwidth stats. these do, however.
-						Stats.bytesRcvd(rcvdBytes);
-
-						HTTPBandwidthMonitor bwm = httpServer.getBandwidthMonitor();
-						boolean disableBWM = Settings.isDisableBWM();
 						
-						int packetSize = bwm.getActualPacketSize();
-						int writtenBytes = 0;
+						//Out.debug("Wrote " + lastWriteLen + " content bytes to socketChannel for connId=" + connId);
 
-						while(writtenBytes < contentLength) {
-							// write a packet of data and flush.
-							lastPacketSend = System.currentTimeMillis();
+						writtenBytes += lastWriteLen;
 
-							int writeLen = Math.min(packetSize - pendingHeaderLength, contentLength - writtenBytes);
-							bs.write(hpc.getBytesRange(writeLen), 0, writeLen);
-							bs.flush();
-
-							writtenBytes += writeLen;
-							pendingHeaderLength = 0;
-
-							Stats.bytesSent(writeLen);
-							
-							if(!disableBWM) {
-								bwm.synchronizedWait(myThread);
-							}
+						if(!localNetworkAccess) {
+							Stats.bytesSent(lastWriteLen);
 						}
 					}
 				}
 
 				long sendTime = System.currentTimeMillis() - startTime;
 				DecimalFormat df = new DecimalFormat("0.00");
-				Out.info(info + "Finished processing request in " + df.format(sendTime / 1000.0) + " seconds (" + (sendTime > 0 ? df.format(contentLength / (float) sendTime) : "-.--") + " KB/s)");
-			}				
-		} catch(Exception e) {
+				Out.info(info + "Finished processing request in " + df.format(sendTime / 1000.0) + " seconds" + (sendTime >= 10 ? " (" + df.format(contentLength / (float) sendTime) + " KB/s)" : ""));
+			}
+		}
+		catch(Exception e) {
 			Out.info(info + "The connection was interrupted or closed by the remote host.");
 			Out.debug(e == null ? "(no exception)" : e.getMessage());
-		} finally {
+			//e.printStackTrace();
+		}
+		finally {
 			if(hpc != null) {
 				hpc.cleanup();
 			}
+
+			try {
+				// closing a BufferedReader also closes the underlying stream
+				br.close();
+			} catch(Exception e) {}
 			
-			try { br.close(); isr.close(); bs.close(); dos.close(); } catch(Exception e) {}
-			try { mySocket.close(); } catch(Exception e) {}
+			try {
+				socketChannel.close(); 
+			} catch(Exception e) {}
 		}
 
 		connectionFinished();
@@ -272,19 +267,21 @@ public class HTTPSession implements Runnable {
 	}
 
 	public boolean doTimeoutCheck(boolean forceKill) {
-		if(mySocket.isClosed()) {
-			//  the connecion was already closed and should be removed by the HTTPServer instance.
+		long nowtime = System.currentTimeMillis();
+
+		if(lastPacketSend < nowtime - 1000 && !socketChannel.isOpen()) {
+			// the connecion was already closed and should be removed by the HTTPServer instance.
+			// the lastPacketSend check was added to prevent spurious "Killing stuck session" errors
 			return true;
 		}
 		else {
-			long nowtime = System.currentTimeMillis();
 			int startTimeout = hr != null ? (hr.isServercmd() ? 1800000 : 180000) : 30000;
 
 			if(forceKill || (sessionStartTime > 0 && sessionStartTime < nowtime - startTimeout) || (lastPacketSend > 0 && lastPacketSend < nowtime - 30000)) {
 				// DIE DIE DIE
 				//Out.info(this + " The connection has exceeded its time limits: timing out.");
 				try {
-					mySocket.close();
+					socketChannel.close();
 				} catch(Exception e) {
 					Out.debug(e.toString());
 				}
@@ -301,7 +298,7 @@ public class HTTPSession implements Runnable {
 	}
 
 	public InetAddress getSocketInetAddress() {
-		return mySocket.getInetAddress();
+		return socketChannel.socket().getInetAddress();
 	}
 
 	public boolean isLocalNetworkAccess() {

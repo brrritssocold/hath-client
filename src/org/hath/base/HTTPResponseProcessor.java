@@ -1,7 +1,7 @@
 /*
 
-Copyright 2008-2012 E-Hentai.org
-http://forums.e-hentai.org/
+Copyright 2008-2016 E-Hentai.org
+https://forums.e-hentai.org/
 ehentai@gmail.com
 
 This file is part of Hentai@Home.
@@ -23,6 +23,8 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
+import java.nio.ByteBuffer;
+
 public abstract class HTTPResponseProcessor {
 	private String header = "";
 
@@ -40,9 +42,11 @@ public abstract class HTTPResponseProcessor {
 	
 	public void cleanup() {}
 
-	public abstract byte[] getBytes() throws Exception;
-	public abstract byte[] getBytesRange(int len) throws Exception;
-	
+	public ByteBuffer getPreparedTCPBuffer() throws Exception {
+		return getPreparedTCPBuffer(0);
+	}
+
+	public abstract ByteBuffer getPreparedTCPBuffer(int lingeringBytes) throws Exception;
 
 	public String getHeader() {
 		return this.header;
@@ -51,5 +55,9 @@ public abstract class HTTPResponseProcessor {
 	public void addHeaderField(String name, String value) {
 		// TODO: encode the value if needed.
 		this.header += name + ": " + value + "\r\n";
+	}
+	
+	public void requestCompleted() {
+		// if the response processor needs to do some action after the request has completed, this can be overridden
 	}
 }

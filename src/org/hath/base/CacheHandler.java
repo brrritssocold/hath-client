@@ -1,7 +1,7 @@
 /*
 
-Copyright 2008-2014 E-Hentai.org
-http://forums.e-hentai.org/
+Copyright 2008-2016 E-Hentai.org
+https://forums.e-hentai.org/
 ehentai@gmail.com
 
 This file is part of Hentai@Home.
@@ -23,585 +23,559 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
+import java.lang.Thread;
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedList;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.util.Enumeration;
 import java.util.List;
-import java.sql.*;
+import java.util.Hashtable;
 
 public class CacheHandler {
-
-	private HentaiAtHomeClient client;
-	private static File cachedir = null, tmpdir = null;
-	private Connection sqlite = null;
-
-	private int cacheCount, startupCachedFileStrlen;
-	private long cacheSize;
-	private boolean quickStart = false;
-
-	protected PreparedStatement cacheIndexClearActive, cacheIndexCountStats;
-	protected PreparedStatement queryCachelistSegment, queryCachedFileLasthit,  queryCachedFileSortOnLasthit;
-	protected PreparedStatement insertCachedFile, updateCachedFileLasthit, updateCachedFileActive;
-	protected PreparedStatement deleteCachedFile, deleteCachedFileInactive;
-	protected PreparedStatement getStringVar, setStringVar;
-
-	protected ArrayList<CachedFile> recentlyAccessed;
-	protected ArrayList<HVFile> pendingRegister;
-	protected long recentlyAccessedFlush;
-
-	private short[] memoryWrittenTable;
-	private int memoryClearPointer;
-
-	private static final String CLEAN_SHUTDOWN_KEY = "clean_shutdown";
-	private static final String CLEAN_SHUTDOWN_VALUE = "clean_r81";
 	private static final int MEMORY_TABLE_ELEMENTS = 1048576;
+	private Hashtable<String, Long> staticRangeOldest = null;
+	private HentaiAtHomeClient client = null;
+	private File cachedir = null;
+	private short[] lruCacheTable = null;
+	private int cacheCount = 0, lruClearPointer = 0, lruSkipCheckCycle = 0, pruneAggression = 1;
+	private long cacheSize = 0;
+	private boolean cacheLoaded = false;
 
 	public CacheHandler(HentaiAtHomeClient client) throws java.io.IOException {
 		this.client = client;
-		this.recentlyAccessed = new ArrayList<CachedFile>(100);
-		this.pendingRegister = new ArrayList<HVFile>(50);
 
-		tmpdir = FileTools.checkAndCreateDir(new File("tmp"));
-		cachedir = FileTools.checkAndCreateDir(new File("cache"));
-
-		if(!Settings.isUseLessMemory()) {
-			// the memoryWrittenTable can hold 16^5 = 1048576 shorts consisting of 16 bits each.
-			// addressing is done by looking up the first five nibbles (=20 bits) of a hash, then using the sixth nibble to determine which bit in the short to read/set.
-			// while collisions may occur, they should be fairly rare, and should not cause any major issues with files not having their timestamp updated.
-			// (and even if it does, the impact of this will be negligible, as it will only cause the LRU mechanism to be slightly less efficient.)
-			memoryWrittenTable = new short[MEMORY_TABLE_ELEMENTS];
-			memoryClearPointer = 0;
-		}
-
-		Out.info("CacheHandler: Initializing database engine...");
-
-		try {
-			if( !initializeDatabase("data/hath.db") ) {
-				Out.info("");
-				Out.info("**************************************************************************************************************");
-				Out.info("The database could not be loaded. Please check file permissions and file system integrity.");
-				Out.info("If everything appears to be working, please do the following:");
-				Out.info("1. Locate the directory " + Settings.getDataDir().getAbsolutePath());
-				Out.info("2. Delete the file hath.db");
-				Out.info("3. Restart the client.");
-				Out.info("The system should now rebuild the database.");
-				Out.info("***************************************************************************************************************");
-				Out.info("");
-
-				client.dieWithError("Failed to load the database.");
-			}
-
-			if(quickStart) {
-				Out.info("Last shutdown was clean - using fast startup procedure.");
-			} else {
-				Out.info("Last shutdown was dirty - the cache index must be verified.");
-			}
-
-			Out.info("CacheHandler: Database initialized");
-		}
-		catch(Exception e) {
-			Out.error("CacheHandler: Failed to initialize SQLite database engine");
-			client.dieWithError(e);
-		}
-	}
-
-	private boolean initializeDatabase(String db) {
-		try {
-			Out.info("CacheHandler: Loading database from " + db);
-
-			Class.forName("org.sqlite.JDBC");
-			sqlite = DriverManager.getConnection("jdbc:sqlite:" + db);
-			DatabaseMetaData dma = sqlite.getMetaData();
-			Out.info("CacheHandler: Using " + dma.getDatabaseProductName() + " " + dma.getDatabaseProductVersion() + " over " + dma.getDriverName() + " " + dma.getJDBCMajorVersion() + "." + dma.getJDBCMinorVersion() + " running in " + dma.getDriverVersion() + " mode");
-
-			Out.info("CacheHandler: Initializing database tables...");
-			Statement stmt = sqlite.createStatement();
-			stmt.executeUpdate("CREATE TABLE IF NOT EXISTS CacheList (fileid VARCHAR(65)  NOT NULL, lasthit INT UNSIGNED NOT NULL, filesize INT UNSIGNED NOT NULL, active BOOLEAN NOT NULL, PRIMARY KEY(fileid));");
-			stmt.executeUpdate("CREATE INDEX IF NOT EXISTS Lasthit ON CacheList (lasthit DESC);");
-			stmt.executeUpdate("CREATE TABLE IF NOT EXISTS StringVars ( k VARCHAR(255) NOT NULL, v VARCHAR(255) NOT NULL, PRIMARY KEY(k) );");
-
-			cacheIndexClearActive = sqlite.prepareStatement("UPDATE CacheList SET active=0;");
-			cacheIndexCountStats = sqlite.prepareStatement("SELECT COUNT(*), SUM(filesize) FROM CacheList;");
-			queryCachelistSegment = sqlite.prepareStatement("SELECT fileid FROM CacheList WHERE fileid BETWEEN ? AND ?;");
-			queryCachedFileLasthit = sqlite.prepareStatement("SELECT lasthit FROM CacheList WHERE fileid=?;");
-			queryCachedFileSortOnLasthit = sqlite.prepareStatement("SELECT fileid, lasthit, filesize FROM CacheList ORDER BY lasthit LIMIT ?, ?;");
-			insertCachedFile = sqlite.prepareStatement("INSERT OR REPLACE INTO CacheList (fileid, lasthit, filesize, active) VALUES (?, ?, ?, 1);");
-			updateCachedFileActive = sqlite.prepareStatement("UPDATE CacheList SET active=1 WHERE fileid=?;");
-			updateCachedFileLasthit = sqlite.prepareStatement("UPDATE CacheList SET lasthit=? WHERE fileid=?;");
-			deleteCachedFile = sqlite.prepareStatement("DELETE FROM CacheList WHERE fileid=?;");
-			deleteCachedFileInactive = sqlite.prepareStatement("DELETE FROM CacheList WHERE active=0;");
-			setStringVar = sqlite.prepareStatement("INSERT OR REPLACE INTO StringVars (k, v) VALUES (?, ?);");
-			getStringVar = sqlite.prepareStatement("SELECT v FROM StringVars WHERE k=?;");
-
-			try {
-				// convert and clear pre-r81 tablespace if present. this will trip an exception if the table doesn't exist and skip the rest of the conversion block
-				stmt.executeUpdate("UPDATE CacheIndex SET active=0;");
-
-				Out.info("Updating database schema to r81...");
-				java.util.Hashtable<String, Long> hashtable = new java.util.Hashtable<String, Long>();
-				ResultSet rs = stmt.executeQuery("SELECT fileid, lasthit FROM CacheIndex;");
-				while(rs.next()) {
-					hashtable.put(rs.getString(1), new Long(rs.getLong(2)));
-				}
-				rs.close();
-
-				sqlite.setAutoCommit(false);
-
-				for(java.util.Enumeration<String> keys = hashtable.keys(); keys.hasMoreElements(); ) {
-					String fileid = keys.nextElement();
-
-					insertCachedFile.setString(1, fileid);
-					insertCachedFile.setLong(2, hashtable.get(fileid).longValue());
-					insertCachedFile.setInt(3, HVFile.getHVFileFromFileid(fileid).getSize());
-					insertCachedFile.executeUpdate();
-				}
-
-				sqlite.setAutoCommit(true);
-
-				stmt.executeUpdate("DROP TABLE CacheIndex;");
-
-				Out.info("Database updates complete");
-			}
-			catch(Exception e) {}
-
-			resetFutureLasthits();
-
-			Out.info("CacheHandler: Optimizing database...");
-			stmt.executeUpdate("VACUUM;");
-
-			// are we dirty?
-			if(!Settings.isForceDirty()) {
-				getStringVar.setString(1, CLEAN_SHUTDOWN_KEY);
-				ResultSet rs = getStringVar.executeQuery();
-				if(rs.next()) {
-					quickStart = rs.getString(1).equals(CLEAN_SHUTDOWN_VALUE);
-				}
-				rs.close();
-			}
-
-			setStringVar.setString(1, CLEAN_SHUTDOWN_KEY);
-			setStringVar.setString(2, System.currentTimeMillis() + "");
-			setStringVar.executeUpdate();
-
-			return true;
-		} catch(Exception e) {
-			Out.error("CacheHandler: Encountered error reading database.");
-			e.printStackTrace();
-			terminateDatabase();
-		}
-
-		return false;
-	}
-
-	private void resetFutureLasthits() throws SQLException {
-		long nowtime = (long) Math.floor(System.currentTimeMillis() / 1000);
-
-		sqlite.setAutoCommit(false);
-
-		Out.info("CacheHandler: Checking future lasthits on non-static files...");
-
-		PreparedStatement getFutureLasthits = sqlite.prepareStatement("SELECT fileid FROM CacheList WHERE lasthit>?;");
-		getFutureLasthits.setLong(1, nowtime + 2592000);
-		ResultSet rs = getFutureLasthits.executeQuery();
-
-		List<String> removelist = Collections.checkedList(new ArrayList<String>(), String.class);
-
-		while( rs.next() ) {
-			String fileid = rs.getString(1);
-			if( !Settings.isStaticRange(fileid) ) {
-				removelist.add(fileid);
-			}
-		}
-
-		rs.close();
-
-		//PreparedStatement resetLasthit = sqlite.prepareStatement("UPDATE CacheList SET lasthit=? WHERE fileid=?;");
-
-		for( String fileid : removelist ) {
-			//resetLasthit.setLong(1, nowtime);
-			//resetLasthit.setString(2, fileid);
-			//resetLasthit.executeUpdate();
-
-			deleteCachedFile.setString(1, fileid);
-			deleteCachedFile.executeUpdate();
-			HVFile.getHVFileFromFileid(fileid).getLocalFileRef().delete();
-			Out.debug("Removed old static range file " + fileid);
-		}
-
-		Out.info("CacheHandler: Resetting remaining far-future lasthits...");
-
-		PreparedStatement resetFutureStatic = sqlite.prepareStatement("UPDATE CacheList SET lasthit=? WHERE lasthit>?;");
-
-		resetFutureStatic.setLong(1, nowtime + 7776000);
-		resetFutureStatic.setLong(2, nowtime + 31536000);
-		resetFutureStatic.executeUpdate();
-
-		sqlite.setAutoCommit(true);
-	}
-
-	public void terminateDatabase() {
-		if(sqlite != null) {
-			try {
-				setStringVar.setString(1, CLEAN_SHUTDOWN_KEY);
-				setStringVar.setString(2, CLEAN_SHUTDOWN_VALUE);
-				setStringVar.executeUpdate();
-
-				sqlite.close();
-			} catch(Exception e) {}
-
-			sqlite = null;
-		}
-	}
-
-	public void initializeCacheHandler() throws java.io.IOException {
-		Out.info("CacheHandler: Initializing the cache system...");
+		cachedir = Settings.getCacheDir();
 
 		// delete orphans from the temp dir
-
-		File[] tmpfiles = tmpdir.listFiles();
-
-		for(File tmpfile: tmpfiles) {
+		for(File tmpfile : Settings.getTempDir().listFiles()) {
 			if(tmpfile.isFile()) {
-				Out.debug("Deleted orphaned temporary file " + tmpfile);
-				tmpfile.delete();
+				// some silly people might set the data and/or log dir to the same as the temp dir
+				if(!tmpfile.getName().startsWith("log_") && !tmpfile.getName().startsWith("pcache_") && !tmpfile.getName().equals("client_login")) {
+					Out.debug("CacheHandler: Deleted orphaned temporary file " + tmpfile);
+					tmpfile.delete();
+				}
 			}
 			else {
-				Out.warning("Found a non-file " + tmpfile + " in the temp directory, won't delete.");
+				Out.warning("CacheHandler: Found a non-file " + tmpfile + " in the temp directory, won't delete.");
 			}
 		}
 
-		if(quickStart && !Settings.isVerifyCache()) {
-			try {
-				ResultSet rs = cacheIndexCountStats.executeQuery();
-				if(rs.next()) {
-					cacheCount = rs.getInt(1);
-					cacheSize = rs.getLong(2);
-				}
-				rs.close();
-			} catch(Exception e) {
-				Out.error("CacheHandler: Failed to perform database operation");
-				client.dieWithError(e);
+		boolean fastStartup = false;
+
+		if(!Settings.isRescanCache()) {
+			Out.info("CacheHandler: Attempting to load persistent cache data...");
+
+			if(loadPersistentData()) {
+				Out.info("CacheHandler: Successfully loaded persistent cache data");
+				fastStartup = true;
 			}
-
-			updateStats();
-			flushRecentlyAccessed();
-		} else {
-			if(Settings.isVerifyCache()) {
-				Out.info("CacheHandler: A full cache verification has been requested. This can take quite some time.");
-			}
-
-			populateInternalCacheTable();
-		}
-
-		if( !Settings.isSkipFreeSpaceCheck() && (cachedir.getFreeSpace() < Settings.getDiskLimitBytes() - cacheSize) ) {
-			// note: if this check is removed and the client ends up being starved on disk space with static ranges assigned, it will cause a major loss of trust.
-			client.setFastShutdown();
-			client.dieWithError("The storage device does not have enough space available to hold the given cache size.\nFree up space, or reduce the cache size from the H@H settings page.\nhttp://g.e-hentai.org/hentaiathome.php?cid=" + Settings.getClientID());
-		}
-
-		if( (cacheCount < 1) && (Settings.getStaticRangeCount() > 20) ) {
-			// note: if this check is removed and the client is started with an empty cache and several static ranges assigned, it will cause a major loss of trust.
-			client.setFastShutdown();
-			client.dieWithError("This client has static ranges assigned to it, but the cache is empty.\nCheck permissions and, if necessary, delete the file hath.db in the data directory to rebuild the cache database.\nIf the cache has been deleted or is otherwise lost, you have to manually reset your static ranges from the H@H settings page.\nhttp://g.e-hentai.org/hentaiathome.php?cid=" + Settings.getClientID());
-		}
-
-		if(!checkAndFreeDiskSpace(cachedir, true)) {
-			Out.warning("ClientHandler: There is not enough space left on the disk to add more files to the cache.");
-		}
-	}
-
-	public HVFile getHVFile(String fileid, boolean hit) {
-		if(HVFile.isValidHVFileid(fileid)) {
-			CachedFile cf = new CachedFile(fileid);
-
-			if(hit) {
-				cf.hit();
-			}
-
-			return cf.getHVFile();
-		} else {
-			return null;
-		}
-	}
-
-	// note: this will just move the file into its correct location. addFileToActiveCache MUST be called afterwards to import the file into the necessary datastructures.
-	// otherwise, the file will not be available until the client is restarted, and even then not if --quickstart is used.
-	public boolean moveFileToCacheDir(File file, HVFile hvFile) {
-		if(checkAndFreeDiskSpace(file)) {
-			File toFile = hvFile.getLocalFileRef();
-
-			try {
-				FileTools.checkAndCreateDir(toFile.getParentFile());
-
-				if(file.renameTo(toFile)) {
-					Out.debug("CacheHandler: Imported file " + file + " to " + hvFile.getFileid());
-					return true;
-				}
-				else if(FileTools.copy(file, toFile)) {
-					// rename can fail in some cases, like when source and target are on different file systems.
-					// when this happens, we just use our own copy function instead, and delete the old file afterwards.
-					file.delete();
-					Out.debug("CacheHandler: Imported file " + file + " to " + hvFile.getFileid());
-					return true;
-				}
-				else {
-					Out.warning("CacheHandler: Failed to move file " + file);
-				}
-			} catch(java.io.IOException e) {
-				e.printStackTrace();
-				Out.warning("CacheHandler: Encountered exception " + e + " when moving file " + file);
+			else {
+				Out.info("CacheHandler: Persistent cache data is not available");
 			}
 		}
 
-		return false;
-	}
+		deletePersistentData();
 
-	public void addFileToActiveCache(HVFile hvFile) {
-		try {
-			synchronized(sqlite) {
-				String fileid = hvFile.getFileid();
+		if(!fastStartup) {
+			Out.info("CacheHandler: Initializing the cache system...");
 
-				updateCachedFileActive.setString(1, fileid);
-				int affected = updateCachedFileActive.executeUpdate();
+			// do the initial cache cleanup/reorg. this will move any qualifying files left in the first-level cache directory to the second level.
+			startupCacheCleanup();
+			System.gc();
 
-				if(affected == 0) {
-					long lasthit = (long) Math.floor(System.currentTimeMillis() / 1000);
-
-					if(Settings.isStaticRange(fileid)) {
-						// if the file is in a static range, bump to three months in the future. on the next access, it will get bumped further to a year.
-						lasthit += 7776000;
-					}
-
-					insertCachedFile.setString(1, fileid);
-					insertCachedFile.setLong(2, lasthit);
-					insertCachedFile.setInt(3, hvFile.getSize());
-					insertCachedFile.executeUpdate();
-				}
+			if(client.isShuttingDown()) {
+				return;
 			}
-		} catch(Exception e) {
-			Out.error("CacheHandler: Failed to perform database operation");
-			client.dieWithError(e);
-		}
 
-		++cacheCount;
-		cacheSize += hvFile.getSize();
-		updateStats();
-	}
-
-	// During server-initiated file distributes and proxy tests against other clients, the file is automatically registered for this client by the server,
-	// but this doesn't happen during client-initiated H@H Downloader or H@H Proxy downloads.
-	// So we'll instead send regular updates to the server about downloaded files, whenever a file is added this way.
-	public void addPendingRegisterFile(HVFile hvFile) {
-		// We only register files <= 10 MB. Larger files are handled outside the H@H network.
-		if( (hvFile.getSize() <= 10485760) && !Settings.isStaticRange(hvFile.getFileid()) ) {
-			synchronized(pendingRegister) {
-				Out.debug("Added " + hvFile + " to pendingRegister");
-				pendingRegister.add(hvFile);
-
-				if(pendingRegister.size() >= 50) {
-					// this call also empties the list
-					client.getServerHandler().notifyRegisterFiles(pendingRegister);
-				}
-			}
-		}
-		else {
-			Out.debug("Not registering file " + hvFile + " - in static range or larger than 10 MB");
-		}
-	}
-
-	public void deleteFileFromCache(HVFile toRemove) {
-		synchronized(sqlite) {
-			deleteFileFromCacheNosync(toRemove);
-		}
-	}
-
-	private void deleteFileFromCacheNosync(HVFile toRemove) {
-		try {
-			deleteCachedFile.setString(1, toRemove.getFileid());
-			deleteCachedFile.executeUpdate();
-			--cacheCount;
-			cacheSize -= toRemove.getSize();
-			toRemove.getLocalFileRef().delete();
-			Out.info("CacheHandler: Deleted cached file " + toRemove.getFileid());
-			updateStats();
-		} catch(Exception e) {
-			Out.error("CacheHandler: Failed to perform database operation");
-			client.dieWithError(e);
-		}
-	}
-
-	private void populateInternalCacheTable() {
-		try {
-			cacheIndexClearActive.executeUpdate();
-
+			// we need to zero out everything in case of a partially failed persistent load
+			lruClearPointer = 0;
 			cacheCount = 0;
 			cacheSize = 0;
 
-			int knownFiles = 0;
-			int newFiles = 0;
+			// this is a map with the static ranges in the cache as key and the oldest lastModified file timestamp for every range as value. this is used to find old files to delete if the cache fills up.
+			staticRangeOldest = new Hashtable<String,Long>((int) (Settings.getStaticRangeCount() * 1.5));
 
-			// load all the files directly from the cache directory itself and initialize the stored last access times for each file. last access times are used for the LRU-style cache.
-
-			Out.info("CacheHandler: Loading cache.. (this could take a while)");
-
-			File[] scdirs = cachedir.listFiles();
-			java.util.Arrays.sort(scdirs);
-
-			try {
-				// we're doing some SQLite operations here without synchronizing on the SQLite connection. the program is single-threaded at this point, so it should not be a real problem.
-
-				int loadedFiles = 0;
-				sqlite.setAutoCommit(false);
-
-				for(File scdir : scdirs) {
-					if(scdir.isDirectory()) {
-						File[] cfiles = scdir.listFiles();
-						java.util.Arrays.sort(cfiles);
-
-						for(File cfile : cfiles) {
-							boolean newFile = false;
-
-							synchronized(sqlite) {
-								queryCachedFileLasthit.setString(1, cfile.getName());
-								ResultSet rs = queryCachedFileLasthit.executeQuery();
-								newFile = !rs.next();
-								rs.close();
-							}
-
-							HVFile hvFile = HVFile.getHVFileFromFile(cfile, Settings.isVerifyCache() || newFile);
-
-							if(hvFile != null) {
-								addFileToActiveCache(hvFile);
-
-								if(newFile) {
-									++newFiles;
-									Out.info("CacheHandler: Verified and loaded file " + cfile);
-								}
-								else {
-									++knownFiles;
-								}
-
-								if(++loadedFiles % 1000 == 0) {
-									Out.info("CacheHandler: Loaded " + loadedFiles + " files so far...");
-								}
-							}
-							else {
-								Out.warning("CacheHandler: The file " + cfile + " was corrupt. It is now deleted.");
-								cfile.delete();
-							}
-						}
-					}
-					else {
-						scdir.delete();
-					}
-
-					flushRecentlyAccessed(false);
-				}
-
-				sqlite.commit();
-				sqlite.setAutoCommit(true);
-
-				synchronized(sqlite) {
-					int purged = deleteCachedFileInactive.executeUpdate();
-					Out.info("CacheHandler: Purged " + purged + " nonexisting files from database.");
-				}
-			} catch(Exception e) {
-				Out.error("CacheHandler: Failed to perform database operation");
-				client.dieWithError(e);
+			if(!Settings.isUseLessMemory()) {
+				lruCacheTable = new short[MEMORY_TABLE_ELEMENTS];
 			}
 
-			Out.info("CacheHandler: Loaded " + knownFiles + " known files.");
-			Out.info("CacheHandler: Loaded " + newFiles + " new files.");
-			Out.info("CacheHandler: Finished initializing the cache (" + cacheCount + " files, " + cacheSize + " bytes)");
-
-			updateStats();
-		} catch(Exception e) {
-			e.printStackTrace();
-			HentaiAtHomeClient.dieWithError("Failed to initialize the cache.");
+			// scan the cache to calculate the total filecount and size, as well as initialize the LRU cache based on the lastModified timestamps.
+			// this verifies that the files are the correct size and in an assigned static range, and optionally verifies the SHA-1 hash.
+			// the staticRangeOldest hashtable of static ranges and the oldest file timestamp in that range will also be built here. 
+			startupInitCache();
+			System.gc();
 		}
+
+		if(!recheckFreeDiskSpace()) {
+			// note: if the client ends up being starved on disk space with static ranges assigned, it will cause a major loss of trust.
+			client.setFastShutdown();
+			client.dieWithError("The storage device does not have enough space available to hold the given cache size.\nFree up space for H@H, or reduce the cache size from the H@H settings page:\nhttp://g.e-hentai.org/hentaiathome.php?cid=" + Settings.getClientID());
+		}
+
+		if(cacheCount < 1 && Settings.getStaticRangeCount() > 20) {
+			// note: if the client is started with an empty cache and many static ranges assigned, it will cause a major loss of trust.
+			client.setFastShutdown();
+			client.dieWithError("This client has static ranges assigned to it, but the cache is empty. Check file permissions and file system integrity.\nIf the cache has been deleted or is otherwise lost, you have to manually reset your static ranges from the H@H settings page.\nhttp://g.e-hentai.org/hentaiathome.php?cid=" + Settings.getClientID());
+		}
+
+		long cacheLimit = Settings.getDiskLimitBytes();
+
+		if(cacheSize > cacheLimit) {
+			Out.info("CacheHandler: We are over the cache limit, pruning until the limit is met");
+			int iterations = 0;
+			java.text.DecimalFormat f = new java.text.DecimalFormat("###.00");
+
+			while(cacheSize > cacheLimit) {
+				if(iterations++ % 100 == 0) {
+					Out.info("CacheHandler: Cache is currently at " + f.format(100.0 * cacheSize / cacheLimit) + "%");
+				}
+
+				recheckFreeDiskSpace();
+				System.gc();
+			}
+
+			Out.info("CacheHandler: Finished startup cache pruning");
+		}
+
+		cacheLoaded = true;
+	}
+
+	private File getPersistentLRUFile() {
+		return new File(Settings.getDataDir(), "pcache_lru");
+	}
+
+	private File getPersistentInfoFile() {
+		return new File(Settings.getDataDir(), "pcache_info");
+	}
+
+	private File getPersistentAgesFile() {
+		return new File(Settings.getDataDir(), "pcache_ages");
+	}
+
+	private boolean loadPersistentData() {
+		if(!getPersistentInfoFile().exists()) {
+			Out.debug("CacheHandler: Missing pcache_info, forcing rescan");
+			return false;
+		}
+
+		boolean success = false;
+
+		try {
+			String[] cacheinfo = Tools.getStringFileContents(getPersistentInfoFile()).split("\n");
+			int infoChecksum = 0;
+			String agesHash = null, lruHash = null;
+
+			for(String keyval : cacheinfo) {
+				String[] s = keyval.split("=");
+
+				switch(s[0]) {
+					case "cacheCount":
+						cacheCount = Integer.parseInt(s[1]);
+						Out.debug("CacheHandler: Loaded persistent cacheCount=" + cacheCount);
+						infoChecksum |= 1;
+						break;
+					case "cacheSize":
+						cacheSize = Long.parseLong(s[1]);
+						Out.debug("CacheHandler: Loaded persistent cacheSize=" + cacheSize);
+						infoChecksum |= 2;
+						break;
+					case "lruClearPointer":
+						lruClearPointer = Integer.parseInt(s[1]);
+						Out.debug("CacheHandler: Loaded persistent lruClearPointer=" + lruClearPointer);
+						infoChecksum |= 4;
+						break;
+					case "agesHash":
+						agesHash = s[1];
+						Out.debug("CacheHandler: Found agesHash=" + agesHash);
+						infoChecksum |= 8;
+						break;
+					case "lruHash":
+						lruHash = s[1];
+						Out.debug("CacheHandler: Found lruHash=" + lruHash);
+						infoChecksum |= 16;
+						break;
+				}
+			}
+
+			if(infoChecksum != 31) {
+				Out.info("CacheHandler: Persistent fields were missing, forcing rescan");
+			}
+			else {
+				Out.info("CacheHandler: All persistent fields found, loading remaining objects");
+
+				staticRangeOldest = (Hashtable<String,Long>) readCacheObject(getPersistentAgesFile(), agesHash);
+				Out.info("CacheHandler: Loaded static range ages");
+
+				if(!Settings.isUseLessMemory()) {
+					lruCacheTable = (short[]) readCacheObject(getPersistentLRUFile(), lruHash);
+					Out.info("CacheHandler: Loaded LRU cache");
+				}
+
+				updateStats();
+				success = true;
+			}
+		}
+		catch(Exception e) {
+			Out.debug(e.getMessage());
+		}
+
+		System.gc();
+
+		return success;
+	}
+
+	private void savePersistentData() {
+		if(!cacheLoaded) {
+			return;
+		}
+
+		try {
+			String agesHash = writeCacheObject(getPersistentAgesFile(), staticRangeOldest);
+			String lruHash = lruCacheTable == null ? "null" : writeCacheObject(getPersistentLRUFile(), lruCacheTable);
+			Tools.putStringFileContents(getPersistentInfoFile(), "cacheCount=" + cacheCount + "\ncacheSize=" + cacheSize + "\nlruClearPointer=" + lruClearPointer + "\nagesHash=" + agesHash + "\nlruHash=" + lruHash);
+		}
+		catch(java.io.IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	private Object readCacheObject(File file, String expectedHash) throws java.io.IOException, java.lang.ClassNotFoundException {
+		if(!file.exists()) {
+			Out.warning("CacheHandler: Missing " + file + ", forcing rescan");
+			throw new java.io.IOException("Missing file");
+		}
+		
+		if(!Tools.getSHA1String(file).equals(expectedHash)) {
+			Out.warning("CacheHandler: Incorrect file hash while reading " + file + ", forcing rescan");
+			throw new java.io.IOException("Incorrect file hash");
+		}
+		
+		ObjectInputStream objectReader = new ObjectInputStream(new FileInputStream(file));
+		Object object = objectReader.readObject();
+		objectReader.close();
+		return object;
+	}
+	
+	private String writeCacheObject(File file, Object object) throws java.io.FileNotFoundException, java.io.IOException {
+		ObjectOutputStream objectWriter = new ObjectOutputStream(new FileOutputStream(file));
+		objectWriter.writeObject(object);
+		objectWriter.close();
+		return Tools.getSHA1String(file);
+	}
+
+	private void deletePersistentData() {
+		File persistentInfoFile = getPersistentInfoFile();
+		File persistentAgesFile = getPersistentAgesFile();
+		File persistentLRUFile  = getPersistentLRUFile();
+
+		if(persistentInfoFile.exists()) {
+			persistentInfoFile.delete();
+		}
+
+		if(persistentAgesFile.exists()) {
+			persistentAgesFile.delete();
+		}
+
+		if(persistentLRUFile.exists()) {
+			persistentLRUFile.delete();
+		}
+	}
+
+	public void terminateCache() {
+		savePersistentData();
+	}
+
+	private void startupCacheCleanup() {
+		Out.info("CacheHandler: Cache cleanup pass..");
+
+		File[] l1dirs = Tools.listSortedFiles(cachedir);
+		int checkedCounter = 0, checkedCounterPct = 0;
+
+		// this sanity check can be tightened up when 1.2.6 is EOL and everyone have upgraded to the two-level cache tree
+		//if(l1dirs.length > Settings.getStaticRangeCount()) {
+		if(l1dirs.length > 5 && Settings.getStaticRangeCount() == 0) {
+			Out.warning("WARNING: There are " + l1dirs.length + " directories in the cache directory, but the server has only assigned us " + Settings.getStaticRangeCount() + " static ranges.");
+			Out.warning("If this is NOT expected, please close H@H with Ctrl+C or Program -> Shutdown H@H before this timeout expires.");
+			Out.warning("Waiting 30 seconds before proceeding with cache cleanup...");
+
+			try {
+				Thread.currentThread().sleep(30000);
+			}
+			catch(Exception e) {}
+		}
+
+		if(client.isShuttingDown()) {
+			return;
+		}
+
+		for(File l1dir : l1dirs) {
+			// time to take out the trash
+			System.gc();
+
+			if(!l1dir.isDirectory()) {
+				l1dir.delete();
+				continue;
+			}
+
+			File[] l2dirs = Tools.listSortedFiles(l1dir);
+
+			if(l2dirs == null || l2dirs.length == 0) {
+				l1dir.delete();
+				continue;
+			}
+
+			for(File l2dir : l2dirs) {
+				if(l2dir.isDirectory()) {
+					continue;
+				}
+
+				// file in the level 1 directory - move it to its proper location
+				HVFile hvFile = HVFile.getHVFileFromFile(l2dir);
+
+				if(hvFile == null) {
+					Out.debug("CacheHandler: The file " + l2dir + " was not recognized.");
+					l2dir.delete();
+				}
+				else if( !Settings.isStaticRange(hvFile.getFileid()) ) {
+					Out.debug("CacheHandler: The file " + l2dir + " was not in an active static range.");
+					l2dir.delete();
+				}
+				else {
+					moveFileToCacheDir(l2dir, hvFile);
+					Out.debug("CacheHandler: Relocated file " + hvFile.getFileid() + " to " + hvFile.getLocalFileRef());
+				}
+			}
+
+			++checkedCounter;
+
+			if(l1dirs.length > 9) {
+				if(checkedCounter * 100 / l1dirs.length >= checkedCounterPct + 10) {
+					checkedCounterPct += 10;
+					Out.info("CacheHandler: Cleanup pass at " + checkedCounterPct + "%");
+				}
+			}
+		}
+
+		Out.info("CacheHandler: Finished scanning " + checkedCounter + " cache subdirectories");
+	}
+
+	private void startupInitCache() {
+		long recentlyAccessedCutoff = System.currentTimeMillis() - 604800000;
+
+		// update actions:
+		// staticRangeOldest	- add oldest modified timestamp for every static range
+		// addFileToActiveCache	- increments cacheCount and cacheSize
+		// markRecentlyAccessed	- marks files with timestamp > 7 days in the LRU cache
+
+		// if --verify-cache was specified, we use this shiny new FileValidator to avoid having to create a new MessageDigest and ByteBuffer for every single file in the cache
+		FileValidator validator = null;
+		int printFreq;
+
+		if(Settings.isVerifyCache()) {
+			Out.info("CacheHandler: Loading cache with full file verification. Depending on the size of your cache, this can take a long time.");
+			validator = new FileValidator();
+			printFreq = 1000;
+		}
+		else {
+			Out.info("CacheHandler: Loading cache...");
+			printFreq = 10000;
+		}
+		
+		int foundStaticRanges = 0;
+
+		// cache register pass
+		for(File l1dir : Tools.listSortedFiles(cachedir)) {
+			if(!l1dir.isDirectory()) {
+				continue;
+			}
+
+			for(File l2dir : Tools.listSortedFiles(l1dir)) {
+				// the garbage, it must be collected
+				System.gc();
+
+				if(!l2dir.isDirectory()) {
+					continue;
+				}
+
+				File[] files = Tools.listSortedFiles(l2dir);
+
+				if(files.length == 0) {
+					l2dir.delete();
+					continue;
+				}
+
+				long oldestLastModified = System.currentTimeMillis();
+
+				for(File cfile : files) {
+					if(!cfile.isFile()) {
+						continue;
+					}
+
+					HVFile hvFile = HVFile.getHVFileFromFile(cfile, validator);
+
+					if(hvFile == null) {
+						Out.debug("CacheHandler: The file " + cfile + " was corrupt.");
+						cfile.delete();
+					}
+					else if( !Settings.isStaticRange(hvFile.getFileid()) ) {
+						Out.debug("CacheHandler: The file " + cfile + " was not in an active static range.");
+						cfile.delete();
+					}
+					else {
+						addFileToActiveCache(hvFile);
+						long fileLastModified = cfile.lastModified();
+
+						if(fileLastModified > recentlyAccessedCutoff) {
+							// if lastModified is from the last week, mark this as recently accessed in the LRU cache. (this does not update the metadata)
+							markRecentlyAccessed(hvFile, true);
+						}
+
+						oldestLastModified = Math.min(oldestLastModified, fileLastModified);
+
+						if(cacheCount % printFreq == 0) {
+							Out.info("CacheHandler: Loaded " + cacheCount + " files so far...");
+						}
+					}
+				}
+
+				String staticRange = l1dir.getName() + l2dir.getName();
+				staticRangeOldest.put(staticRange, oldestLastModified);
+
+				if(++foundStaticRanges % 100 == 0) {
+					Out.info("CacheHandler: Found " + foundStaticRanges + " static ranges with files so far...");
+				}
+			}
+		}
+
+		Out.info("CacheHandler: Finished initializing the cache (" + cacheCount + " files, " + cacheSize + " bytes)");
+		Out.info("CacheHandler: Found a total of " + foundStaticRanges + " static ranges with files");
+		updateStats();
 	}
 
 	public boolean recheckFreeDiskSpace() {
-		return checkAndFreeDiskSpace(cachedir);
-	}
-
-	private boolean checkAndFreeDiskSpace(File file) {
-		return checkAndFreeDiskSpace(file, false);
-	}
-
-	private synchronized boolean checkAndFreeDiskSpace(File file, boolean noServerDeleteNotify) {
-		if(file == null) {
-			HentaiAtHomeClient.dieWithError("CacheHandler: checkAndFreeDiskSpace needs a file handle to calculate free space");
+		if(lruSkipCheckCycle > 0) {
+			// this is called every 10 seconds from the main thread, but depending on what happened in earlier runs, we skip checks when they are not necessary
+			// we'll check every 10 minutes if the free cache during the last run was over 1GB, and every minute if less than 1GB but over 100MB
+			--lruSkipCheckCycle;
+			return true;
 		}
 
-		int bytesNeeded = file.isDirectory() ? 0 : (int) file.length();
+		long wantFree = 104857600;
 		long cacheLimit = Settings.getDiskLimitBytes();
-
-		Out.debug("CacheHandler: Checking disk space (adding " + bytesNeeded + " bytes: cacheSize=" + cacheSize + ", cacheLimit=" + cacheLimit + ", cacheFree=" + (cacheLimit - cacheSize) + ")");
-
-		// we'll free ten times the size of the file or 20 files, whichever is largest.
-
 		long bytesToFree = 0;
 
 		if(cacheSize > cacheLimit) {
-			bytesToFree = cacheSize - cacheLimit;
+			bytesToFree = wantFree + cacheSize - cacheLimit;
 		}
-		else if(cacheSize + bytesNeeded - cacheLimit > 0) {
-			bytesToFree = bytesNeeded * 10;
+		else if(cacheLimit - cacheSize < wantFree) {
+			bytesToFree = wantFree - (cacheLimit - cacheSize);
 		}
 
-		if( bytesToFree > 0 ) {
-			Out.info("CacheHandler: Freeing at least " + bytesToFree + " bytes...");
-			List<HVFile> deleteNotify = Collections.checkedList(new ArrayList<HVFile>(), HVFile.class);
+		Out.debug("CacheHandler: Checked cache space (cacheSize=" + cacheSize + ", cacheLimit=" + cacheLimit + ", cacheFree=" + (cacheLimit - cacheSize) + ")");
 
-			try {
-				while( bytesToFree > 0 && cacheCount > 0 ) {
-					synchronized(sqlite) {
-						queryCachedFileSortOnLasthit.setInt(1,  0);
-						queryCachedFileSortOnLasthit.setInt(2, 20);
+		if(bytesToFree > 0 && cacheCount > 0 && Settings.getStaticRangeCount() > 0) {
+			String pruneStaticRange = null;
+			long nowtime = System.currentTimeMillis();
+			long oldestRangeAge = nowtime;
+			Enumeration<String> staticRanges = staticRangeOldest.keys();
 
-						ResultSet rs = queryCachedFileSortOnLasthit.executeQuery();
+			while(staticRanges.hasMoreElements()) {
+				String checkStaticRange = staticRanges.nextElement();
+				long thisRangeOldestAge = staticRangeOldest.get(checkStaticRange).longValue();
 
-						while( rs.next() ) {
-							String fileid = rs.getString(1);
-							HVFile toRemove = HVFile.getHVFileFromFileid(fileid);
-
-							if( toRemove != null ) {
-								deleteFileFromCacheNosync(toRemove);
-								bytesToFree -= toRemove.getSize();
-
-								if( !Settings.isStaticRange(fileid) ) {
-									// don't notify for static range files
-									deleteNotify.add(toRemove);
-								}
-							}
-						}
-
-						rs.close();
-					}
+				if(thisRangeOldestAge < oldestRangeAge) {
+					pruneStaticRange = checkStaticRange;
+					oldestRangeAge = thisRangeOldestAge;
 				}
 			}
-			catch(Exception e) {
-				Out.error("CacheHandler: Failed to perform database operation");
-				client.dieWithError(e);
+
+			if(pruneStaticRange == null) {
+				Out.warning("CacheHandler: Failed to find aged static range to prune (oldestRangeAge=" + oldestRangeAge + ")");
+				return false;
 			}
 
-			if( !noServerDeleteNotify ) {
-				client.getServerHandler().notifyUncachedFiles(deleteNotify);
+			File staticRangeDir = new File(cachedir, pruneStaticRange.substring(0, 2) + "/" + pruneStaticRange.substring(2, 4) + "/");
+			long lruLastModifiedPruneCutoff = oldestRangeAge;
+
+			if(oldestRangeAge < nowtime - 15552000000L) {
+				// oldest file is more than six months old, prune files newer than up to 30 days after this file
+				lruLastModifiedPruneCutoff += 2592000000L;
+			}
+			else if(oldestRangeAge < nowtime - 7776000000L) {
+				// oldest file is between three and six months old, prune files newer than up to 7 days after this file
+				lruLastModifiedPruneCutoff += 604800000L;
+			}
+			else {
+				// oldest file is less than three months old, prune files newer than up to 3 days after this file
+				lruLastModifiedPruneCutoff += 259200000L;
+			}
+
+			Out.debug("CacheHandler: Trying to free " + bytesToFree + " bytes, currently scanning range " + pruneStaticRange);
+
+			if(!staticRangeDir.isDirectory()) {
+				Out.warning("CacheHandler: Expected static range directory " + staticRangeDir + " could not be accessed");
+			}
+			else if(lruLastModifiedPruneCutoff > System.currentTimeMillis() - 604800000) {
+				Out.warning("CacheHandler: Sanity check failed: lruLastModifiedPruneCutoff " + lruLastModifiedPruneCutoff + " is less than a week old, cache pruning halted");
+			}
+			else {
+				File[] files = staticRangeDir.listFiles();
+				long oldestLastModified = nowtime;
+
+				if(files != null && files.length > 0) {
+					Out.debug("CacheHandler: Examining " + files.length + " files with lruLastModifiedPruneCutoff=" + lruLastModifiedPruneCutoff);
+
+					for(File file : files) {
+						long lastModified = file.lastModified();
+
+						if(lastModified < lruLastModifiedPruneCutoff) {
+							HVFile toRemove = HVFile.getHVFileFromFileid(file.getName());
+
+							if(toRemove == null) {
+								Out.warning("CacheHandler: Removed invalid file " + file);
+								file.delete();
+							}
+							else {
+								deleteFileFromCache(toRemove);
+								bytesToFree -= toRemove.getSize();
+								Out.debug("CacheHandler: Pruned file had lastModified=" + lastModified + " size=" + toRemove.getSize() + " bytesToFree=" + bytesToFree + " cacheCount=" + cacheCount);
+							}
+						}
+						else {
+							oldestLastModified = Math.min(oldestLastModified, lastModified);
+						}
+					}
+				}
+
+				// we don't have any guarantees that there were any files to prune in this directory since there is a chance the oldest file was accessed after the oldest timestamp record was updated
+				// regardless, we update the record with the freshly computed last modified timestamp. this will usually knock this range back from the front of the queue
+				// if we still need to prune files, we will do another pass shortly
+				staticRangeOldest.put(pruneStaticRange, oldestLastModified);
+
+				Out.debug("CacheHandler: Updated static range " + pruneStaticRange + " with new oldestLastModified=" + oldestLastModified);
 			}
 		}
+		else {
+			lruSkipCheckCycle = cacheLimit - cacheSize > wantFree * 10 ? 60 : 6;
+		}
+
+		// if we are more than 10MB above where we want to be, start turning up the prune aggression, which determines how many times this cleanup function is run per cycle
+		// realistically, this is almost certainly unnecessary since the 1.3.2 pruner was added, but it doesn't hurt to have it just in case
+		pruneAggression = bytesToFree > 10485760 ? (int) (bytesToFree / 10485760) : 1;
 
 		if(Settings.isSkipFreeSpaceCheck()) {
 			Out.debug("CacheHandler: Disk free space check is disabled.");
 			return true;
 		}
 		else {
-			long diskFreeSpace = file.getFreeSpace();
+			long diskFreeSpace = cachedir.getFreeSpace();
 
-			if(diskFreeSpace < Math.max(Settings.getDiskMinRemainingBytes(), 104857600)) {
-				// if the disk fills up, we  stop adding files instead of starting to remove files from the cache, to avoid being unintentionally squeezed out by other programs
-				Out.warning("CacheHandler: Cannot meet space constraints: Disk free space limit reached (" + diskFreeSpace + " bytes free on device)");
+			if(diskFreeSpace < Math.max(Settings.getDiskMinRemainingBytes(), wantFree)) {
+				Out.warning("CacheHandler: Did not meet space constraints: Disk free space limit reached (" + diskFreeSpace + " bytes free on device)");
 				return false;
 			}
 			else {
@@ -611,53 +585,11 @@ public class CacheHandler {
 		}
 	}
 
-	public synchronized void pruneOldFiles() {
-		List<HVFile> deleteNotify = Collections.checkedList(new ArrayList<HVFile>(), HVFile.class);
-		int pruneCount = 0;
-
-		Out.info("Checking for old files to prune...");
-
-		try {
-			synchronized(sqlite) {
-				queryCachedFileSortOnLasthit.setInt(1,  0);
-				queryCachedFileSortOnLasthit.setInt(2, 20);
-
-				ResultSet rs = queryCachedFileSortOnLasthit.executeQuery();
-				long nowtime = (long) Math.floor(System.currentTimeMillis() / 1000);
-
-				while( rs.next() ) {
-					String fileid = rs.getString(1);
-					long lasthit = rs.getInt(2);
-
-					if( lasthit < nowtime - 2592000 ) {
-						HVFile toRemove = HVFile.getHVFileFromFileid(fileid);
-
-						if( toRemove != null ) {
-							deleteFileFromCacheNosync(toRemove);
-							++pruneCount;
-
-							if( !Settings.isStaticRange(fileid) ) {
-								// don't notify for static range files
-								deleteNotify.add(toRemove);
-							}
-						}
-					}
-				}
-
-				rs.close();
-			}
-		}
-		catch(Exception e) {
-			Out.error("CacheHandler: Failed to perform database operation");
-			client.dieWithError(e);
-		}
-
-		client.getServerHandler().notifyUncachedFiles(deleteNotify);
-
-		Out.info("Pruned " + pruneCount + " files.");
+	public int getPruneAggression() {
+		return pruneAggression;
 	}
 
-	public synchronized void processBlacklist(long deltatime, boolean noServerDeleteNotify) {
+	public synchronized void processBlacklist(long deltatime) {
 		Out.info("CacheHandler: Retrieving list of blacklisted files...");
 		String[] blacklisted = client.getServerHandler().getBlacklist(deltatime);
 
@@ -669,40 +601,19 @@ public class CacheHandler {
 		Out.info("CacheHandler: Looking for and deleting blacklisted files...");
 
 		int counter = 0;
-		List<HVFile> deleteNotify = Collections.checkedList(new ArrayList<HVFile>(), HVFile.class);
 
-		try {
-			synchronized(sqlite) {
-				for(String fileid : blacklisted) {
-					queryCachedFileLasthit.setString(1, fileid);
-					ResultSet rs = queryCachedFileLasthit.executeQuery();
-					HVFile toRemove = null;
+		for(String fileid : blacklisted) {
+			HVFile hvFile = HVFile.getHVFileFromFileid(fileid);
 
-					if(rs.next()) {
-						toRemove = HVFile.getHVFileFromFileid(fileid);
-					}
+			if(hvFile != null) {
+				File file = hvFile.getLocalFileRef();
 
-					rs.close();
-
-					if(toRemove != null) {
-						//Out.info("CacheHandler: Removing blacklisted file " + fileid);
-						++counter;
-						deleteFileFromCacheNosync(toRemove);
-
-						if(!Settings.isStaticRange(toRemove.getFileid())) {
-							// do not notify about static range files
-							deleteNotify.add(toRemove);
-						}
-					}
+				if(file.exists()) {
+					deleteFileFromCache(hvFile);
+					Out.debug("CacheHandler: Removed blacklisted file " + fileid);
+					++counter;
 				}
 			}
-		} catch(Exception e) {
-			Out.error("CacheHandler: Failed to perform database operation");
-			client.dieWithError(e);
-		}
-
-		if(!noServerDeleteNotify) {
-			client.getServerHandler().notifyUncachedFiles(deleteNotify);
 		}
 
 		Out.info("CacheHandler: " + counter + " blacklisted files were removed.");
@@ -717,236 +628,137 @@ public class CacheHandler {
 		return cacheCount;
 	}
 
-	public int getSegmentCount() {
-		return (Settings.isUseLessMemory() && cacheCount > 16000) || (cacheCount > 400000) ? 256 : 16;
-	}
+	// used to add proxied files to cache. this function assumes that tempFile has been validated
+	public boolean importFile(File tempFile, HVFile hvFile) {
+		if(moveFileToCacheDir(tempFile, hvFile)) {
+			addFileToActiveCache(hvFile);
+			markRecentlyAccessed(hvFile, true);
 
-	public int getStartupCachedFilesStrlen() {
-		return startupCachedFileStrlen;
-	}
-
-	public void calculateStartupCachedFilesStrlen() {
-		int segmentCount = getSegmentCount();
-		startupCachedFileStrlen = 0;
-
-		for( int segmentIndex = 0; segmentIndex < segmentCount; segmentIndex++ ) {
-			LinkedList<String> fileList = getCachedFilesSegment(Integer.toHexString(segmentCount | segmentIndex).substring(1));
-
-			for( String fileid : fileList ) {
-				startupCachedFileStrlen += fileid.length() + 1;
+			// check that the static range oldest timestamp cache has an entry for this static range
+			String staticRange = hvFile.getStaticRange();
+			if(!staticRangeOldest.containsKey(staticRange)) {
+				Out.debug("CacheHandler: Created staticRangeOldest entry for " + staticRange);
+				staticRangeOldest.put(staticRange, System.currentTimeMillis());
 			}
 
-			Out.info("Calculated segment " + segmentIndex + " of " + segmentCount);
+			return true;
 		}
+
+		return false;
 	}
 
-	public LinkedList<String> getCachedFilesSegment(String segment) {
-		LinkedList<String> fileList = new LinkedList<String>();
+	// will just move the file into its correct location. addFileToActiveCache must be called afterwards to add the file to the cache counters.
+	private boolean moveFileToCacheDir(File file, HVFile hvFile) {
+		File toFile = hvFile.getLocalFileRef();
 
 		try {
-			System.gc();
+			Tools.checkAndCreateDir(toFile.getParentFile());
+			Files.move(file.toPath(), toFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
 
-			synchronized(sqlite) {
-				queryCachelistSegment.setString(1, segment + "0");
-				queryCachelistSegment.setString(2, segment + "g");
-				ResultSet rs = queryCachelistSegment.executeQuery();
-
-				while( rs.next() ) {
-					String fileid = rs.getString(1);
-					if( !Settings.isStaticRange(fileid) ) {
-						fileList.add(fileid);
-					}
-				}
-
-				rs.close();
+			if(file.exists()) {
+				// moving failed, let's try copying
+				Files.copy(file.toPath(), toFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+				file.delete();
 			}
 
-			System.gc();
+			if(toFile.exists()) {
+				Out.debug("CacheHandler: Imported file " + file + " as " + hvFile.getFileid());
+				return true;
+			}
+			else {
+				Out.warning("CacheHandler: Failed to move file " + file);
+			}
+		}
+		catch(java.io.IOException e) {
+			e.printStackTrace();
+			Out.warning("CacheHandler: Encountered exception " + e + " when moving file " + file);
+		}
+
+		return false;
+	}
+
+	private void addFileToActiveCache(HVFile hvFile) {
+		++cacheCount;
+		cacheSize += hvFile.getSize();
+		updateStats();
+	}
+
+	private void deleteFileFromCache(HVFile toRemove) {
+		try {
+			File file = toRemove.getLocalFileRef();
+
+			if(file.exists()) {
+				file.delete();
+				--cacheCount;
+				cacheSize -= toRemove.getSize();
+				updateStats();
+				Out.debug("CacheHandler: Deleted cached file " + toRemove.getFileid());
+			}
 		}
 		catch(Exception e) {
-			Out.error("CacheHandler: Failed to perform database operation");
+			Out.error("CacheHandler: Failed to delete cache file");
 			client.dieWithError(e);
 		}
-
-		return fileList;
 	}
 
-	public static File getCacheDir() {
-		return cachedir;
-	}
+	public void cycleLRUCacheTable() {
+		if(lruCacheTable != null) {
+			// this function is called every 10 seconds. clearing 17 of the shorts for each call means that each element will live up to a week (since 1048576 / (8640 * 7) is roughly 17).
+			// if --use-less-memory is set, the LRU cache will never have been created, and this does nothing.
 
-	public static File getTmpDir() {
-		return tmpdir;
-	}
+			int clearUntil = Math.min(MEMORY_TABLE_ELEMENTS, lruClearPointer + 17);
 
-	public void flushRecentlyAccessed() {
-		flushRecentlyAccessed(true);
-	}
+			//Out.debug("CacheHandler: Clearing lruCacheTable from " + lruClearPointer + " to " + clearUntil);
 
-	private synchronized void flushRecentlyAccessed(boolean disableAutocommit) {
-		ArrayList<CachedFile> flushCheck, flush = null;
-
-		if(memoryWrittenTable != null) {
-			// this function is called every 10 seconds. clearing 121 of the shorts for each call means that each element will live up to a day (since 1048576 / 8640 is roughly 121).
-			// note that this is skipped if the useLessMemory flag is set.
-
-			int clearUntil = Math.min(MEMORY_TABLE_ELEMENTS, memoryClearPointer + 121);
-
-			//Out.debug("CacheHandler: Clearing memoryWrittenTable from " + memoryClearPointer + " to " + clearUntil);
-
-			while(memoryClearPointer < clearUntil) {
-				memoryWrittenTable[memoryClearPointer++] = 0;
+			while(lruClearPointer < clearUntil) {
+				lruCacheTable[lruClearPointer++] = 0;
 			}
 
 			if(clearUntil >= MEMORY_TABLE_ELEMENTS) {
-				memoryClearPointer = 0;
-			}
-		}
-
-		synchronized(recentlyAccessed) {
-			recentlyAccessedFlush = System.currentTimeMillis();
-			flushCheck = new ArrayList<CachedFile>(recentlyAccessed.size());
-			flushCheck.addAll(recentlyAccessed);
-			recentlyAccessed.clear();
-		}
-
-		if(flushCheck.size() > 0) {
-			try {
-				synchronized(sqlite) {
-					flush = new ArrayList<CachedFile>(flushCheck.size());
-
-					for(CachedFile cf : flushCheck) {
-						String fileid = cf.getFileid();
-						boolean doFlush = true;
-
-						if(memoryWrittenTable != null) {
-							// if the memory table is active, we use this as a first step in order to determine if the timestamp should be updated or not.
-							// we first need to compute the array index and bitmask for this particular fileid.
-							// then, if the bit is set, we do not update. if not, we update but set the bit.
-
-							doFlush = false;
-
-							try {
-								int arrayIndex = 0;
-								for(int i=0; i<5; i++) {
-									arrayIndex += Integer.parseInt(fileid.substring(i, i+1), 16) << ((4 - i) * 4);
-								}
-
-								short bitMask = (short) (1 << Short.parseShort(fileid.substring(5, 6), 16));
-
-								if( (memoryWrittenTable[arrayIndex] & bitMask) != 0) {
-									//Out.debug("Written bit for " + fileid + " = " + arrayIndex + ":" + fileid.charAt(5) + " was set");
-								} else {
-									//Out.debug("Written bit for " + fileid + " = " + arrayIndex + ":" + fileid.charAt(5) + " was not set - flushing");
-									memoryWrittenTable[arrayIndex] |= bitMask;
-									doFlush = true;
-								}
-							} catch(Exception e) {
-								Out.warning("Encountered invalid fileid " + fileid + " while checking memoryWrittenTable.");
-							}
-						}
-
-						if(doFlush) {
-							// we don't need higher resolution than a day for the LRU mechanism, so we'll save expensive writes by not updating timestamps for files that have been flagged the previous 24 hours.
-							// (reads typically don't involve an actual disk access as the database file is cached to RAM - writes always do unless it can be combined with another write)
-
-							queryCachedFileLasthit.setString(1, fileid);
-							ResultSet rs = queryCachedFileLasthit.executeQuery();
-
-							if( rs.next() ) {
-								long hittime = rs.getLong(1);
-								long nowtime = (long) Math.floor(System.currentTimeMillis() / 1000);
-
-								if( Settings.isStaticRange(fileid) ) {
-									// for static range files, do not flush if it was already flushed this month
-									// static range files have hittime set to nowtime + 31536000 every time they flush
-									// so if hittime is less than nowtime + 28944000, flush it
-									if( hittime > nowtime + 28944000 ) {
-										doFlush = false;
-									}
-								}
-								else {
-									// for other files, do not flush if it was already flushed today
-									if( hittime > nowtime - 86400 ) {
-										doFlush = false;
-									}
-								}
-							}
-
-							if( doFlush ) {
-								flush.add(cf);
-							}
-
-							rs.close();
-						}
-					}
-
-					if(flush.size() > 0) {
-						if(disableAutocommit) {
-							sqlite.setAutoCommit(false);
-						}
-
-						for(CachedFile cf : flush) {
-							if(cf.needsFlush()) {
-								String fileid = cf.getFileid();
-								long lasthit = (long) Math.floor(System.currentTimeMillis() / 1000);
-
-								if(Settings.isStaticRange(fileid)) {
-									// if the file is in a static range, bump to one year in the future
-									lasthit += 31536000;
-								}
-
-								updateCachedFileLasthit.setLong(1, lasthit);
-								updateCachedFileLasthit.setString(2, fileid);
-								updateCachedFileLasthit.executeUpdate();
-
-								// there is a race condition here of sorts, but it doesn't matter. flushed() will set needFlush to false, which can be set to true by hit(),
-								// but no matter the end result we have an acceptable outcome. (it's always flushed at least once.)
-								cf.flushed();
-							}
-						}
-
-						if(disableAutocommit) {
-							sqlite.setAutoCommit(true);
-						}
-					}
-				}
-			} catch(Exception e) {
-				Out.error("CacheHandler: Failed to perform database operation");
-				client.dieWithError(e);
+				lruClearPointer = 0;
 			}
 		}
 	}
 
-	private class CachedFile {
-		private String fileid;
-		private boolean needFlush;
+	public void markRecentlyAccessed(HVFile hvFile) {
+		markRecentlyAccessed(hvFile, false);
+	}
 
-		public CachedFile(String fileid) {
-			this.fileid = fileid;
-			this.needFlush = false;
+	public void markRecentlyAccessed(HVFile hvFile, boolean skipMetaUpdate) {
+		boolean markFile = true;
+
+		if(lruCacheTable != null) {
+			// if --use-less-memory is not set, we use this as a first step in order to determine if the timestamp should be updated or not.
+			// lruCacheTable can hold 16^5 = 1048576 shorts consisting of 16 bits each.
+			// we need to compute the array index and bitmask for this particular fileid. if the bit is set, we do nothing. if not, we update the timestamp and set the bit.
+			// when determening what bit to set, we skip the first four nibbles (bit 0-15) of the hash due to static range grouping
+			// we use the next five nibbles (bit 16-35) to get the index of the array, and the tenth nibble (bit 36-39) to determine which bit in the short to read/set.
+			// while collisions are not unlikely to occur due to the birthday paradox, they should not cause any major issues with files not having their timestamp updated.
+			// any impact of this will be negligible, as it will only cause the LRU mechanism to be slightly less efficient.
+			String fileid = hvFile.getFileid();
+
+			// bit 16-35
+			int arrayIndex = Integer.parseInt(fileid.substring(4, 9), 16);
+
+			// bit 36-39
+			short bitMask = (short) (1 << Short.parseShort(fileid.substring(9, 10), 16));
+
+			if((lruCacheTable[arrayIndex] & bitMask) != 0) {
+				//Out.debug("LRU bit for " + fileid + " = " + arrayIndex + ":" + fileid.charAt(9) + " was set");
+				markFile = false;
+			}
+			else {
+				//Out.debug("Written bit for " + fileid + " = " + arrayIndex + ":" + fileid.charAt(9) + " was not set - marking");
+				lruCacheTable[arrayIndex] |= bitMask;
+			}
 		}
 
-		public String getFileid() {
-			return fileid;
-		}
+		if(markFile && !skipMetaUpdate) {
+			File file = hvFile.getLocalFileRef();
+			long nowtime = System.currentTimeMillis();
 
-		public HVFile getHVFile() {
-			return HVFile.getHVFileFromFileid(fileid);
-		}
-
-		public boolean needsFlush() {
-			return needFlush;
-		}
-
-		public void flushed() {
-			needFlush = false;
-		}
-
-		public void hit() {
-			synchronized(recentlyAccessed) {
-				needFlush = true;
-				recentlyAccessed.add(this);
+			if(file.lastModified() < nowtime - 604800000) {
+				file.setLastModified(nowtime);
 			}
 		}
 	}

@@ -1,7 +1,7 @@
 /*
 
-Copyright 2008-2012 E-Hentai.org
-http://forums.e-hentai.org/
+Copyright 2008-2016 E-Hentai.org
+https://forums.e-hentai.org/
 ehentai@gmail.com
 
 This file is part of Hentai@Home.
@@ -23,9 +23,8 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
-// note: this class does not necessarily represent an actual file even though it is occasionally used as such (getLocalFileRef()) - it is an abstract representation of files in the HentaiVerse System
-
 import java.io.File;
+import java.nio.file.Path;
 
 public class HVFile {
 	private String hash;
@@ -43,21 +42,13 @@ public class HVFile {
 	}
 	
 	public File getLocalFileRef() {
-		return new File(CacheHandler.getCacheDir(), hash.substring(0, 2) + "/" + getFileid());
+		return new File(Settings.getCacheDir(), hash.substring(0, 2) + "/" + hash.substring(2, 4) + "/" + getFileid());
 	}
 	
-	public boolean localFileMatches(File file) {
-		// note: we only check the sha-1 hash and filesize here, to save resources and avoid dealing with the crummy image handlers
-		try {
-			return file.length() == size && hash.startsWith(MiscTools.getSHAString(file));
-		} catch(java.io.IOException e) {
-			Out.warning("Failed reading file " + file + " to determine hash.");
-		}
-		
-		return false;
+	public Path getLocalFilePath() {
+		return getLocalFileRef().toPath();
 	}
-	
-	
+
 	// accessors
 	public String getMimeType() {
 		if(type.equals("jpg")) {
@@ -89,25 +80,40 @@ public class HVFile {
 		return type;
 	}
 	
+	public String getStaticRange() {
+		return hash.substring(0, 4);
+	}
+	
 
 	// static stuff
 	public static boolean isValidHVFileid(String fileid) {
 		return java.util.regex.Pattern.matches("^[a-f0-9]{40}-[0-9]{1,8}-[0-9]{1,5}-[0-9]{1,5}-((jpg)|(png)|(gif)|(wbm))$", fileid);
 	}
 
-	public static HVFile getHVFileFromFile(File file, boolean verify) {
+	public static HVFile getHVFileFromFile(File file) {
+		return getHVFileFromFile(file, null);
+	}
+
+	public static HVFile getHVFileFromFile(File file, FileValidator validator) {
 		if(file.exists()) {
 			String fileid = file.getName();
 
 			try {
-				if(verify) {
-					if(!fileid.startsWith(MiscTools.getSHAString(file))) {
+				HVFile hvFile = getHVFileFromFileid(fileid);
+				
+				if(file.length() != hvFile.getSize()) {
+					return null;
+				}
+				
+				if(validator != null) {
+					if(!validator.validateFile(file.toPath(), fileid.substring(0, 40))) {
 						return null;
 					}
 				}
-
-				return getHVFileFromFileid(fileid);
-			} catch(java.io.IOException e) {
+				
+				return hvFile;
+			}
+			catch(java.io.IOException e) {
 				e.printStackTrace();
 				Out.warning("Warning: Encountered IO error computing the hash value of " + file);
 			}
@@ -126,7 +132,8 @@ public class HVFile {
 				int yres = Integer.parseInt(fileidParts[3]);
 				String type = fileidParts[4];
 				return new HVFile(hash, size, xres, yres, type);
-			} catch(Exception e) {
+			}
+			catch(Exception e) {
 				Out.warning("Failed to parse fileid \"" + fileid + "\" : " + e);
 			}
 		}

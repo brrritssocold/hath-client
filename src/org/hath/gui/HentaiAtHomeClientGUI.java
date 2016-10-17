@@ -1,7 +1,7 @@
 /*
 
-Copyright 2008-2012 E-Hentai.org
-http://forums.e-hentai.org/
+Copyright 2008-2016 E-Hentai.org
+https://forums.e-hentai.org/
 ehentai@gmail.com
 
 This file is part of Hentai@Home GUI.
@@ -58,7 +58,8 @@ public class HentaiAtHomeClientGUI extends JFrame implements HathGUI, ActionList
 
 		setTitle("Hentai@Home " + Settings.CLIENT_VERSION + " (Build " + Settings.CLIENT_BUILD + ")");
 		setIconImage(icon32);
-		setSize(1000, 700);
+		setSize(1000, 550);
+		setResizable(true);
 		
 		setDefaultCloseOperation(EXIT_ON_CLOSE);
 		addWindowListener(this);
@@ -170,6 +171,7 @@ public class HentaiAtHomeClientGUI extends JFrame implements HathGUI, ActionList
 		} catch(Exception e) {}
 		
 		Settings.setActiveGUI(this);
+		Stats.trackBytesSentHistory();
 		client = new HentaiAtHomeClient(new InputQueryHandlerGUI(this), args);
 		setSuspendEnabled(true);
 	}
@@ -177,7 +179,7 @@ public class HentaiAtHomeClientGUI extends JFrame implements HathGUI, ActionList
 	public void run() {
 		while(true) {		
 			try {
-				myThread.sleep(1000);
+				myThread.sleep(500);
 			} catch(Exception e) {}
 			
 			if(!Stats.isClientSuspended() && suspend_resume.isEnabled()) {
@@ -190,6 +192,7 @@ public class HentaiAtHomeClientGUI extends JFrame implements HathGUI, ActionList
 			}
 		
 			controlPane.updateData();
+			logPane.checkRebuildLogDisplay();
 		}
 	}
 	

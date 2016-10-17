@@ -1,7 +1,7 @@
 /*
 
-Copyright 2008-2012 E-Hentai.org
-http://forums.e-hentai.org/
+Copyright 2008-2016 E-Hentai.org
+https://forums.e-hentai.org/
 ehentai@gmail.com
 
 This file is part of Hentai@Home.
@@ -24,57 +24,64 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 package org.hath.base;
 
 import java.lang.Thread;
+import java.net.URL;
+import java.nio.ByteBuffer;
 
 public class HTTPResponseProcessorProxy extends HTTPResponseProcessor {
 	private HTTPSession session;
-	private GalleryFileDownloader gdf;
-	private int readoff;
-	
-	public HTTPResponseProcessorProxy(HTTPSession session, String fileid, String token, int gid, int page, String filename) {
+	private ProxyFileDownloader proxyDownloader;
+	private int readoff = 0;
+	private ByteBuffer tcpBuffer;
+
+	public HTTPResponseProcessorProxy(HTTPSession session, String fileid, URL source) {
 		this.session = session;
-		readoff = 0;
-		gdf = new GalleryFileDownloader(session.getHTTPServer().getHentaiAtHomeClient(), fileid, token, gid, page, filename, false);
+		proxyDownloader = new ProxyFileDownloader(session.getHTTPServer().getHentaiAtHomeClient(), fileid, source);
 	}
 
 	public int initialize() {
 		Out.info(session + ": Initializing proxy request...");
-		return gdf.initialize();
-	}	
+		tcpBuffer = ByteBuffer.allocateDirect(Settings.TCP_PACKET_SIZE);
+		return proxyDownloader.initialize();
+	}
 
 	public String getContentType() {
-		return gdf.getContentType();
+		return proxyDownloader.getContentType();
 	}
 
 	public int getContentLength() {
-		return gdf.getContentLength();
+		return proxyDownloader.getContentLength();
 	}
 
-	public byte[] getBytes() throws Exception {
-		return getBytesRange(getContentLength());
-	}
+	public ByteBuffer getPreparedTCPBuffer(int lingeringBytes) throws Exception {
+		tcpBuffer.clear();
+		
+		if(lingeringBytes > 0) {
+			tcpBuffer.limit(Settings.TCP_PACKET_SIZE - lingeringBytes);
+		}
 
-	public byte[] getBytesRange(int len) throws Exception {
-		// wait for data
-		int endoff = readoff + len;
-		
-		//Out.debug("Reading data with readoff=" + readoff + " len=" + len + " writeoff=" + writeoff);
-		
 		int timeout = 0;
-		
-		while(endoff > gdf.getCurrentWriteoff()) {
+		int nextReadThrehold = Math.min(getContentLength(), readoff + tcpBuffer.limit());
+		//Out.debug("Filling buffer with limit=" + tcpBuffer.limit() + " at readoff=" + readoff + ", trying to read " + (nextReadThrehold - readoff) + " bytes up to byte " + nextReadThrehold);
+
+		while(nextReadThrehold > proxyDownloader.getCurrentWriteoff()) {
 			try {
 				Thread.currentThread().sleep(10);
 			} catch(Exception e) {}
-			
-			if( ++timeout > 30000 ) {
+
+			if(++timeout > 30000) {
 				// we have waited about five minutes, probably won't happen
-				Out.info("Timeout while waiting for proxy request.");
 				throw new Exception("Timeout while waiting for proxy request.");
 			}
 		}
+
+		int readBytes = proxyDownloader.fillBuffer(tcpBuffer, readoff);
+		readoff += readBytes;
 		
-		byte[] range = gdf.getDownloadBufferRange(readoff, endoff);
-		readoff += len;
-		return range;
+		tcpBuffer.flip();
+		return tcpBuffer;
+	}
+
+	public void requestCompleted() {
+		proxyDownloader.proxyThreadCompleted();
 	}
 }

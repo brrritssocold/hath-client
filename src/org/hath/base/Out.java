@@ -1,7 +1,7 @@
 /*
 
-Copyright 2008-2015 E-Hentai.org
-http://forums.e-hentai.org/
+Copyright 2008-2016 E-Hentai.org
+https://forums.e-hentai.org/
 ehentai@gmail.com
 
 This file is part of Hentai@Home.
@@ -38,59 +38,55 @@ public class Out {
 	public static final int INFO = 2;
 	public static final int WARNING = 4;
 	public static final int ERROR = 8;
-	
+
 	public static final int LOGOUT = DEBUG | INFO | WARNING | ERROR;
 	public static final int LOGERR = WARNING | ERROR;
 	public static final int OUTPUT = INFO | WARNING | ERROR;
 	public static final int VERBOSE = ERROR;
 
-	private static int suppressedOutput;
 	private static boolean overridden, writeLogs;
+	private static int suppressedOutput, logout_count, logerr_count;
 	private static PrintStream def_out, def_err;
 	private static OutPrintStream or_out, or_err;
 	private static FileWriter logout, logerr;
-	private static int logout_count, logerr_count;
-
 	private static SimpleDateFormat sdf;
-
 	private static List<OutListener> outListeners;
 
 	static {
-		try {
-			Settings.initializeDataDir();
-		} catch(java.io.IOException ioe) {
-			System.err.println("Could not create data directory. Please check file access permissions and free disk space.");
-			System.exit(-1);
-		}
-
 		overrideDefaultOutput();
 	}
-	
+
 	public static void overrideDefaultOutput() {
 		if(overridden) {
 			return;
 		}
-		
-		writeLogs = true;
+
+		writeLogs = false;
 		overridden = true;
 		outListeners = new ArrayList<OutListener>();
-	
+
 		suppressedOutput = 0;
 
 		sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'"); // ISO 8601
 		sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
 		def_out = System.out;
 		def_err = System.err;
-		
+
 		or_out = new OutPrintStream(def_out, "out", INFO);
 		or_err = new OutPrintStream(def_err, "ERR", ERROR);
 		System.setOut(or_out);
 		System.setErr(or_err);
-
-		logout = startLogger(Settings.getOutputLogPath());
-		logerr = startLogger(Settings.getErrorLogPath());
 	}
-	
+
+	public static void startLoggers() {
+		logerr = startLogger(Settings.getErrorLogPath());
+		
+		if(!Settings.isDisableLogs()) {
+			logout = startLogger(Settings.getOutputLogPath());
+			writeLogs = true;
+		}
+	}
+
 	public static void addOutListener(OutListener listener) {
 		synchronized(outListeners) {
 			if(!outListeners.contains(listener)) {
@@ -98,27 +94,33 @@ public class Out {
 			}
 		}
 	}
-	
+
 	public static void removeOutListener(OutListener listener) {
 		synchronized(outListeners) {
 			outListeners.remove(listener);
-		}		
+		}
 	}
-	
+
 	public static void disableLogging() {
-		if( writeLogs ) {
+		if(writeLogs) {
 			info("Logging ended.");
 			writeLogs = false;
 			flushLogs();
+			
+			if(logout != null) {
+				stopLogger(logout);
+				logout = null;
+			}
 		}
 	}
-	
+
 	public static void flushLogs() {
-		try {
-			logout.flush();
-		} catch(Exception e) {
-			
-		}					
+		if(logout != null) {
+			try {
+				logout.flush();
+			}
+			catch(Exception e) {}
+		}
 	}
 
 	private static FileWriter startLogger(String logfile) {
@@ -128,11 +130,12 @@ public class Out {
 			// delete old log if present, and rotate
 			(new File(logfile + ".old")).delete();
 			(new File(logfile)).renameTo(new File(logfile + ".old"));
-		
+
 			if(logfile.length() > 0) {
 				try {
 					writer = new FileWriter(logfile, true);
-				} catch (java.io.IOException e) {
+				}
+				catch(java.io.IOException e) {
 				   e.printStackTrace();
 				   System.err.println("Failed to open log file " + logfile);
 				}
@@ -145,16 +148,17 @@ public class Out {
 
 		return writer;
 	}
-	
+
 	private static boolean stopLogger(FileWriter logger) {
 		try {
 			logger.close();
-		} catch(Exception e) {
+		}
+		catch(Exception e) {
 			e.printStackTrace(def_err);
 			def_err.println("Unable to close file writer handle: Cannot rotate log.");
 			return false;
 		}
-		
+
 		return true;
 	}
 
@@ -177,21 +181,25 @@ public class Out {
 	private static synchronized void log(String data, int severity) {
 		if( ((severity & LOGOUT) > 0) && writeLogs ) {
 			log(data, logout, false);
+
 			if(++logout_count > 100000) {
 				logout_count = 0;
 				def_out.println("Rotating output logfile...");
+
 				if(stopLogger(logout)) {
 					logout = startLogger(Settings.getOutputLogPath());
 					def_out.println("Output logfile rotated.");
 				}
 			}
 		}
-		
-		if ((severity & LOGERR) > 0) {
+
+		if( (severity & LOGERR) > 0 ) {
 			log(data, logerr, true);
-			if(++logerr_count > 100000) {
+
+			if(++logerr_count > 10000) {
 				logerr_count = 0;
 				def_out.println("Rotating error logfile...");
+
 				if(stopLogger(logerr)) {
 					logerr = startLogger(Settings.getErrorLogPath());
 					def_out.println("Error logfile rotated.");
@@ -199,16 +207,18 @@ public class Out {
 			}
 		}
 	}
-	
+
 	private static void log(String data, FileWriter writer, boolean flush) {
 		// note: unsynchronized. usage of this function for a specific writer must be serialized.
 		if(writer != null) {
 			try {
 				writer.write(data + "\n");
-				if(flush) {
+
+				if(flush || Settings.isFlushLogs()) {
 					writer.flush();
 				}
-			} catch (java.io.IOException ioe) {
+			}
+			catch (java.io.IOException ioe) {
 				// IMPORTANT: writes to the default System.err to prevent loops
 				ioe.printStackTrace(def_err);
 			}
@@ -216,29 +226,30 @@ public class Out {
 	}
 
 	public static String verbose(int severity) {
-		if ((severity & VERBOSE) > 0) {
+		if( (severity & VERBOSE) > 0 ) {
 			java.lang.StackTraceElement[] ste = java.lang.Thread.currentThread().getStackTrace();
-			
+
 			int offset = 0;
-			while (++offset < ste.length) {
+			while(++offset < ste.length) {
 				String s = ste[offset].getClassName();
-				if (!s.equals("org.hath.base.Out") && !s.equals("org.hath.base.Out$OutPrintStream") && !s.equals("java.lang.Thread")) {
+				if(!s.equals("org.hath.base.Out") && !s.equals("org.hath.base.Out$OutPrintStream") && !s.equals("java.lang.Thread")) {
 					break;
 				}
 			}
-			
-			if (offset < ste.length) {
-				if (!ste[offset].getClassName().equals("java.lang.Throwable")) {
+
+			if(offset < ste.length) {
+				if(!ste[offset].getClassName().equals("java.lang.Throwable")) {
 					return "{" + ste[offset] + "} ";
-				} else {
+				}
+				else {
 					return "";
 				}
-			} else {
-				return "{Unknown Source}";
 			}
-		} else {
-			return "";
+
+			return "{Unknown Source}";
 		}
+
+		return "";
 	}
 
    private static class OutPrintStream extends PrintStream {
@@ -266,20 +277,20 @@ public class Out {
 			if(x == null) {
 				return;
 			}
-		
+
 			boolean output = (severity & Out.OUTPUT & ~Out.suppressedOutput) > 0;
 			boolean log = (severity & (Out.LOGOUT | Out.LOGERR)) > 0;
-			
+
 			if(output || log) {
-				synchronized (outListeners) {
+				synchronized(outListeners) {
 					String v = Out.verbose(severity);
 					String[] split = x.split("\n");
-					for (String s : split) {
+					for(String s : split) {
 						String data = sdf.format(new Date()) + " [" + name + "] " + v + s;
-						
+
 						if(output) {
 							ps.println(data);
-							
+
 							for(OutListener listener : outListeners) {
 								listener.outputWritten(data);
 							}

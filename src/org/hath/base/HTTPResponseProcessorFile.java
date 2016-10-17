@@ -1,7 +1,7 @@
 /*
 
-Copyright 2008-2012 E-Hentai.org
-http://forums.e-hentai.org/
+Copyright 2008-2016 E-Hentai.org
+https://forums.e-hentai.org/
 ehentai@gmail.com
 
 This file is part of Hentai@Home.
@@ -23,47 +23,47 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.BufferedInputStream;
+import java.nio.ByteBuffer;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.nio.channels.FileChannel;
 
 // this class provides provides a buffered interface to read a file in chunks
 
 public class HTTPResponseProcessorFile extends HTTPResponseProcessor {
-
 	private HVFile requestedHVFile;
-	private BufferedInputStream bis;
-	private int off;
+	private FileChannel fileChannel;
+	private ByteBuffer fileBuffer;
+	private int readoff = 0;
 
 	public HTTPResponseProcessorFile(HVFile requestedHVFile) {
 		this.requestedHVFile = requestedHVFile;
-		off = 0;
 	}
 
 	public int initialize() {
 		int responseStatusCode = 0;
 
-		File file = requestedHVFile.getLocalFileRef();
-
 		try {
-			bis = new BufferedInputStream(new FileInputStream(file), Settings.isUseLessMemory() ? 8192 : 65536);
+			fileChannel = FileChannel.open(requestedHVFile.getLocalFilePath(), StandardOpenOption.READ);
+			fileBuffer = ByteBuffer.allocateDirect(Settings.isUseLessMemory() ? 8192 : 65536);
+			fileChannel.read(fileBuffer);
+			fileBuffer.flip();
 			responseStatusCode = 200;
 			Stats.fileSent();
-		} catch(java.io.IOException e) {
-			Out.warning("Failed reading content from " + file);
+		}
+		catch(java.io.IOException e) {
+			Out.warning("Failed reading content from " + requestedHVFile.getLocalFilePath());
 			responseStatusCode = 500;
 		}
 
 		return responseStatusCode;
 	}
-	
+
 	public void cleanup() {
-		if(bis != null) {
+		if(fileChannel != null) {
 			try {
-				bis.close();
-			} catch(Exception e) {
-				e.printStackTrace();
-			}
+				fileChannel.close();
+			} catch(Exception e) {}
 		}
 	}
 
@@ -72,7 +72,7 @@ public class HTTPResponseProcessorFile extends HTTPResponseProcessor {
 	}
 
 	public int getContentLength() {
-		if(bis != null) {
+		if(fileChannel != null) {
 			return requestedHVFile.getSize();
 		}
 		else {
@@ -80,21 +80,28 @@ public class HTTPResponseProcessorFile extends HTTPResponseProcessor {
 		}
 	}
 
-	public byte[] getBytes() {
-		return getBytesRange(requestedHVFile.getSize());
-	}
+	public ByteBuffer getPreparedTCPBuffer(int lingeringBytes) throws Exception {
+		int readbytes = Math.min(getContentLength() - readoff, Settings.TCP_PACKET_SIZE - lingeringBytes);
 
-	public byte[] getBytesRange(int len) {
-		byte[] range = null;
-		
-		try {
-			range = new byte[len];
-			bis.read(range);
-		} catch(Exception e) {
-			e.printStackTrace();
+		if(readbytes > fileBuffer.remaining()) {
+			int fileBytes = 0;
+			fileBuffer.compact();
+
+			while(readbytes > fileBuffer.position()) {
+				fileBytes += fileChannel.read(fileBuffer);
+			}
+
+			fileBuffer.flip();
+			//Out.debug("Refilled buffer for " + requestedHVFile + " with " + fileBytes + " bytes, new remaining=" + fileBuffer.remaining());
 		}
 
-		off += len;
-		return range;
+		//Out.debug("Reading from file " + requestedHVFile + ", readoff=" + readoff + ", readbytes=" + readbytes + ", remaining=" + fileBuffer.remaining());
+
+		ByteBuffer tcpBuffer = fileBuffer.slice();
+		tcpBuffer.limit(tcpBuffer.position() + readbytes);
+		fileBuffer.position(fileBuffer.position() + readbytes);
+		readoff += readbytes;
+
+		return tcpBuffer;
 	}
 }
