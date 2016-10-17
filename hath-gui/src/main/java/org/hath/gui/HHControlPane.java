@@ -1,7 +1,7 @@
 /*
 
-Copyright 2008-2012 E-Hentai.org
-http://forums.e-hentai.org/
+Copyright 2008-2016 E-Hentai.org
+https://forums.e-hentai.org/
 ehentai@gmail.com
 
 This file is part of Hentai@Home GUI.
@@ -22,72 +22,66 @@ along with Hentai@Home GUI.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 package org.hath.gui;
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
+import org.hath.base.*;
 
-import javax.swing.BorderFactory;
-import javax.swing.JPanel;
-
-import org.hath.base.Settings;
-import org.hath.base.StatListener;
-import org.hath.base.Stats;
+import java.util.Arrays;
+import java.text.DecimalFormat;
+import java.awt.*;
+import javax.swing.*;
 
 public class HHControlPane extends JPanel {
-	private static final long serialVersionUID = 6414081823838202123L;
+
 	private HentaiAtHomeClientGUI clientGUI;
 	private StatPane statPane;
 	private GraphPane graphPane;
+	private String[] argStrings = { "Client Status:", "Uptime:", "Last Check-In:", "Total Files Sent:", "Total Files Rcvd:", "Total Bytes Sent:", "Total Bytes Rcvd:", "Avg Bytes Sent:", "Avg Bytes Rcvd:", "Cache Filecount:", "Used Cache Size:", "Cache Utilization:", "Free Cache Size:", "Static Ranges:", "Connections:" };
+	private int[] argLengths = null;
+	private DecimalFormat df;
 
 	public HHControlPane(HentaiAtHomeClientGUI clientGUI) {
 		this.clientGUI = clientGUI;
+		df = new DecimalFormat("0.00");
 
 		setPreferredSize(new Dimension(1000, 220));
 		setLayout(new BorderLayout());
-		
+
 		statPane = new StatPane();
 		graphPane = new GraphPane();
-		
-		add(statPane, BorderLayout.LINE_START);		
-		add(graphPane, BorderLayout.CENTER);		
+
+		add(statPane, BorderLayout.LINE_START);
+		add(graphPane, BorderLayout.CENTER);
 	}
-	
+
 	public void updateData() {
 		statPane.updateStats();
-		//graphPane.repaint(); - don't do this, it causes random warpings on the graph as well as a fairly high CPU usage.
 	}
-	
+
 	private class StatPane extends JPanel implements StatListener {
-		private static final long serialVersionUID = -4597810266493308911L;
 		private Font myFont;
-	
+
 		public StatPane() {
 			super();
-		
-			setPreferredSize(new Dimension(500, 220));
+
+			setPreferredSize(new Dimension(350, 220));
 			setBorder(BorderFactory.createCompoundBorder(BorderFactory.createCompoundBorder(BorderFactory.createTitledBorder("Program Stats"), BorderFactory.createEmptyBorder(5,5,5,5)), getBorder()));
 			Stats.addStatListener(this);
-			
+
 			repaint();
 		}
-		
+
 		public void statChanged(String stat) {
-			repaint(10);
+			repaint(50);
 		}
-		
+
 		public void updateStats() {
-			repaint(10);
+			repaint(50);
 		}
-		
+
 		public void paint(Graphics g) {
 			if(!clientGUI.isShowing()) {
 				return;
 			}
-		
+
 			Graphics2D g2 = (Graphics2D) g;
 			g2.clearRect(0, 0, getWidth(), getHeight());
 
@@ -96,128 +90,80 @@ public class HHControlPane extends JPanel {
 			if(myFont == null) {
 				myFont = new Font("Sans-serif", Font.PLAIN, 10);
 			}
-		
+
 			g2.setFont(myFont);
 			g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 			g2.setColor(Color.BLACK);
-			
-			int xoff = 20;
-			int yoff = 30;
-			int yspace = 25;
-			int xargwidth = 110;
-			int xvalwidth = 90;
-			
-			int x1pos = xoff;
-			int x2pos = x1pos + xargwidth;
-			int x3pos = x2pos + xvalwidth;
-			int x4pos = x3pos + xargwidth;
-			
-			g2.drawString("Client Status", x1pos, yoff + yspace * 0);
-			g2.drawString("Uptime", x1pos, yoff + yspace * 1);
-			g2.drawString("Last Server Contact", x3pos, yoff + yspace * 1);
-			g2.drawString("Total Files Sent", x1pos, yoff + yspace * 2);
-			g2.drawString("Total Files Rcvd", x3pos, yoff + yspace * 2);
-			g2.drawString("Total Bytes Sent", x1pos, yoff + yspace * 3);
-			g2.drawString("Total Bytes Rcvd", x3pos, yoff + yspace * 3);
-			g2.drawString("Avg Bytes Sent/Sec", x1pos, yoff + yspace * 4);
-			g2.drawString("Avg Bytes Rcvd/Sec", x3pos, yoff + yspace * 4);
-			g2.drawString("Files In Cache", x1pos, yoff + yspace * 5);
-			g2.drawString("Used Cache Size", x3pos, yoff + yspace * 5);
-			g2.drawString("Cache Utilization", x1pos, yoff + yspace * 6);
-			g2.drawString("Free Cache Space", x3pos, yoff + yspace * 6);
-			
-			java.text.DecimalFormat df = new java.text.DecimalFormat("0.00");
-			
-			String szclientStartTime = (int) (Stats.getUptime() / 3600) + " hr " + (int) ((Stats.getUptime() % 3600) / 60) + " min";
-			int lastServerContact = Stats.getLastServerContact();
-			String szserverContact = lastServerContact == 0 ? "Never" : (int) (System.currentTimeMillis() / 1000) - lastServerContact + " sec ago";
-			long rawbytesSent = Stats.getBytesSent();
-			String szbytesSent = StorageUnit.of(rawbytesSent).format(rawbytesSent);
-			long rawbytesRcvd = Stats.getBytesRcvd();
-			String szbytesRcvd = StorageUnit.of(rawbytesRcvd).format(rawbytesRcvd);
-			int rawbytesSentPerSec = Stats.getBytesSentPerSec();
-			String szbytesSentPerSec = StorageUnit.of(rawbytesSentPerSec).format(rawbytesSentPerSec) + "/s";
-			int rawbytesRcvdPerSec = Stats.getBytesRcvdPerSec();
-			String szbytesRcvdPerSec = StorageUnit.of(rawbytesRcvdPerSec).format(rawbytesRcvdPerSec) + "/s";
-			long rawcacheSize = Stats.getCacheSize();
-			String szcacheSize = StorageUnit.of(rawcacheSize).format(rawcacheSize);
-			float rawcacheFill = Stats.getCacheFill();
-			String szcacheFill = df.format(rawcacheFill * 100) + "%";
-			long rawcacheFree = Stats.getCacheFree();
-			String szcacheFree = StorageUnit.of(rawcacheFree).format(rawcacheFree);
-		
-			g2.drawString(Stats.getProgramStatus(), x2pos, yoff + yspace * 0);
-			g2.drawString(szclientStartTime, x2pos, yoff + yspace * 1);
-			g2.drawString(szserverContact, x4pos, yoff + yspace * 1);
-			g2.drawString(Stats.getFilesSent() + "", x2pos, yoff + yspace * 2);
-			g2.drawString(Stats.getFilesRcvd() + "", x4pos, yoff + yspace * 2);
-			g2.drawString(szbytesSent, x2pos, yoff + yspace * 3);
-			g2.drawString(szbytesRcvd, x4pos, yoff + yspace * 3);
-			g2.drawString(szbytesSentPerSec, x2pos, yoff + yspace * 4);
-			g2.drawString(szbytesRcvdPerSec, x4pos, yoff + yspace * 4);
-			g2.drawString(Stats.getCacheCount() + "", x2pos, yoff + yspace * 5);
-			g2.drawString(szcacheSize, x4pos, yoff + yspace * 5);
-			g2.drawString(szcacheFill, x2pos, yoff + yspace * 6);
-			g2.drawString(szcacheFree, x4pos, yoff + yspace * 6);
-			
-			int currentBytesPerSec = Stats.getCurrentBytesPerSec();
-			int maxBytesPerSec = Settings.getThrottleBytesPerSec() > 0 ? Settings.getThrottleBytesPerSec() : (Stats.getBytesSentPerSec() > 0 ? Stats.getBytesSentPerSec() * 3 : Integer.MAX_VALUE);
-			
-			String szopenConnections = Stats.getOpenConnections() + "";
-			String szcurrentBytesPerSec = df.format(currentBytesPerSec / 1000.0);
-			
-			g2.drawRect(410, 40, 30, 150);
-			g2.drawString("Conns", 410, 30);
-			g2.drawString(szopenConnections, 422 - (szopenConnections.length() - 1) * 3, 203);
-			g2.drawRect(450, 40, 30, 150);
-			g2.drawString("KBps", 453, 30);
-			g2.drawString(szcurrentBytesPerSec, 455 - (szcurrentBytesPerSec.length() - 4) * 3, 203);
-			
-			drawBlipBar(g2, 415, 45, Stats.getOpenConnections() / (double) Settings.getMaxConnections());
-			drawBlipBar(g2, 455, 45, currentBytesPerSec / (double) maxBytesPerSec);
-		}
-		
-		public void drawBlipBar(Graphics2D g2, int xpos, int ypos, double pct) {
-			int xwidth = 20;
-			int yspace = 2;
-			int yheight = 5;
-			int bottom = ypos + 140;
-			
-			int severity = 0;
-			int toSeverity = Math.min(20, (int) Math.ceil(pct * 20));
 
-			while(++severity <= toSeverity) {
-				if(severity < 11) {
-					g2.setColor(Color.GREEN);
-				} else if(severity < 16) {
-					g2.setColor(Color.ORANGE);
-				} else {
-					g2.setColor(Color.RED);
+			int xoff = 10;
+			int yoff = 30;
+			int yspace = 24;
+			int xargwidth = 95;
+			int xvalwidth = 70;
+			int x1pos = xoff + xargwidth;
+			int x2pos = x1pos + xvalwidth + xargwidth;
+			
+			if(argLengths == null) {
+				// FontMetrics is inefficient, so we only want to do this once
+				FontMetrics fontMetrics = g2.getFontMetrics();
+				argLengths = new int[argStrings.length];
+				int i = 0;
+
+				for(String arg : argStrings) {
+					argLengths[i++] = fontMetrics.stringWidth(arg);
 				}
-				
-				int yoff = bottom - (yheight * severity + yspace * (severity - 1));
-				g2.fillRect(xpos, yoff, xwidth, yheight);
-				
-				g2.setColor(Color.BLACK);
-				g2.drawRect(xpos, yoff, xwidth, yheight);
 			}
+
+			int argx = 0, argl = 0;
+
+			for(String arg : argStrings) {
+				g2.drawString(arg, (argx % 2 == 0 ? x1pos : x2pos) - argLengths[argl++] - 7, yoff + yspace * (argx / 2));
+				argx += argx == 0 ? 2 : 1;
+			}
+
+			int lastServerContact = Stats.getLastServerContact();
+			long rawbytesSent = Stats.getBytesSent();
+			long rawbytesRcvd = Stats.getBytesRcvd();
+			int rawbytesSentPerSec = Stats.getBytesSentPerSec();
+			int rawbytesRcvdPerSec = Stats.getBytesRcvdPerSec();
+			long rawcacheSize = Stats.getCacheSize();
+			long rawcacheFree = Stats.getCacheFree();
+
+			g2.drawString(Stats.getProgramStatus(), x1pos, yoff + yspace * 0);
+			g2.drawString((int) (Stats.getUptime() / 3600) + " hr " + (int) ((Stats.getUptime() % 3600) / 60) + " min", x1pos, yoff + yspace * 1);
+			g2.drawString(lastServerContact == 0 ? "Never" : (int) (System.currentTimeMillis() / 1000) - lastServerContact + " sec ago", x2pos, yoff + yspace * 1);
+			g2.drawString(Stats.getFilesSent() + "", x1pos, yoff + yspace * 2);
+			g2.drawString(Stats.getFilesRcvd() + "", x2pos, yoff + yspace * 2);
+			g2.drawString(StorageUnit.of(rawbytesSent).format(rawbytesSent), x1pos, yoff + yspace * 3);
+			g2.drawString(StorageUnit.of(rawbytesRcvd).format(rawbytesRcvd), x2pos, yoff + yspace * 3);
+			g2.drawString(StorageUnit.of(rawbytesSentPerSec).format(rawbytesSentPerSec) + "/s", x1pos, yoff + yspace * 4);
+			g2.drawString(StorageUnit.of(rawbytesRcvdPerSec).format(rawbytesRcvdPerSec) + "/s", x2pos, yoff + yspace * 4);
+			g2.drawString(Stats.getCacheCount() + "", x1pos, yoff + yspace * 5);
+			g2.drawString(StorageUnit.of(rawcacheSize).format(rawcacheSize), x2pos, yoff + yspace * 5);
+			g2.drawString(df.format(Stats.getCacheFill() * 100) + "%", x1pos, yoff + yspace * 6);
+			g2.drawString(StorageUnit.of(rawcacheFree).format(rawcacheFree), x2pos, yoff + yspace * 6);
+			g2.drawString(Settings.getStaticRangeCount() + "", x1pos, yoff + yspace * 7);
+			g2.drawString(Stats.getOpenConnections() + " / " + Settings.getMaxConnections(), x2pos, yoff + yspace * 7);
 		}
 	}
-	
+
 	private class GraphPane extends JPanel implements StatListener {
-		private static final long serialVersionUID = 1328288714655544785L;
-		private int[] heights;
+		private short[] graphHeights;
 		private long lastGraphRefresh = 0;
-		private long bytesLast10Sec = 0, bytesLastMin = 0, bytesLast15Min = 0, bytesLast60Min = 0;
+		private int peakSpeedKBps = 0;
+		private BasicStroke graphStroke, otherStroke;
 		private Font myFont;
-		
+
 		public GraphPane() {
 			super();
+
+			graphStroke = new BasicStroke(2, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER);
+			otherStroke = new BasicStroke(1);
 			
-			setMinimumSize(new Dimension(500, 220));
-			setBorder(BorderFactory.createCompoundBorder(BorderFactory.createCompoundBorder(BorderFactory.createTitledBorder("Beautiful Line"), BorderFactory.createEmptyBorder(5,5,5,5)), getBorder()));
+			setMinimumSize(new Dimension(650, 220));
+			//setBorder(BorderFactory.createCompoundBorder(BorderFactory.createCompoundBorder(BorderFactory.createTitledBorder("Beautiful Line"), BorderFactory.createEmptyBorder(5,5,5,5)), getBorder()));
 			Stats.addStatListener(this);
-			
+
 			repaint();
 		}
 
@@ -226,12 +172,12 @@ public class HHControlPane extends JPanel {
 				repaint();
 			}
 		}
-	
+
 		public void paint(Graphics g) {
 			if(!clientGUI.isShowing()) {
 				return;
 			}
-		
+
 			Graphics2D g2 = (Graphics2D) g;
 			g2.clearRect(0, 0, getWidth(), getHeight());
 
@@ -240,161 +186,109 @@ public class HHControlPane extends JPanel {
 			if(myFont == null) {
 				myFont = new Font("Sans-serif", Font.PLAIN, 10);
 			}
-		
+
 			g2.setFont(myFont);
 			g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-			g2.clearRect(15, 15, getWidth() - 20, 180);
-		
-			int xoff = 10;
-			int xwidth = getWidth() - 20;
-		
+
+			int xoff = 0;
+			int adjustedxwidth = getWidth() - 2;
+			double blipwidth = adjustedxwidth / 354.0;
+
 			g2.setColor(Color.BLACK);
-			g2.fillRect(xoff, 20, xwidth, 170);
-			
-			g2.setColor(Color.GREEN);
-			g2.drawRect(xoff, 20, xwidth, 170);
-			
+			g2.fillRect(xoff, 2, adjustedxwidth + 1, 215);
+
 			g2.setColor(Color.GRAY);
-			
-			int barwidth = xwidth / 6;
-			
+
+			int barwidth = adjustedxwidth / 6;
+			int blipBottom = 215;
+			int blipTop = 2;
+
 			for(int i=1; i<=5; i++) {
 				int xpos = xoff + barwidth * i;
-				g2.drawLine(xpos, 21, xpos, 189);
+				g2.drawLine(xpos, blipTop, xpos, blipBottom);
 			}
 
-			double blipwidth = (xwidth - 2) / 359.0;
 			int blipLeftOff = xoff + 1;
-			int blipBottom = 189;
-			int blipTop = 21;
 			int blipMaxHeight = blipBottom - blipTop;
-			int topSpeedKBps = -1;
-			
-			if(heights == null || lastGraphRefresh < System.currentTimeMillis() - 10000) {
-				// re-calculate stuff
-			
-				heights = new int[360];
+
+			if(graphHeights == null || lastGraphRefresh < System.currentTimeMillis() - 10000) {
+				if(graphHeights == null) {
+					// the bytesSent array has 361 entries with the current decasecond as index 0, so we want to read the data from index 1-360
+					// because every entry is the average over the last six entries, we lose the first five entries for the graphHeights array
+					graphHeights = new short[354];
+				}
+
+				Arrays.fill(graphHeights, (short) 0);
+
 				int[] bytesSent = Stats.getBytesSentHistory();
-				
-				bytesLast10Sec = bytesSent[1];
-				bytesLastMin = 0;
-				bytesLast15Min = 0;
-				bytesLast60Min = 0;
-				
-				// this correction was made to avoid the blips that are caused by the packets-instead-of-bytes measurements, but the method was changed so it's no longer necessary
-				//int forcedMaxBytesPerDecaSec = Settings.getThrottleBytesPerSec() > 0 ? Settings.getThrottleBytesPerSec() * 10 : Integer.MAX_VALUE;
+				double maxBytesSentPerMinute = 6000000;
 
-				// we'll use the throttle if set, and guess based on the outgoing speed the server has if not
-				double guessedMaxBytesPerDecaSec = 0;
-				
-				if(Settings.getThrottleBytesPerSec() > 0 || Stats.getBytesSentPerSec() > 0) {
-					guessedMaxBytesPerDecaSec = Math.min(Settings.getThrottleBytesPerSec() * 10.0, Stats.getBytesSentPerSec() * 30.0);
-				}
-				
-				if(guessedMaxBytesPerDecaSec == 0) {
-					guessedMaxBytesPerDecaSec = 200000.0;
-				}
+				if(bytesSent != null) {				
+					double initialAverage = bytesSent[360] + bytesSent[359] + bytesSent[358] + bytesSent[357] + bytesSent[356] + bytesSent[355];
+					double bytesLastMinute = initialAverage;
 
-				double actualMaxBytesPerDecaSec = 0;
-				
-				int newi = 0;
-				for(int i=360; i>0; i--) {	// rly
-					int actualBytesSent = bytesSent[i]; //Math.min(forcedMaxBytesPerDecaSec, bytesSent[i]);
-					heights[newi++] = (int) Math.round((actualBytesSent / guessedMaxBytesPerDecaSec) * blipMaxHeight);
-					actualMaxBytesPerDecaSec = Math.max(actualBytesSent, actualMaxBytesPerDecaSec);
-
-					bytesLast60Min += actualBytesSent;			
-					if(i <= 90) {
-						bytesLast15Min += actualBytesSent;
-						if(i <= 6) {
-							bytesLastMin += actualBytesSent;
-						}
+					for(int i=360; i>6; i--) {
+						bytesLastMinute = bytesLastMinute + bytesSent[i - 6] - bytesSent[i];
+						maxBytesSentPerMinute = Math.max(maxBytesSentPerMinute, bytesLastMinute);
 					}
-				}
-				
-				// if our guess was too low, correct the graph. this should never happen if the throttle is set, but could occur if we guess based on historic speed.
-				if(actualMaxBytesPerDecaSec > guessedMaxBytesPerDecaSec) {
-					double correction = guessedMaxBytesPerDecaSec / actualMaxBytesPerDecaSec;
+
+					maxBytesSentPerMinute = 1200000 * Math.ceil(maxBytesSentPerMinute / 1200000);
+					bytesLastMinute = initialAverage;
+					int newi = 0;
 					
-					for(int i=0; i<360; i++) {
-						heights[i] = (int) Math.round(heights[i] * correction);
-					}
-				}
-				
-				topSpeedKBps = (int) Math.ceil(Math.max(guessedMaxBytesPerDecaSec, actualMaxBytesPerDecaSec) / 10000);
-			}
-			
-			if(heights != null) {
-				// draw graphs
-			
-				g2.setColor(Color.GREEN);
-				
-				int x1 = 0;
-				int x2 = (int) Math.round(blipLeftOff + blipwidth * 0);
-				int y1 = 0;
-				int y2 = Math.round(blipBottom - heights[0]);
-
-				for(int i=0; i<359; i++) {
-					x1 = x2;
-					x2 = (int) Math.round(blipLeftOff + blipwidth * (i+1));
-					y1 = y2;
-					y2 = Math.round(blipBottom - heights[i+1]);				
-					g2.drawLine(x1, y1, x2, y2);
-				}
-				
-				g2.setColor(Color.PINK);
-				
-				int average = (heights[0] + heights[1] + heights[2] + heights[3] + heights[4] + heights[5]) / 6;
-
-				x1 = 0;
-				x2 = (int) Math.round(blipLeftOff + blipwidth * 0);
-				y1 = 0;
-				y2 = Math.round(blipBottom - average);				
-				
-				for(int i=0; i<359; i++) {
-					if(i < 354) {
-						average = Math.max(0, average + (heights[i + 6] - heights[i]) / 6);
+					for(int i=360; i>6; i--) {
+						bytesLastMinute = bytesLastMinute + bytesSent[i - 6] - bytesSent[i];
+						graphHeights[newi++] = (short) (blipMaxHeight * bytesLastMinute / maxBytesSentPerMinute);
 					}
 					
-					x1 = x2;
-					x2 = (int) Math.round(blipLeftOff + blipwidth * (i+1));
-					y1 = y2;
-					y2 = Math.round(blipBottom - average);
-					g2.drawLine(x1, y1, x2, y2);
+					/*
+					java.lang.StringBuilder debug = new java.lang.StringBuilder();
+					
+					for(short height : graphHeights) {
+						debug.append(height + " ");
+					}
+
+					Out.debug(debug.toString());
+					*/
 				}
-				
-				// draw the stats below the graph
-				
-				g2.setColor(Color.BLACK);
-				
-				java.text.DecimalFormat df = new java.text.DecimalFormat("0.00");
-				
-				long uptime = Stats.getUptime();
-				g2.drawString("60 min: " + (!Stats.isClientRunning() || uptime < 3600 ? "N/A" : df.format(bytesLast60Min / 3600000.0)) + " KB/s",  10, 205);
-				g2.drawString("15 min: " + (!Stats.isClientRunning() || uptime < 900  ? "N/A" : df.format(bytesLast15Min / 900000.0))  + " KB/s", 135, 205);
-				g2.drawString("1 min: "  + (!Stats.isClientRunning() || uptime < 60   ? "N/A" : df.format(bytesLastMin   / 60000.0))   + " KB/s", 260, 205);
-				g2.drawString("Last: "   + (!Stats.isClientRunning()                  ? "N/A" : df.format(bytesLast10Sec / 10000.0))   + " KB/s", 385, 205);
+
+				peakSpeedKBps = (int) (maxBytesSentPerMinute / 60000);
 			}
-			
-			if(topSpeedKBps > -1) {
-				// draw speed bars
-			
-				g2.setColor(Color.RED);
-				
-				int y1 = blipTop + 12;
-				int y2 = (int) (blipTop + blipMaxHeight * 0.25) + 12;
-				int y3 = (int) (blipTop + blipMaxHeight * 0.50) + 12;
-				int y4 = (int) (blipTop + blipMaxHeight * 0.75) + 12; 
-				
-				g2.drawString(topSpeedKBps + " KB/s", 15, y1);
-				g2.drawLine(11, y1 - 11, xwidth + 9, y1 - 11);
-				g2.drawString((int) (topSpeedKBps * 0.75) + " KB/s", 15, y2);
-				g2.drawLine(11, y2 - 11, xwidth + 9, y2 - 11);
-				g2.drawString((int) (topSpeedKBps * 0.5) + " KB/s", 15, y3);
-				g2.drawLine(11, y3 - 11, xwidth + 9, y3 - 11);
-				g2.drawString((int) (topSpeedKBps * 0.25) + " KB/s", 15, y4);
-				g2.drawLine(11, y4 - 11, xwidth + 9, y4 - 11);			
+
+			// draw the graph line
+			g2.setColor(Color.GREEN);
+			g2.setStroke(graphStroke);
+
+			int x1 = 0;
+			int x2 = (int) Math.round(blipLeftOff + blipwidth * 0);
+			int y1 = 0;
+			int y2 = Math.round(blipBottom - graphHeights[0]);
+
+			for(int i=1; i<354; i++) {
+				x1 = x2;
+				x2 = (int) Math.round(blipLeftOff + blipwidth * i);
+				y1 = y2;
+				y2 = Math.round(blipBottom - graphHeights[i]);
+				g2.drawLine(x1, y1, x2, y2);
 			}
-		}	
+
+			// draw speed demarkers
+			g2.setColor(Color.LIGHT_GRAY);
+			g2.setStroke(otherStroke);
+
+			int s1 = blipTop;
+			int s2 = (int) (blipTop + blipMaxHeight * 0.25);
+			int s3 = (int) (blipTop + blipMaxHeight * 0.50);
+			int s4 = (int) (blipTop + blipMaxHeight * 0.75);
+
+			g2.drawString(peakSpeedKBps + " KB/s", 7, s1 + 12);
+			g2.drawLine(xoff, s1, adjustedxwidth + 3, s1);
+			g2.drawString((int) (peakSpeedKBps * 0.75) + " KB/s", 7, s2 + 12);
+			g2.drawLine(xoff, s2, adjustedxwidth + 3, s2);
+			g2.drawString((int) (peakSpeedKBps * 0.5) + " KB/s", 7, s3 + 12);
+			g2.drawLine(xoff, s3, adjustedxwidth + 3, s3);
+			g2.drawString((int) (peakSpeedKBps * 0.25) + " KB/s", 7, s4 + 12);
+			g2.drawLine(xoff, s4, adjustedxwidth + 3, s4);
+		}
 	}
 }
