@@ -21,11 +21,22 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base;
+package org.hath.base.http;
 
-import java.util.*;
-import java.util.regex.Pattern;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Hashtable;
+import java.util.List;
+import java.util.regex.Pattern;
+
+import org.hath.base.FileDownloader;
+import org.hath.base.HVFile;
+import org.hath.base.HentaiAtHomeClient;
+import org.hath.base.Out;
+import org.hath.base.Settings;
+import org.hath.base.Stats;
+import org.hath.base.Tools;
 
 public class HTTPResponse {
 	private static final Pattern absoluteUriPattern = Pattern.compile("^http://[^/]+/", Pattern.CASE_INSENSITIVE);

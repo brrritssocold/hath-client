@@ -21,10 +21,13 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base;
+package org.hath.base.http;
 
-import java.nio.charset.Charset;
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
+
+import org.hath.base.Out;
+import org.hath.base.Settings;
 
 public class HTTPResponseProcessorText extends HTTPResponseProcessor {
 	private byte[] responseBytes;

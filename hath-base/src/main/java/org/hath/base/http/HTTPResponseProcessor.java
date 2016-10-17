@@ -21,9 +21,11 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base;
+package org.hath.base.http;
 
 import java.nio.ByteBuffer;
+
+import org.hath.base.Settings;
 
 public abstract class HTTPResponseProcessor {
 	private String header = "";

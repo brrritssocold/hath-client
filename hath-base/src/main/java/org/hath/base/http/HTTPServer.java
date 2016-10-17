@@ -21,16 +21,24 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base;
+package org.hath.base.http;
 
-import java.net.ServerSocket;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
-import java.net.InetAddress;
-import java.lang.Thread;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.Hashtable;
+import java.util.List;
 import java.util.regex.Pattern;
+
+import org.hath.base.HentaiAtHomeClient;
+import org.hath.base.Out;
+import org.hath.base.Settings;
+import org.hath.base.Stats;
 
 public class HTTPServer implements Runnable {
 	private HentaiAtHomeClient client;

@@ -21,12 +21,16 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base;
+package org.hath.base.http;
 
 import java.nio.ByteBuffer;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.nio.channels.FileChannel;
+import java.nio.file.StandardOpenOption;
+
+import org.hath.base.HVFile;
+import org.hath.base.Out;
+import org.hath.base.Settings;
+import org.hath.base.Stats;
 
 // this class provides provides a buffered interface to read a file in chunks
 

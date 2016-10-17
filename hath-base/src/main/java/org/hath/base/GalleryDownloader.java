@@ -23,14 +23,14 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
-import java.lang.Thread;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Hashtable;
-import java.util.List;
-import java.util.regex.Pattern;
 import java.io.File;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.regex.Pattern;
+
+import org.hath.base.http.HTTPBandwidthMonitor;
 
 public class GalleryDownloader implements Runnable {
 	protected HentaiAtHomeClient client;

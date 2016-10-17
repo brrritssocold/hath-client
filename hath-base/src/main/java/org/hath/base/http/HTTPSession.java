@@ -21,21 +21,23 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base;
+package org.hath.base.http;
 
-import java.util.Date;
-import java.util.TimeZone;
-import java.text.DecimalFormat;
-import java.text.SimpleDateFormat;
-import java.nio.channels.SocketChannel;
-import java.net.InetAddress;
-import java.lang.Thread;
-import java.lang.StringBuilder;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.net.InetAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
+import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.TimeZone;
 import java.util.regex.Pattern;
+
+import org.hath.base.Out;
+import org.hath.base.Settings;
+import org.hath.base.Stats;
 
 public class HTTPSession implements Runnable {
 

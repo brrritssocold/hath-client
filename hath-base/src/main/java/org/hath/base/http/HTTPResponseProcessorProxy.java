@@ -21,11 +21,14 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base;
+package org.hath.base.http;
 
-import java.lang.Thread;
 import java.net.URL;
 import java.nio.ByteBuffer;
+
+import org.hath.base.Out;
+import org.hath.base.ProxyFileDownloader;
+import org.hath.base.Settings;
 
 public class HTTPResponseProcessorProxy extends HTTPResponseProcessor {
 	private HTTPSession session;

@@ -21,10 +21,12 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base;
+package org.hath.base.http;
 
-import java.util.Random;
 import java.nio.ByteBuffer;
+import java.util.Random;
+
+import org.hath.base.Settings;
 
 public class HTTPResponseProcessorSpeedtest extends HTTPResponseProcessor {
 	private int testsize = 0, writeoff = 0;
