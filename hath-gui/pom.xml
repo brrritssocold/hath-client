@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.hath</groupId>
 	<artifactId>hath-gui</artifactId>
-	<version>1.2.6</version>
+	<version>1.3.3</version>
 	<name>Hentai@Home Client GUI</name>
 	<description>Client for the Hentai@Home content network, GUI module</description>
 	<packaging>jar</packaging>
@@ -71,7 +71,7 @@
 		<dependency>
 			<groupId>org.hath</groupId>
 			<artifactId>hath-base</artifactId>
-			<version>1.2.6</version>
+			<version>1.3.3</version>
 		</dependency>
 	</dependencies>
 </project>
