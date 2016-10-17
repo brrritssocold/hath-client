@@ -1,7 +1,7 @@
 /*
 
-Copyright 2008-2012 E-Hentai.org
-http://forums.e-hentai.org/
+Copyright 2008-2016 E-Hentai.org
+https://forums.e-hentai.org/
 ehentai@gmail.com
 
 This file is part of Hentai@Home.
@@ -21,71 +21,67 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base.http;
+package org.hath.base;
 
-import javax.servlet.http.HttpServletResponse;
-
-import org.hath.base.HentaiAtHomeClient;
-import org.hath.base.Out;
-import org.hath.base.Settings;
-import org.hath.base.gallery.GalleryFileDownloader;
+import java.lang.Thread;
+import java.net.URL;
+import java.nio.ByteBuffer;
 
 public class HTTPResponseProcessorProxy extends HTTPResponseProcessor {
-	private HentaiAtHomeClient client;
-	private GalleryFileDownloader gdf;
-	private int readoff;
-	
-	public HTTPResponseProcessorProxy(HentaiAtHomeClient client, String fileid, String token, int gid, int page,
-			String filename) {
-		this.client = client;
-		readoff = 0;
-		gdf = new GalleryFileDownloader(client, fileid, token, gid, page, filename, false, Settings.getHttpClient());
+	private HTTPSession session;
+	private ProxyFileDownloader proxyDownloader;
+	private int readoff = 0;
+	private ByteBuffer tcpBuffer;
+
+	public HTTPResponseProcessorProxy(HTTPSession session, String fileid, URL source) {
+		this.session = session;
+		proxyDownloader = new ProxyFileDownloader(session.getHTTPServer().getHentaiAtHomeClient(), fileid, source);
 	}
 
-	@Override
-	public void initialize(HttpServletResponse response) {
-		Out.info(client + ": Initializing proxy request...");
-		response.setStatus(gdf.initialize());
-	}	
+	public int initialize() {
+		Out.info(session + ": Initializing proxy request...");
+		tcpBuffer = ByteBuffer.allocateDirect(Settings.TCP_PACKET_SIZE);
+		return proxyDownloader.initialize();
+	}
 
-	@Override
 	public String getContentType() {
-		return gdf.getContentType();
+		return proxyDownloader.getContentType();
 	}
 
-	@Override
 	public int getContentLength() {
-		return gdf.getContentLength();
+		return proxyDownloader.getContentLength();
 	}
 
-	@Override
-	public byte[] getBytes() throws Exception {
-		return getBytesRange(getContentLength());
-	}
+	public ByteBuffer getPreparedTCPBuffer(int lingeringBytes) throws Exception {
+		tcpBuffer.clear();
+		
+		if(lingeringBytes > 0) {
+			tcpBuffer.limit(Settings.TCP_PACKET_SIZE - lingeringBytes);
+		}
 
-	@Override
-	public byte[] getBytesRange(int len) throws Exception {
-		// wait for data
-		int endoff = readoff + len;
-		
-		//Out.debug("Reading data with readoff=" + readoff + " len=" + len + " writeoff=" + writeoff);
-		
 		int timeout = 0;
-		
-		while(endoff > gdf.getCurrentWriteoff()) {
+		int nextReadThrehold = Math.min(getContentLength(), readoff + tcpBuffer.limit());
+		//Out.debug("Filling buffer with limit=" + tcpBuffer.limit() + " at readoff=" + readoff + ", trying to read " + (nextReadThrehold - readoff) + " bytes up to byte " + nextReadThrehold);
+
+		while(nextReadThrehold > proxyDownloader.getCurrentWriteoff()) {
 			try {
-				Thread.sleep(10);
+				Thread.currentThread().sleep(10);
 			} catch(Exception e) {}
-			
-			if( ++timeout > 30000 ) {
+
+			if(++timeout > 30000) {
 				// we have waited about five minutes, probably won't happen
-				Out.info("Timeout while waiting for proxy request.");
 				throw new Exception("Timeout while waiting for proxy request.");
 			}
 		}
+
+		int readBytes = proxyDownloader.fillBuffer(tcpBuffer, readoff);
+		readoff += readBytes;
 		
-		byte[] range = gdf.getDownloadBufferRange(readoff, endoff);
-		readoff += len;
-		return range;
+		tcpBuffer.flip();
+		return tcpBuffer;
+	}
+
+	public void requestCompleted() {
+		proxyDownloader.proxyThreadCompleted();
 	}
 }

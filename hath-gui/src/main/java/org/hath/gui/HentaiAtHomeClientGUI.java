@@ -1,7 +1,7 @@
 /*
 
-Copyright 2008-2012 E-Hentai.org
-http://forums.e-hentai.org/
+Copyright 2008-2016 E-Hentai.org
+https://forums.e-hentai.org/
 ehentai@gmail.com
 
 This file is part of Hentai@Home GUI.
@@ -22,40 +22,17 @@ along with Hentai@Home GUI.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 package org.hath.gui;
-import java.awt.AWTException;
-import java.awt.BorderLayout;
-import java.awt.Image;
-import java.awt.PopupMenu;
-import java.awt.SystemTray;
-import java.awt.Toolkit;
-import java.awt.TrayIcon;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
-import java.awt.event.WindowEvent;
-import java.awt.event.WindowListener;
+import org.hath.base.*;
 
-import javax.swing.JFrame;
-import javax.swing.JMenu;
-import javax.swing.JMenuBar;
-import javax.swing.JMenuItem;
-import javax.swing.JOptionPane;
-import javax.swing.JSeparator;
-import javax.swing.UIManager;
-
-import org.hath.base.HathGUI;
-import org.hath.base.HentaiAtHomeClient;
-import org.hath.base.Out;
-import org.hath.base.Settings;
-import org.hath.base.Stats;
+import java.awt.*;
+import java.awt.event.*;
+import javax.swing.*;
 
 public class HentaiAtHomeClientGUI extends JFrame implements HathGUI, ActionListener, WindowListener, MouseListener, Runnable {
-	private static final long serialVersionUID = 7281412170076686274L;
 	private HentaiAtHomeClient client;
 	private HHControlPane controlPane;
 	private HHLogPane logPane;
-	private Thread hentaiAtHomeClientGUI;
+	private Thread myThread;
 	private JMenuItem refresh_settings, suspend_resume, suspend_5min, suspend_15min, suspend_30min, suspend_1hr, suspend_2hr, suspend_4hr, suspend_8hr;
 	private SystemTray tray;
 	private TrayIcon trayIcon;
@@ -63,6 +40,11 @@ public class HentaiAtHomeClientGUI extends JFrame implements HathGUI, ActionList
 	private long lastSettingRefresh = 0;
 	
 	public HentaiAtHomeClientGUI(String[] args) {
+		String mainjar = "HentaiAtHome.jar";
+		if(! (new java.io.File(mainjar)).canRead()) {
+			Out.error("Required JAR file " + mainjar + " could not be found. Please re-download Hentai@Home.");
+			System.exit(-1);
+		}
 	
 		try {
     		UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
@@ -71,12 +53,13 @@ public class HentaiAtHomeClientGUI extends JFrame implements HathGUI, ActionList
 			System.exit(-1);
     	}
 
-		Image icon16 = Toolkit.getDefaultToolkit().getImage(getClass().getResource("/image/icon/icon16.png"));
-		Image icon32 = Toolkit.getDefaultToolkit().getImage(getClass().getResource("/image/icon/icon32.png"));
+		Image icon16 = Toolkit.getDefaultToolkit().getImage(getClass().getResource("/src/org/hath/gui/icon16.png"));
+		Image icon32 = Toolkit.getDefaultToolkit().getImage(getClass().getResource("/src/org/hath/gui/icon32.png"));
 
 		setTitle("Hentai@Home " + Settings.CLIENT_VERSION + " (Build " + Settings.CLIENT_BUILD + ")");
 		setIconImage(icon32);
-		setSize(1000, 700);
+		setSize(1000, 550);
+		setResizable(true);
 		
 		setDefaultCloseOperation(EXIT_ON_CLOSE);
 		addWindowListener(this);
@@ -180,15 +163,15 @@ public class HentaiAtHomeClientGUI extends JFrame implements HathGUI, ActionList
 		
 		lastSettingRefresh = System.currentTimeMillis();
 
-		hentaiAtHomeClientGUI = new Thread(this);
-		hentaiAtHomeClientGUI.setName("Client GUI");
-		hentaiAtHomeClientGUI.start();
+		myThread = new Thread(this);
+		myThread.start();
 
 		try {
-			Thread.sleep(startVisible ? 2000 : 60000);
+			Thread.currentThread().sleep(startVisible ? 2000 : 60000);
 		} catch(Exception e) {}
 		
 		Settings.setActiveGUI(this);
+		Stats.trackBytesSentHistory();
 		client = new HentaiAtHomeClient(new InputQueryHandlerGUI(this), args);
 		setSuspendEnabled(true);
 	}
@@ -196,7 +179,7 @@ public class HentaiAtHomeClientGUI extends JFrame implements HathGUI, ActionList
 	public void run() {
 		while(true) {		
 			try {
-				Thread.sleep(1000);
+				myThread.sleep(500);
 			} catch(Exception e) {}
 			
 			if(!Stats.isClientSuspended() && suspend_resume.isEnabled()) {
@@ -209,6 +192,7 @@ public class HentaiAtHomeClientGUI extends JFrame implements HathGUI, ActionList
 			}
 		
 			controlPane.updateData();
+			logPane.checkRebuildLogDisplay();
 		}
 	}
 	

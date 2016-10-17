@@ -1,7 +1,7 @@
 /*
 
-Copyright 2008-2012 E-Hentai.org
-http://forums.e-hentai.org/
+Copyright 2008-2016 E-Hentai.org
+https://forums.e-hentai.org/
 ehentai@gmail.com
 
 This file is part of Hentai@Home.
@@ -21,49 +21,36 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base.http;
+package org.hath.base;
 
 import java.util.Random;
+import java.nio.ByteBuffer;
 
-import javax.servlet.http.HttpServletResponse;
-
-import org.eclipse.jetty.http.HttpStatus;
-import org.hath.base.Stats;
-
-public class HTTPResponseProcessorSpeedtest extends HTTPResponseProcessor {	
-	int testsize = 0;
-	Random rand;
+public class HTTPResponseProcessorSpeedtest extends HTTPResponseProcessor {
+	private int testsize = 0, writeoff = 0;
+	private final int randomLength = 8192;
+	private byte[] randomBytes;
 
 	public HTTPResponseProcessorSpeedtest(int testsize) {
 		this.testsize = testsize;
-		rand = new Random();
+		Random rand = new Random();
+		randomBytes = new byte[randomLength];
+		rand.nextBytes(randomBytes);
 	}
 
-	@Override
-	public void initialize(HttpServletResponse response) {
-		Stats.setProgramStatus("Running speed tests...");
-		response.setStatus(HttpStatus.OK_200);
-	}
-
-	@Override
 	public int getContentLength() {
 		return testsize;
 	}
-	
-	@Override
-	public byte[] getBytes() {
-		return getRandomBytes(testsize);
-	}
-	
-	@Override
-	public byte[] getBytesRange(int len) {
-		return getRandomBytes(len);
-	}
-	
-	private byte[] getRandomBytes(int len) {
-		// generate a random body the server can use to gauge the actual upload speed capabilities of this client
-		byte[] random = new byte[len];
-        rand.nextBytes(random);
-        return random;
+
+	public ByteBuffer getPreparedTCPBuffer(int lingeringBytes) throws Exception {
+		int bytecount = Math.min(getContentLength() - writeoff, Settings.TCP_PACKET_SIZE - lingeringBytes);
+		int startbyte = (int) Math.floor(Math.random() * (randomLength - bytecount));
+
+		// making this read-only is probably not necessary, but doing so is almost free, and we don't want anything messing with our precious random bytes
+		ByteBuffer buffer = ByteBuffer.wrap(randomBytes, startbyte, bytecount).asReadOnlyBuffer();
+		writeoff += bytecount;
+
+		// this was a wrap, so we do not flip
+		return buffer;
 	}
 }

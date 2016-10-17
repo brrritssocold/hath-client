@@ -1,7 +1,7 @@
 /*
 
-Copyright 2008-2012 E-Hentai.org
-http://forums.e-hentai.org/
+Copyright 2008-2016 E-Hentai.org
+https://forums.e-hentai.org/
 ehentai@gmail.com
 
 This file is part of Hentai@Home.
@@ -21,18 +21,12 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base.http;
+package org.hath.base;
 
-import java.io.IOException;
-import java.util.LinkedList;
-
-import javax.servlet.http.HttpServletResponse;
-
-import org.hath.base.HentaiAtHomeClient;
-import org.hath.base.Settings;
+import java.nio.ByteBuffer;
 
 public abstract class HTTPResponseProcessor {
-	private LinkedList<HeaderPair> headersToAdd = new LinkedList<>();
+	private String header = "";
 
 	public String getContentType() {
 		return Settings.CONTENT_TYPE_DEFAULT;
@@ -42,38 +36,28 @@ public abstract class HTTPResponseProcessor {
 		return 0;
 	}
 	
-	public void initialize(HttpServletResponse response) {
+	public int initialize() {
+		return 0;
 	}
 	
 	public void cleanup() {}
 
-	public void updateResponse(HttpServletResponse response) throws IOException {
-		response.setContentLength(getContentLength());
-		response.setContentType(getContentType());
-
-		for (HeaderPair pair : headersToAdd) {
-			response.addHeader(pair.name, pair.value);
-		}
-
-		try {
-			response.getOutputStream().write(getBytes());
-		} catch (Exception e) {
-			e.printStackTrace();
-			HentaiAtHomeClient.dieWithError("Lazy programmers don't use specific exceptions");
-		}
+	public ByteBuffer getPreparedTCPBuffer() throws Exception {
+		return getPreparedTCPBuffer(0);
 	}
 
-	public abstract byte[] getBytes() throws Exception;
+	public abstract ByteBuffer getPreparedTCPBuffer(int lingeringBytes) throws Exception;
 
-	public abstract byte[] getBytesRange(int len) throws Exception;
+	public String getHeader() {
+		return this.header;
+	}
+
+	public void addHeaderField(String name, String value) {
+		// TODO: encode the value if needed.
+		this.header += name + ": " + value + "\r\n";
+	}
 	
-	protected class HeaderPair {
-		public HeaderPair(String name, String value) {
-			this.name = name;
-			this.value = value;
-		}
-
-		public String name;
-		public String value;
+	public void requestCompleted() {
+		// if the response processor needs to do some action after the request has completed, this can be overridden
 	}
 }
