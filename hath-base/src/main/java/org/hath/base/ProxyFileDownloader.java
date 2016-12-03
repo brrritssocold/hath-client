@@ -73,6 +73,7 @@ public class ProxyFileDownloader implements Runnable {
 			connection.setConnectTimeout(10000);
 			connection.setReadTimeout(30000);
 			connection.setRequestProperty("Hath-Request", Settings.getClientID() + "-" + Tools.getSHA1String(Settings.getClientKey() + fileid));
+			connection.setRequestProperty("User-Agent", "Hentai@Home " + Settings.CLIENT_VERSION);
 			connection.connect();
 
 			int tempLength = connection.getContentLength();

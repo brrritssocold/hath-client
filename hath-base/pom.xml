@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.hath</groupId>
 	<artifactId>hath-base</artifactId>
-	<version>1.3.3</version>
+	<version>1.4.0</version>
 	<name>Hentai@Home Client base</name>
 	<description>Client for the Hentai@Home content network, base module</description>
 	<packaging>jar</packaging>

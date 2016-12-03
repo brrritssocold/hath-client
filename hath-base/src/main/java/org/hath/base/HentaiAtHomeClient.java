@@ -23,24 +23,18 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 /*
 
-- Added persistence to the new cache handler, which means it no longer has to scan the cache on regular startups. This means the client will now start almost instantly regardless of cache size and CPU/storage performance, and go straight to the speed test.
+This release incorporates all the changes from the [url=https://forums.e-hentai.org/index.php?showtopic=197978&st=0]1.3 Experimental Branch[/url] and fixes two minor issues in 1.3.3. While 1.2.6 will continue working for the foreseeable future, this is now the recommended client to use.
 
-A cache scan will now only be required if the shutdown was not clean, if the client had a reduction in the number of static ranges, or if a client that previously used --use-less-memory is started without using it. It can also be triggered manually with --rescan-cache
+- Corrected a bug where malformed files in the cache directory would cause a NullPointerException and abnormal exit during cache cleanup.
 
-Note that the first startup after upgrading to 1.3.3 will always involve a cache scan, as the necessary data for fast startup is not saved by earlier clients.
-
-- The static range age cache now tracks all static ranged instead of just the "aged" ones. This was necessary for long-term cache persistence, and before of the changes in 1.3.2 it will have no impact on performance.
+- Re-added the User-Agent header to prevent leaking the Java version string.
 
 
+[b]To update an existing client: shut it down, download [url=https://repo.e-hentai.org/hath/HentaiAtHome_1.4.0.zip]Hentai@Home 1.4.0[/url], extract the archive, copy the jar files over the existing ones, then restart the client.[/b]
 
-[b]To update an existing client: shut it down, download [url=https://repo.e-hentai.org/hath/HentaiAtHome_1.3.3.zip]Hentai@Home 1.3.3[/url], extract the archive, copy the jar files over the existing ones, then restart the client.[/b]
-
-[b]The full source code for H@H is available and licensed under the GNU General Public License v3, and can be downloaded [url=https://repo.e-hentai.org/hath/HentaiAtHome_1.3.3_src.zip]here[/url]. Building it from source only requires the free Java SE 7 JDK.[/b]
+[b]The full source code for H@H is available and licensed under the GNU General Public License v3, and can be downloaded [url=https://repo.e-hentai.org/hath/HentaiAtHome_1.4.0_src.zip]here[/url]. Building it from source only requires the free Java SE 7 JDK.[/b]
 
 [b]For information on how to join Hentai@Home, check out [url=https://forums.e-hentai.org/index.php?showtopic=19795]The Hentai@Home Project FAQ[/url].[/b]
-
-
-
 
 [b]Other download options can be found at [url=http://g.e-hentai.org/hentaiathome.php]the usual place[/url].[/b]
 
