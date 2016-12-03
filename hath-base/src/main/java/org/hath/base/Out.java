@@ -23,15 +23,19 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
-import java.util.Date;
-import java.util.TimeZone;
-import java.text.SimpleDateFormat;
-import java.util.List;
-import java.util.ArrayList;
 import java.io.File;
-import java.io.PrintStream;
-import java.io.OutputStream;
 import java.io.FileWriter;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.TimeZone;
 
 public class Out {
 	public static final int DEBUG = 1;
@@ -51,9 +55,19 @@ public class Out {
 	private static FileWriter logout, logerr;
 	private static SimpleDateFormat sdf;
 	private static List<OutListener> outListeners;
+	private static boolean logSetupFailed;
 
 	static {
 		overrideDefaultOutput();
+	}
+	
+	/**
+	 * Check if the log setup failed.
+	 * 
+	 * @return true if the setup failed
+	 */
+	protected static final boolean isLogSetupFailed() {
+		return logSetupFailed;
 	}
 
 	public static void overrideDefaultOutput() {
@@ -79,10 +93,10 @@ public class Out {
 	}
 
 	public static void startLoggers() {
-		logerr = startLogger(Settings.getErrorLogPath());
+		logerr = startLogger(Paths.get(Settings.getErrorLogPath()));
 		
 		if(!Settings.isDisableLogs()) {
-			logout = startLogger(Settings.getOutputLogPath());
+			logout = startLogger(Paths.get(Settings.getOutputLogPath()));
 			writeLogs = true;
 		}
 	}
@@ -123,26 +137,48 @@ public class Out {
 		}
 	}
 
-	private static FileWriter startLogger(String logfile) {
+	/**
+	 * Start the logger. Rotate the log files and create an appending {@link FileWriter} to write the log file.
+	 * 
+	 * @param logfile
+	 *            to rotate and open for appending
+	 * @return a writer to the logfile
+	 */
+	protected static FileWriter startLogger(Path logfile) {
 		FileWriter writer = null;
 
-		if(logfile != null) {
-			// delete old log if present, and rotate
-			(new File(logfile + ".old")).delete();
-			(new File(logfile)).renameTo(new File(logfile + ".old"));
+		if (logfile != null) {
+			Path logFileName = logfile.getFileName();
 
-			if(logfile.length() > 0) {
-				try {
-					writer = new FileWriter(logfile, true);
+			try {
+				if (logFileName == null) {
+					throw new IOException("Log file name was null");
 				}
-				catch(java.io.IOException e) {
-				   e.printStackTrace();
-				   System.err.println("Failed to open log file " + logfile);
+
+				String oldFileName = logFileName.toString() + ".old";
+				Path oldLogFile = logfile.resolveSibling(oldFileName);
+
+				// delete old log if present, and rotate
+				Files.deleteIfExists(oldLogFile);
+
+				if (Files.exists(logfile)) {
+					Files.move(logfile, oldLogFile);
 				}
+
+				Files.createFile(logfile);
+
+				if (Files.size(logfile) > 0) {
+					writer = new FileWriter(logfile.toFile(), true);
+				}
+			} catch (java.io.IOException e) {
+				logSetupFailed = true;
+				e.printStackTrace();
+				System.err.println("Failed to open log file " + logfile);
 			}
+
 		}
 
-		if(writer != null) {
+		if (writer != null) {
 			log("\n" + sdf.format(new Date()) + " Logging started", writer, true);
 		}
 
@@ -187,7 +223,7 @@ public class Out {
 				def_out.println("Rotating output logfile...");
 
 				if(stopLogger(logout)) {
-					logout = startLogger(Settings.getOutputLogPath());
+					logout = startLogger(Paths.get(Settings.getOutputLogPath()));
 					def_out.println("Output logfile rotated.");
 				}
 			}
@@ -201,7 +237,7 @@ public class Out {
 				def_out.println("Rotating error logfile...");
 
 				if(stopLogger(logerr)) {
-					logerr = startLogger(Settings.getErrorLogPath());
+					logerr = startLogger(Paths.get(Settings.getErrorLogPath()));
 					def_out.println("Error logfile rotated.");
 				}
 			}
