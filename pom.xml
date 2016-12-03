@@ -19,6 +19,28 @@
 	</modules>
 
 	<build>
+		<pluginManagement>
+			<plugins>
+				<plugin>
+					<artifactId>maven-pmd-plugin</artifactId>
+					<version>3.7</version>
+					<configuration>
+						<includeTests>true</includeTests>
+						<minimumTokens>50</minimumTokens>
+						<linkXref>true</linkXref>
+						<targetJdk>1.8</targetJdk>
+					</configuration>
+					<executions>
+						<execution>
+							<goals>
+								<goal>cpd</goal>
+							</goals>
+						</execution>
+					</executions>
+				</plugin>
+			</plugins>
+		</pluginManagement>
+
 		<plugins>
 			<plugin>
 				<artifactId>maven-compiler-plugin</artifactId>
@@ -64,6 +86,10 @@
 						<version>7.3</version>
 					</dependency>
 				</dependencies>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-pmd-plugin</artifactId>
 			</plugin>
 		</plugins>
 	</build>
