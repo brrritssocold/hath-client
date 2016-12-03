@@ -24,9 +24,12 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 package org.hath.base;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.*;
 
 import java.io.IOException;
+import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -109,5 +112,21 @@ public class OutTest {
 		Out.startLogger(testDirectory.resolve(OUTPUT_LOG_FILE_NAME));
 
 		assertThat(Files.exists(oldLog), is(true));
+	}
+
+	@Test
+	public void testValidWriterForLog() throws Exception {
+		Writer writer = Out.startLogger(testDirectory.resolve(OUTPUT_LOG_FILE_NAME));
+
+		assertThat(writer, is(notNullValue()));
+	}
+
+	@Test
+	public void testWriterCreationFailed() throws Exception {
+		Files.deleteIfExists(testDirectory);
+
+		Writer writer = Out.startLogger(testDirectory.resolve(OUTPUT_LOG_FILE_NAME));
+
+		assertThat(writer, is(nullValue()));
 	}
 }

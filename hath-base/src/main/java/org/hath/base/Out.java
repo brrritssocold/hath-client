@@ -167,9 +167,7 @@ public class Out {
 
 				Files.createFile(logfile);
 
-				if (Files.size(logfile) > 0) {
 					writer = new FileWriter(logfile.toFile(), true);
-				}
 			} catch (java.io.IOException e) {
 				logSetupFailed = true;
 				e.printStackTrace();
