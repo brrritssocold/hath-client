@@ -336,6 +336,19 @@ public class Settings {
 		return datadir;
 	}
 
+	/**
+	 * Override the logging directory.
+	 * 
+	 * @param loggingDirectory
+	 *            directory to set
+	 * @deprecated For testing only!
+	 * 
+	 */
+	@Deprecated
+	public static void setLogDir(File loggingDirectory) {
+		logdir = loggingDirectory;
+	}
+
 	public static File getLogDir() {
 		return logdir;
 	}
