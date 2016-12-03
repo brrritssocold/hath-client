@@ -101,6 +101,10 @@ public class HVFile {
 			try {
 				HVFile hvFile = getHVFileFromFileid(fileid);
 				
+				if(hvFile == null) {
+					return null;
+				}
+				
 				if(file.length() != hvFile.getSize()) {
 					return null;
 				}
