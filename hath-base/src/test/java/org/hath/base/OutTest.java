@@ -23,6 +23,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
+
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
@@ -33,100 +34,104 @@ import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+
+import static org.junit.Assert.assertThat;
+import static org.hamcrest.CoreMatchers.containsString;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+import org.junit.After;
+
 import org.junit.Before;
 import org.junit.Test;
 
 public class OutTest {
+
 	private static final String ERROR_LOG_FILE_NAME = "log_err";
 	private static final String OUTPUT_LOG_FILE_NAME = "log_out";
 
-	private Path testDirectory;
+	private File logdir;
 
 	@SuppressWarnings("deprecation")
 	@Before
 	public void setUp() throws Exception {
-		testDirectory = Files.createTempDirectory("OutTest");
-		Settings.setLogDir(testDirectory.toFile());
-	}
 
-	private Path createOldLogFile(String filename) throws IOException {
-		Path oldLog = testDirectory.resolve(filename + ".old");
-		Files.createFile(oldLog);
-
-		return oldLog;
-	}
-
-	@Test
-	public void testStartLoggersErrorLogCreated() throws Exception {
+		logdir = Files.createTempDirectory(OutTest.class.getSimpleName()).toFile();
+		Settings.setLogDir(logdir);
 		Out.startLoggers();
+	}
 
-		assertThat(Files.exists(testDirectory.resolve(ERROR_LOG_FILE_NAME)), is(true));
+	@After
+	public void tearDown() {
+		Out.disableLogging();
+	}
+
+	private String readFile(Path logfile) throws FileNotFoundException, IOException {
+		try (BufferedReader reader = Files.newBufferedReader(logfile)) {
+
+			StringBuilder sb = new StringBuilder();
+			String line;
+
+			do {
+				line = reader.readLine();
+				sb.append(line);
+				sb.append(System.lineSeparator());
+			} while (line != null);
+
+			return sb.toString();
+		}
+	}
+
+	public void testDebug() throws Exception {
+		Out.debug("debugLevel Foo bar");
+		Out.flushLogs();
+
+		assertThat(readFile(logdir.toPath().resolve("log_out")), containsString("debugLevel Foo bar"));
 	}
 
 	@Test
-	public void testStartLoggersOutputLogCreated() throws Exception {
-		Out.startLoggers();
+	public void testInfo() throws Exception {
+		Out.info("infoLevel Foo bar");
+		Out.flushLogs();
 
-		assertThat(Files.exists(testDirectory.resolve(OUTPUT_LOG_FILE_NAME)), is(true));
+		assertThat(readFile(logdir.toPath().resolve("log_out")), containsString("infoLevel Foo bar"));
 	}
 
 	@Test
-	public void testNoOutputLogCreatedWhenLoggingDisabled() throws Exception {
-		Settings.updateSetting("disable_logging", "true");
+	public void testWarning() throws Exception {
+		Out.warning("warningLevel Foo bar");
+		Out.flushLogs();
 
-		Out.startLoggers();
-
-		assertThat(Files.exists(testDirectory.resolve(OUTPUT_LOG_FILE_NAME)), is(false));
+		assertThat(readFile(logdir.toPath().resolve("log_out")), containsString("warningLevel Foo bar"));
 	}
 
 	@Test
-	public void testMissingLogDirectory() throws Exception {
-		Files.deleteIfExists(testDirectory);
+	public void testError() throws Exception {
+		Out.error("errorLevel Foo bar");
+		Out.flushLogs();
 
-		Out.startLoggers();
-
-		assertThat(Out.isLogSetupFailed(), is(true));
+		assertThat(readFile(logdir.toPath().resolve("log_out")), containsString("errorLevel Foo bar"));
 	}
 
 	@Test
-	public void testOldLogFileDeleted() throws Exception {
-		Path oldLog = createOldLogFile(OUTPUT_LOG_FILE_NAME);
+	public void testWarningInErrorLog() throws Exception {
+		Out.warning("warningLevel Foo bar");
+		Out.flushLogs();
 
-		assertThat(Files.exists(oldLog), is(true)); // guard assert
-
-		Out.startLogger(testDirectory.resolve(OUTPUT_LOG_FILE_NAME));
-
-		assertThat(Files.exists(oldLog), is(false));
+		assertThat(readFile(logdir.toPath().resolve("log_err")), containsString("warningLevel Foo bar"));
 	}
 
 	@Test
-	public void testLogFileRotation() throws Exception {
-		Path currentLog = testDirectory.resolve(OUTPUT_LOG_FILE_NAME);
-		Files.createFile(currentLog);
+	public void testErrorInErrorLog() throws Exception {
+		Out.error("errorLevel Foo bar");
+		Out.flushLogs();
 
-		Path oldLog = testDirectory.resolve(OUTPUT_LOG_FILE_NAME + ".old");
-
-		assertThat(Files.exists(oldLog), is(false)); // guard assert
-		assertThat(Files.exists(currentLog), is(true)); // guard assert
-
-		Out.startLogger(testDirectory.resolve(OUTPUT_LOG_FILE_NAME));
-
-		assertThat(Files.exists(oldLog), is(true));
-	}
-
-	@Test
-	public void testValidWriterForLog() throws Exception {
-		Writer writer = Out.startLogger(testDirectory.resolve(OUTPUT_LOG_FILE_NAME));
-
-		assertThat(writer, is(notNullValue()));
-	}
-
-	@Test
-	public void testWriterCreationFailed() throws Exception {
-		Files.deleteIfExists(testDirectory);
-
-		Writer writer = Out.startLogger(testDirectory.resolve(OUTPUT_LOG_FILE_NAME));
-
-		assertThat(writer, is(nullValue()));
+		assertThat(readFile(logdir.toPath().resolve("log_err")), containsString("errorLevel Foo bar"));
 	}
 }
