@@ -23,7 +23,6 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
-import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -37,7 +36,12 @@ import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class Out {
+	private static final Logger LOGGER = LoggerFactory.getLogger(Out.class);
+
 	public static final int DEBUG = 1;
 	public static final int INFO = 2;
 	public static final int WARNING = 4;
@@ -197,19 +201,19 @@ public class Out {
 	}
 
 	public static void debug(String x) {
-		or_out.println(x, "debug", DEBUG);
+		LOGGER.debug(x);
 	}
 
 	public static void info(String x) {
-		or_out.println(x, "info", INFO);
+		LOGGER.info(x);
 	}
 
 	public static void warning(String x) {
-		or_out.println(x, "WARN", WARNING);
+		LOGGER.warn(x);
 	}
 
 	public static void error(String x) {
-		or_out.println(x, "ERROR", ERROR);
+		LOGGER.error(x);
 	}
 
 	private static synchronized void log(String data, int severity) {
