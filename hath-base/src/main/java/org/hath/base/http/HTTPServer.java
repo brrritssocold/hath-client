@@ -33,6 +33,9 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.regex.Pattern;
 
 import org.hath.base.HentaiAtHomeClient;
@@ -50,9 +53,17 @@ public class HTTPServer implements Runnable {
 	private boolean allowNormalConnections = false;
 	private Hashtable<String,FloodControlEntry> floodControlTable;
 	private Pattern localNetworkPattern;
+	private Executor sessionThreadPool;
 
 	public HTTPServer(HentaiAtHomeClient client) {
 		this.client = client;
+		sessionThreadPool = Executors.newCachedThreadPool(new ThreadFactory() {
+			@Override
+			public Thread newThread(Runnable r) {
+				return new Thread(r, "Pooled HTTP Session");
+			}
+		});
+
 		sessions = Collections.checkedList(new ArrayList<HTTPSession>(), HTTPSession.class);
 		floodControlTable = new Hashtable<String,FloodControlEntry>();
 		
@@ -62,6 +73,16 @@ public class HTTPServer implements Runnable {
 		
 		//  private network: localhost, 127.x.y.z, 10.0.0.0 - 10.255.255.255, 172.16.0.0 - 172.31.255.255,  192.168.0.0 - 192.168.255.255, 169.254.0.0 -169.254.255.255
 		localNetworkPattern = Pattern.compile("^((localhost)|(127\\.)|(10\\.)|(192\\.168\\.)|(172\\.((1[6-9])|(2[0-9])|(3[0-1]))\\.)|(169\\.254\\.)|(::1)|(0:0:0:0:0:0:0:1)|(fc)|(fd)).*$");
+	}
+
+	/**
+	 * Add a session to the thread pool for execution.
+	 * 
+	 * @param session
+	 *            to execute
+	 */
+	public void handleSession(HTTPSession session) {
+		sessionThreadPool.execute(session);
 	}
 
 	public boolean startConnectionListener(int port) {
@@ -214,7 +235,7 @@ public class HTTPServer implements Runnable {
 						HTTPSession hs = new HTTPSession(socketChannel, getNewConnId(), localNetworkAccess, this);
 						sessions.add(hs);
 						Stats.setOpenConnections(sessions.size());
-						hs.handleSession();
+						handleSession(hs);
 					}
 				}
 			}

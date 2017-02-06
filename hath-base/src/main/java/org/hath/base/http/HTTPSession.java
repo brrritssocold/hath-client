@@ -61,11 +61,6 @@ public class HTTPSession implements Runnable {
 		this.httpServer = httpServer;
 	}
 
-	public void handleSession() {
-		myThread = new Thread(this);
-		myThread.start();
-	}
-
 	private void connectionFinished() {
 		if(hr != null) {
 			hr.requestCompleted();
