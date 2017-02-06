@@ -200,18 +200,50 @@ public class Out {
 		return true;
 	}
 
+	/**
+	 * Log the message with severity DEBUG
+	 * 
+	 * @param x
+	 *            message to log
+	 * @deprecated Use SLF4J loggers directly
+	 */
+	@Deprecated
 	public static void debug(String x) {
 		LOGGER.debug(x);
 	}
 
+	/**
+	 * Log the message with severity INFO
+	 * 
+	 * @param x
+	 *            message to log
+	 * @deprecated Use SLF4J loggers directly
+	 */
+	@Deprecated
 	public static void info(String x) {
 		LOGGER.info(x);
 	}
 
+	/**
+	 * Log the message with severity WARNING
+	 * 
+	 * @param x
+	 *            message to log
+	 * @deprecated Use SLF4J loggers directly
+	 */
+	@Deprecated
 	public static void warning(String x) {
 		LOGGER.warn(x);
 	}
 
+	/**
+	 * Log the message with severity ERROR
+	 * 
+	 * @param x
+	 *            message to log
+	 * @deprecated Use SLF4J loggers directly
+	 */
+	@Deprecated
 	public static void error(String x) {
 		LOGGER.error(x);
 	}
