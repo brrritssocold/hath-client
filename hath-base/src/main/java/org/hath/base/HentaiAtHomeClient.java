@@ -23,11 +23,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 /*
 
-This release incorporates all the changes from the [url=https://forums.e-hentai.org/index.php?showtopic=197978&st=0]1.3 Experimental Branch[/url] and fixes two minor issues in 1.3.3. While 1.2.6 will continue working for the foreseeable future, this is now the recommended client to use.
-
-- Corrected a bug where malformed files in the cache directory would cause a NullPointerException and abnormal exit during cache cleanup.
-
-- Re-added the User-Agent header to prevent leaking the Java version string.
+- Malformed requests such as those made by Firefox 51 are now detected and terminated early, rather than having the connection sit around and wait for the standard timeout.
 
 
 [b]To update an existing client: shut it down, download [url=https://repo.e-hentai.org/hath/HentaiAtHome_1.4.0.zip]Hentai@Home 1.4.0[/url], extract the archive, copy the jar files over the existing ones, then restart the client.[/b]
