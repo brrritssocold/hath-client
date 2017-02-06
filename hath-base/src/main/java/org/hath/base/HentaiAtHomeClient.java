@@ -36,7 +36,7 @@ This release incorporates all the changes from the [url=https://forums.e-hentai.
 
 [b]For information on how to join Hentai@Home, check out [url=https://forums.e-hentai.org/index.php?showtopic=19795]The Hentai@Home Project FAQ[/url].[/b]
 
-[b]Other download options can be found at [url=http://g.e-hentai.org/hentaiathome.php]the usual place[/url].[/b]
+[b]Other download options can be found at [url=https://e-hentai.org/hentaiathome.php]the usual place[/url].[/b]
 
 */
 
@@ -221,7 +221,7 @@ public class HentaiAtHomeClient implements Runnable {
 				for(int i = 0; i < cacheHandler.getPruneAggression(); i++) {				
 					if(!cacheHandler.recheckFreeDiskSpace()) {
 						// disk is full. time to shut down so we don't add to the damage.
-						dieWithError("The free disk space has dropped below the minimum allowed threshold. H@H cannot safely continue.\nFree up space for H@H, or reduce the cache size from the H@H settings page:\nhttp://g.e-hentai.org/hentaiathome.php?cid=" + Settings.getClientID());
+						dieWithError("The free disk space has dropped below the minimum allowed threshold. H@H cannot safely continue.\nFree up space for H@H, or reduce the cache size from the H@H settings page:\nhttps://e-hentai.org/hentaiathome.php?cid=" + Settings.getClientID());
 					}
 				}
 
