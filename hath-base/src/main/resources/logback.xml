@@ -10,8 +10,8 @@
 			<!-- daily rollover -->
 			<fileNamePattern>data/log_out.%d.gz</fileNamePattern>
 
-			<!-- keep 30 days' worth of history -->
-			<maxHistory>30</maxHistory>
+			<!-- keep 7 days' worth of history -->
+			<maxHistory>7</maxHistory>
 
 		</rollingPolicy>
 		<!-- encoders are assigned the type ch.qos.logback.classic.encoder.PatternLayoutEncoder 
@@ -28,8 +28,8 @@
 			<!-- daily rollover -->
 			<fileNamePattern>data/log_err.%d.gz</fileNamePattern>
 
-			<!-- keep 30 days' worth of history -->
-			<maxHistory>30</maxHistory>
+			<!-- keep 7 days' worth of history -->
+			<maxHistory>7</maxHistory>
 
 		</rollingPolicy>
 		<!-- encoders are assigned the type ch.qos.logback.classic.encoder.PatternLayoutEncoder 
