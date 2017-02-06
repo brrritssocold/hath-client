@@ -138,6 +138,7 @@ public class FileDownloader implements Runnable {
 					connection.setConnectTimeout(5000);
 					connection.setReadTimeout(timeout);
 					connection.setRequestProperty("Connection", "Close");
+					connection.setRequestProperty("User-Agent", "Hentai@Home " + Settings.CLIENT_VERSION);
 					connection.connect();
 
 					int contentLength = connection.getContentLength();

@@ -113,13 +113,13 @@ public class CacheHandler {
 		if(!recheckFreeDiskSpace()) {
 			// note: if the client ends up being starved on disk space with static ranges assigned, it will cause a major loss of trust.
 			client.setFastShutdown();
-			client.dieWithError("The storage device does not have enough space available to hold the given cache size.\nFree up space for H@H, or reduce the cache size from the H@H settings page:\nhttp://g.e-hentai.org/hentaiathome.php?cid=" + Settings.getClientID());
+			client.dieWithError("The storage device does not have enough space available to hold the given cache size.\nFree up space for H@H, or reduce the cache size from the H@H settings page:\nhttps://e-hentai.org/hentaiathome.php?cid=" + Settings.getClientID());
 		}
 
 		if(cacheCount < 1 && Settings.getStaticRangeCount() > 20) {
 			// note: if the client is started with an empty cache and many static ranges assigned, it will cause a major loss of trust.
 			client.setFastShutdown();
-			client.dieWithError("This client has static ranges assigned to it, but the cache is empty. Check file permissions and file system integrity.\nIf the cache has been deleted or is otherwise lost, you have to manually reset your static ranges from the H@H settings page.\nhttp://g.e-hentai.org/hentaiathome.php?cid=" + Settings.getClientID());
+			client.dieWithError("This client has static ranges assigned to it, but the cache is empty. Check file permissions and file system integrity.\nIf the cache has been deleted or is otherwise lost, you have to manually reset your static ranges from the H@H settings page.\nhttps://e-hentai.org/hentaiathome.php?cid=" + Settings.getClientID());
 		}
 
 		long cacheLimit = Settings.getDiskLimitBytes();

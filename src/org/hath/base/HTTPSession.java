@@ -27,6 +27,7 @@ import java.util.Date;
 import java.util.TimeZone;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SocketChannel;
 import java.net.InetAddress;
 import java.lang.Thread;
@@ -36,12 +37,13 @@ import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 public class HTTPSession implements Runnable {
 
 	public static final String CRLF = "\r\n";
 
-	private static final Pattern getheadPattern = Pattern.compile("^((GET)|(HEAD)).*", Pattern.CASE_INSENSITIVE);
+	private static final Pattern getheadPattern = Pattern.compile("^((GET)|(HEAD)).*", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
 	private SocketChannel socketChannel;
 	private HTTPServer httpServer;
@@ -72,40 +74,82 @@ public class HTTPSession implements Runnable {
 		httpServer.removeHTTPSession(this);
 	}
 
+	private String readHeader(ReadableByteChannel channel) throws java.io.IOException {
+		int rcvdBytesTotal = 0, totalWaitTime = 0;
+
+		// if the request exceeds 1000 bytes, it's almost certainly not valid
+		// the request header itself can still be larger than 1000 bytes, as the GET/HEAD part will always be the first line of the request header
+		byte[] buffer = new byte[1000];
+		ByteBuffer byteBuffer = ByteBuffer.wrap(buffer);
+
+		do {
+			int rcvdBytes = channel.read(byteBuffer);
+
+			if(rcvdBytes < 0 ) {
+				Out.debug("Premature EOF while reading request header");
+				return null;
+			}
+			else if(rcvdBytes == 0) {
+				if(totalWaitTime > 5000) {
+					Out.debug("Request header read timeout");
+					return null;
+				}
+				else {
+					try {
+						totalWaitTime += 10;
+						Thread.sleep(10);
+					}
+					catch(InterruptedException e) {
+						Out.debug("Request header read interrupted");
+						return null;
+					}
+				}
+			}
+			else {
+				rcvdBytesTotal += rcvdBytes;
+
+				if(!localNetworkAccess) {
+					Stats.bytesRcvd(rcvdBytes);
+				}
+
+				String currentFullHeader = new String(buffer, 0, rcvdBytesTotal);
+				Matcher matcher = getheadPattern.matcher(currentFullHeader);
+				boolean isValid = matcher.matches();
+				
+				if(isValid || matcher.hitEnd()) {
+					if(isValid) {
+						for(int i = 1; i < rcvdBytesTotal; i++) {
+							if(buffer[i] == '\n' && buffer[i - 1] == '\r') {
+								return new String(buffer, 0, i - 1);
+							}
+						}
+					}
+				}
+				else {
+					Out.debug("Malformed request header");
+					//Out.debug(currentFullHeader);
+					return null;
+				}
+
+				Out.debug("Request still not valid");
+				//Out.debug(currentFullHeader);
+			}
+
+			if(!byteBuffer.hasRemaining()) {
+				Out.debug("Oversize request header");
+				return null;
+			}
+		} while (true);
+	}
+
 	public void run() {
-		BufferedReader br = null;
 		HTTPResponseProcessor hpc = null;
 		String info = this.toString() + " ";
 
 		try {
-			br = new BufferedReader(new InputStreamReader(socketChannel.socket().getInputStream()));
-			String request = null;
-			int rcvdBytes = 0;
-
-			// we only care about the request
-			do {
-				String read = br.readLine();
-
-				if(read == null) {
-					break;
-				}
-				else {
-					rcvdBytes += read.length();
-
-					if(read.isEmpty()) {
-						break;
-					}
-					
-					if(getheadPattern.matcher(read).matches()) {
-						request = read.substring(0, Math.min(10000, read.length()));
-					}
-				}
-			} while(true);
-
-			if(!localNetworkAccess) {
-				Stats.bytesRcvd(rcvdBytes);
-			}
-
+			String request = readHeader(socketChannel);
+			socketChannel.shutdownInput();
+			
 			hr = new HTTPResponse(this);
 
 			// parse the request - this will also update the response code and initialize the proper response processor
@@ -238,11 +282,6 @@ public class HTTPSession implements Runnable {
 				hpc.cleanup();
 			}
 
-			try {
-				// closing a BufferedReader also closes the underlying stream
-				br.close();
-			} catch(Exception e) {}
-			
 			try {
 				socketChannel.close(); 
 			} catch(Exception e) {}

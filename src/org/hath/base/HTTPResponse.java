@@ -275,7 +275,7 @@ public class HTTPResponse {
 			if(urlparts[1].equals("favicon.ico")) {
 				// Redirect to the main website icon (which should already be in the browser cache).
 				hpc = new HTTPResponseProcessorText("");
-				hpc.addHeaderField("Location", "http://g.e-hentai.org/favicon.ico");
+				hpc.addHeaderField("Location", "https://e-hentai.org/favicon.ico");
 				responseStatusCode = 301; // Moved Permanently
 				return;
 			}

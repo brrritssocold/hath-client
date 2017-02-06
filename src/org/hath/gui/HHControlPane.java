@@ -70,7 +70,7 @@ public class HHControlPane extends JPanel {
 		}
 
 		public void statChanged(String stat) {
-			repaint(50);
+			//repaint(200);
 		}
 
 		public void updateStats() {
