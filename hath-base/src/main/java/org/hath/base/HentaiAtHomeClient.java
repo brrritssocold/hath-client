@@ -23,11 +23,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 /*
 
-This release incorporates all the changes from the [url=https://forums.e-hentai.org/index.php?showtopic=197978&st=0]1.3 Experimental Branch[/url] and fixes two minor issues in 1.3.3. While 1.2.6 will continue working for the foreseeable future, this is now the recommended client to use.
-
-- Corrected a bug where malformed files in the cache directory would cause a NullPointerException and abnormal exit during cache cleanup.
-
-- Re-added the User-Agent header to prevent leaking the Java version string.
+- Malformed requests such as those made by Firefox 51 are now detected and terminated early, rather than having the connection sit around and wait for the standard timeout.
 
 
 [b]To update an existing client: shut it down, download [url=https://repo.e-hentai.org/hath/HentaiAtHome_1.4.0.zip]Hentai@Home 1.4.0[/url], extract the archive, copy the jar files over the existing ones, then restart the client.[/b]
@@ -36,7 +32,7 @@ This release incorporates all the changes from the [url=https://forums.e-hentai.
 
 [b]For information on how to join Hentai@Home, check out [url=https://forums.e-hentai.org/index.php?showtopic=19795]The Hentai@Home Project FAQ[/url].[/b]
 
-[b]Other download options can be found at [url=http://g.e-hentai.org/hentaiathome.php]the usual place[/url].[/b]
+[b]Other download options can be found at [url=https://e-hentai.org/hentaiathome.php]the usual place[/url].[/b]
 
 */
 
@@ -221,7 +217,7 @@ public class HentaiAtHomeClient implements Runnable {
 				for(int i = 0; i < cacheHandler.getPruneAggression(); i++) {				
 					if(!cacheHandler.recheckFreeDiskSpace()) {
 						// disk is full. time to shut down so we don't add to the damage.
-						dieWithError("The free disk space has dropped below the minimum allowed threshold. H@H cannot safely continue.\nFree up space for H@H, or reduce the cache size from the H@H settings page:\nhttp://g.e-hentai.org/hentaiathome.php?cid=" + Settings.getClientID());
+						dieWithError("The free disk space has dropped below the minimum allowed threshold. H@H cannot safely continue.\nFree up space for H@H, or reduce the cache size from the H@H settings page:\nhttps://e-hentai.org/hentaiathome.php?cid=" + Settings.getClientID());
 					}
 				}
 
