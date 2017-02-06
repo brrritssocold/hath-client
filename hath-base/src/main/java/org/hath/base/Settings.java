@@ -25,8 +25,8 @@ package org.hath.base;
 
 import java.io.File;
 import java.net.InetAddress;
-import java.util.*;
-import java.lang.*;
+import java.nio.file.Path;
+import java.util.Hashtable;
 
 public class Settings {
 	public static final String NEWLINE = System.getProperty("line.separator");
@@ -56,7 +56,8 @@ public class Settings {
 	private static InetAddress rpcServers[] = null;
 	private static String rpcServerCurrent = null, rpcServerLastFailed = null;
 	private static Hashtable<String, Integer> staticRanges = null;
-	private static File datadir = null, logdir = null, cachedir = null, tempdir = null, downloaddir = null;
+	private static Path logdir = null;
+	private static File datadir = null, cachedir = null, tempdir = null, downloaddir = null;
 	private static String clientKey = "", clientHost = "", dataDirPath = "data", logDirPath = "log", cacheDirPath = "cache", tempDirPath = "tmp", downloadDirPath = "download";
 
 	private static int clientID = 0, clientPort = 0, throttle_bytes = 0, overrideConns = 0, serverTimeDelta = 0, maxAllowedFileSize = 104857600, currentStaticRangeCount = 0;
@@ -319,7 +320,7 @@ public class Settings {
 		datadir = Tools.checkAndCreateDir(new File(dataDirPath));
 
 		Out.debug("Using --log-dir=" + logDirPath);
-		logdir = Tools.checkAndCreateDir(new File(logDirPath));
+		logdir = Tools.checkAndCreateDir(new File(logDirPath)).toPath();
 
 		Out.debug("Using --cache-dir=" + cacheDirPath);
 		cachedir = Tools.checkAndCreateDir(new File(cacheDirPath));
@@ -346,11 +347,24 @@ public class Settings {
 	 */
 	@Deprecated
 	public static void setLogDir(File loggingDirectory) {
+		logdir = loggingDirectory.toPath();
+	}
+
+	/**
+	 * Override the logging directory.
+	 * 
+	 * @param loggingDirectory
+	 *            directory to set
+	 * @deprecated For testing only!
+	 * 
+	 */
+	@Deprecated
+	public static void setLogDir(Path loggingDirectory) {
 		logdir = loggingDirectory;
 	}
 
 	public static File getLogDir() {
-		return logdir;
+		return logdir.toFile();
 	}
 
 	public static File getCacheDir() {
