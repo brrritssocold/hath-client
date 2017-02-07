@@ -32,7 +32,9 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class OriginalFloodControl {
+import com.google.common.net.InetAddresses;
+
+public class OriginalFloodControl implements IFloodControl {
 	private static final Logger LOGGER = LoggerFactory.getLogger(OriginalFloodControl.class);
 
 	private Hashtable<String, OriginalFloodControlEntry> floodControlTable;
@@ -41,6 +43,7 @@ public class OriginalFloodControl {
 		floodControlTable = new Hashtable<String, OriginalFloodControlEntry>();
 	}
 
+	@Override
 	public void pruneTable() {
 		List<String> toPrune = Collections.checkedList(new ArrayList<String>(), String.class);
 
@@ -93,5 +96,10 @@ public class OriginalFloodControl {
 		}
 
 		return forceClose;
+	}
+
+	@Override
+	public boolean hasExceededConnectionLimit(String address) {
+		return shouldForceClose(InetAddresses.forString(address));
 	}
 }

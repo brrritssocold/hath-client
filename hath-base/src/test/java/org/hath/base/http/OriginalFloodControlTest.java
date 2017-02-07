@@ -22,81 +22,9 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 */
 package org.hath.base.http;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
-
-import java.net.InetAddress;
-
-import org.junit.Before;
-import org.junit.Test;
-
-import com.google.common.net.InetAddresses;
-
-public class OriginalFloodControlTest {
-	private static final int FLOOD_HIT_LIMIT = 10;
-
-	private static final InetAddress ADDRESS = InetAddresses.forString("42.42.42.42");
-
-	private OriginalFloodControl cut;
-
-	@Before
-	public void setUp() throws Exception {
-		cut = new OriginalFloodControl();
-	}
-
-	private void hitFloodControl(int times) {
-		for (int i = 0; i < times; i++) {
-			cut.shouldForceClose(ADDRESS);
-		}
-	}
-
-	@Test
-	public void testAddressBelowThreshold() throws Exception {
-		assertThat(cut.shouldForceClose(ADDRESS), is(false));
-	}
-
-	@Test
-	public void testBelowTriggerLimit() throws Exception {
-		hitFloodControl(FLOOD_HIT_LIMIT - 1);
-
-		assertThat(cut.shouldForceClose(ADDRESS), is(false));
-	}
-
-	@Test
-	public void testTriggerFloodControl() throws Exception {
-		hitFloodControl(FLOOD_HIT_LIMIT);
-
-		assertThat(cut.shouldForceClose(ADDRESS), is(true));
-	}
-
-	@Test
-	public void testBlockedAfterFloodTrigger() throws Exception {
-		hitFloodControl(FLOOD_HIT_LIMIT);
-
-		assertThat(cut.shouldForceClose(ADDRESS), is(true));
-		assertThat(cut.shouldForceClose(ADDRESS), is(true));
-	}
-
-	/**
-	 * This test checks that a call to {@link OriginalFloodControl#pruneTable()} does not throw an Exception.
-	 */
-	@Test
-	public void testPruneTableDoesNotCrash() throws Exception {
-		cut.pruneTable();
-	}
-
-	/**
-	 * This test will take VERY long to run! Should probably be a integration test, if at all.
-	 */
-	@Test
-	public void testConnectionAllowedAfterPrune() throws Exception {
-		hitFloodControl(FLOOD_HIT_LIMIT);
-
-		assertThat(cut.shouldForceClose(ADDRESS), is(true)); // guard assert
-
-		Thread.sleep(65000);
-		cut.pruneTable();
-
-		assertThat(cut.shouldForceClose(ADDRESS), is(false));
+public class OriginalFloodControlTest extends IFloodControlTest {
+	@Override
+	protected IFloodControl getCutInstance() {
+		return new OriginalFloodControl();
 	}
 }

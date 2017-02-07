@@ -36,7 +36,7 @@ import com.google.common.cache.LoadingCache;
  * over a (roughly) five second floating window, and forcibly block them for 60
  * seconds if they do.
  */
-public class FloodControl {
+public class FloodControl implements IFloodControl {
 	private static final int BLOCK_TIME_MILLI = 60000;
 
 	private LoadingCache<String, FloodControlEntry> floodControlTable;
@@ -95,6 +95,7 @@ public class FloodControl {
 		}
 	}
 
+	@Override
 	public boolean hasExceededConnectionLimit(String address) {
 		boolean forceClose = false;
 		senseFloodMessageTrigger = false;
@@ -121,5 +122,10 @@ public class FloodControl {
 	 */
 	public boolean isSenseFloodMessageTrigger() {
 		return senseFloodMessageTrigger;
+	}
+
+	@Override
+	public void pruneTable() {
+		floodControlTable.cleanUp();
 	}
 }
