@@ -106,7 +106,7 @@ public class HTTPServer implements Runnable {
 	 * @param session
 	 *            to execute
 	 */
-	public void handleSession(HTTPSession session) {
+	private void handleSession(HTTPSession session) {
 		sessionThreadPool.execute(session);
 	}
 
