@@ -59,7 +59,7 @@ public class HTTPServer implements Runnable {
 	private List<HTTPSession> sessions;
 	private int currentConnId = 0;
 	private boolean allowNormalConnections = false;
-	private Hashtable<String,FloodControlEntry> floodControlTable;
+	private Hashtable<String, OriginalFloodControlEntry> floodControlTable;
 	private Pattern localNetworkPattern;
 	private Executor sessionThreadPool;
 
@@ -68,7 +68,7 @@ public class HTTPServer implements Runnable {
 		setupThreadPool();
 
 		sessions = Collections.checkedList(new ArrayList<HTTPSession>(), HTTPSession.class);
-		floodControlTable = new Hashtable<String,FloodControlEntry>();
+		floodControlTable = new Hashtable<String, OriginalFloodControlEntry>();
 		
 		if (!Settings.getInstance().isDisableBWM()) {
 			bandwidthMonitor = new HTTPBandwidthMonitor();
@@ -230,11 +230,11 @@ public class HTTPServer implements Runnable {
 							}
 
 							// this flood control will stop clients from opening more than ten connections over a (roughly) five second floating window, and forcibly block them for 60 seconds if they do.
-							FloodControlEntry fce = null;
+							OriginalFloodControlEntry fce = null;
 							synchronized(floodControlTable) {
 								fce = floodControlTable.get(hostAddress);
 								if(fce == null) {
-									fce = new FloodControlEntry(addr);
+									fce = new OriginalFloodControlEntry(addr);
 									floodControlTable.put(hostAddress, fce);
 								}
 							}
@@ -296,42 +296,5 @@ public class HTTPServer implements Runnable {
 
 	public HentaiAtHomeClient getHentaiAtHomeClient() {
 		return client;
-	}
-
-	private class FloodControlEntry {
-		private InetAddress addr;
-		private int connectCount;
-		private long lastConnect;
-		private long blocktime;
-
-		public FloodControlEntry(InetAddress addr) {
-			this.addr = addr;
-			this.connectCount = 0;
-			this.lastConnect = 0;
-			this.blocktime = 0;
-		}
-
-		public boolean isStale() {
-			return lastConnect < System.currentTimeMillis() - 60000;
-		}
-
-		public boolean isBlocked() {
-			return blocktime > System.currentTimeMillis();
-		}
-
-		public boolean hit() {
-			long nowtime = System.currentTimeMillis();
-			connectCount = Math.max(0, connectCount - (int) Math.floor((nowtime - lastConnect) / 1000)) + 1;
-			lastConnect = nowtime;
-
-			if(connectCount > 10) {
-				// block this client from connecting for 60 seconds
-				blocktime = nowtime + 60000;
-				return false;
-			}
-			else {
-				return true;
-			}
-		}
 	}
 }
