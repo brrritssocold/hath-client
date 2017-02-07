@@ -30,8 +30,6 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Enumeration;
-import java.util.Hashtable;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -59,16 +57,16 @@ public class HTTPServer implements Runnable {
 	private List<HTTPSession> sessions;
 	private int currentConnId = 0;
 	private boolean allowNormalConnections = false;
-	private Hashtable<String, OriginalFloodControlEntry> floodControlTable;
 	private Pattern localNetworkPattern;
 	private Executor sessionThreadPool;
+	private OriginalFloodControl floodControl;
 
 	public HTTPServer(HentaiAtHomeClient client) {
 		this.client = client;
 		setupThreadPool();
+		floodControl = new OriginalFloodControl();
 
 		sessions = Collections.checkedList(new ArrayList<HTTPSession>(), HTTPSession.class);
-		floodControlTable = new Hashtable<String, OriginalFloodControlEntry>();
 		
 		if (!Settings.getInstance().isDisableBWM()) {
 			bandwidthMonitor = new HTTPBandwidthMonitor();
@@ -152,26 +150,7 @@ public class HTTPServer implements Runnable {
 	}
 
 	public void pruneFloodControlTable() {
-		List<String> toPrune = Collections.checkedList(new ArrayList<String>(), String.class);
-
-		synchronized(floodControlTable) {
-			Enumeration<String> keys = floodControlTable.keys();
-
-			while(keys.hasMoreElements()) {
-				String key = keys.nextElement();
-				if(floodControlTable.get(key).isStale()) {
-					toPrune.add(key);
-				}
-			}
-
-			for(String key : toPrune) {
-				floodControlTable.remove(key);
-			}
-		}
-
-		toPrune.clear();
-		toPrune = null;
-		System.gc();
+		floodControl.pruneTable();
 	}
 
 	public void nukeOldConnections(boolean killall) {
@@ -229,25 +208,7 @@ public class HTTPServer implements Runnable {
 								client.getServerHandler().notifyOverload();
 							}
 
-							// this flood control will stop clients from opening more than ten connections over a (roughly) five second floating window, and forcibly block them for 60 seconds if they do.
-							OriginalFloodControlEntry fce = null;
-							synchronized(floodControlTable) {
-								fce = floodControlTable.get(hostAddress);
-								if(fce == null) {
-									fce = new OriginalFloodControlEntry(addr);
-									floodControlTable.put(hostAddress, fce);
-								}
-							}
-
-							if(!fce.isBlocked()) {
-								if(!fce.hit()) {
-									Out.warning("Flood control activated for  " + hostAddress + " (blocking for 60 seconds)");
-									forceClose = true;
-								}
-							}
-							else {
-								forceClose = true;
-							}
+							forceClose = floodControl.shouldForceClose(addr);
 						}
 					}
 
