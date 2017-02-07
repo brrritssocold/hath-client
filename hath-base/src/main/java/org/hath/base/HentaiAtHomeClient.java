@@ -55,6 +55,7 @@ public class HentaiAtHomeClient implements Runnable {
 	private int threadSkipCounter;
 	private long suspendedUntil;
 	private String[] args;
+	private Settings settings;
 
 	public HentaiAtHomeClient(InputQueryHandler iqh, String[] args) {
 		this.iqh = iqh;
@@ -71,14 +72,14 @@ public class HentaiAtHomeClient implements Runnable {
 	// note that this function also does most of the program initialization, so that the GUI thread doesn't get locked up doing this when the program is launched through the GUI extension.
 	public void run() {
 		out = new Out();
-
+		settings = new Settings();
 		System.setProperty("http.keepAlive", "false");
 
-		Settings.setActiveClient(this);
-		Settings.parseArgs(args);
+		settings.setActiveClient(this);
+		settings.parseArgs(args);
 
 		try {
-			Settings.initializeDirectories();
+			settings.initializeDirectories();
 		}
 		catch(java.io.IOException ioe) {
 			Out.error("Could not create program directories. Check file access permissions and free disk space.");
@@ -86,7 +87,7 @@ public class HentaiAtHomeClient implements Runnable {
 		}
 
 		Out.startLoggers();
-		Out.info("Hentai@Home " + Settings.CLIENT_VERSION + " (Build " + Settings.CLIENT_BUILD + ") starting up\n");
+		Out.info("Hentai@Home " + settings.CLIENT_VERSION + " (Build " + settings.CLIENT_BUILD + ") starting up\n");
 		Out.info("Copyright (c) 2008-2016, E-Hentai.org - all rights reserved.");
 		Out.info("This software comes with ABSOLUTELY NO WARRANTY. This is free software, and you are welcome to modify and redistribute it under the GPL v3 license.\n");
 		
@@ -96,10 +97,10 @@ public class HentaiAtHomeClient implements Runnable {
 		// processes commands from the server and interfacing code (like a GUI layer)
 		clientAPI = new ClientAPI(this);
 
-		Settings.loadClientLoginFromFile();
+		settings.loadClientLoginFromFile();
 
-		if(!Settings.loginCredentialsAreSyntaxValid()) {
-			Settings.promptForIDAndKey(iqh);
+		if (!settings.loginCredentialsAreSyntaxValid()) {
+			settings.promptForIDAndKey(iqh);
 		}
 
 		// handles notifications other communication with the hentai@home server
@@ -127,7 +128,7 @@ public class HentaiAtHomeClient implements Runnable {
 		// handles HTTP connections used to request images and receive commands from the server
 		httpServer = new HTTPServer(this);
 
-		if(!httpServer.startConnectionListener(Settings.getClientPort())) {
+		if (!httpServer.startConnectionListener(settings.getClientPort())) {
 			setFastShutdown();
 			dieWithError("Failed to initialize HTTPServer");
 			return;
@@ -149,12 +150,12 @@ public class HentaiAtHomeClient implements Runnable {
 		shutdownHook = new ShutdownHook();
 		java.lang.Runtime.getRuntime().addShutdownHook(shutdownHook);
 
-		if(Settings.isWarnNewClient()) {
+		if (settings.isWarnNewClient()) {
 			String newClientWarning = "A new client version is available. Please download it from http://hentaiathome.net/ at your convenience.";
 			Out.warning(newClientWarning);
 
-			if(Settings.getActiveGUI() != null) {
-				Settings.getActiveGUI().notifyWarning("New Version Available", newClientWarning);
+			if (settings.getActiveGUI() != null) {
+				settings.getActiveGUI().notifyWarning("New Version Available", newClientWarning);
 			}
 		}
 
@@ -205,7 +206,7 @@ public class HentaiAtHomeClient implements Runnable {
 				}
 				
 				if(threadSkipCounter % 1440 == 1439) {
-					Settings.clearRPCServerFailure();
+					settings.clearRPCServerFailure();
 				}
 
 				if(threadSkipCounter % 2160 == 2159) {
@@ -217,7 +218,9 @@ public class HentaiAtHomeClient implements Runnable {
 				for(int i = 0; i < cacheHandler.getPruneAggression(); i++) {				
 					if(!cacheHandler.recheckFreeDiskSpace()) {
 						// disk is full. time to shut down so we don't add to the damage.
-						dieWithError("The free disk space has dropped below the minimum allowed threshold. H@H cannot safely continue.\nFree up space for H@H, or reduce the cache size from the H@H settings page:\nhttps://e-hentai.org/hentaiathome.php?cid=" + Settings.getClientID());
+						dieWithError(
+								"The free disk space has dropped below the minimum allowed threshold. H@H cannot safely continue.\nFree up space for H@H, or reduce the cache size from the H@H settings page:\nhttps://e-hentai.org/hentaiathome.php?cid="
+										+ settings.getClientID());
 					}
 				}
 
@@ -298,6 +301,7 @@ public class HentaiAtHomeClient implements Runnable {
 	public static void dieWithError(String error) {
 		Out.error("Critical Error: " + error);
 		Stats.setProgramStatus("Died");
+		// FIXME use singleton getInstance
 		Settings.getActiveClient().shutdown(false, error);
 	}
 
@@ -373,8 +377,8 @@ public class HentaiAtHomeClient implements Runnable {
 			}
 
 			if(shutdownErrorMessage != null) {
-				if(Settings.getActiveGUI() != null) {
-					Settings.getActiveGUI().notifyError(shutdownErrorMessage);
+				if (settings.getActiveGUI() != null) {
+					settings.getActiveGUI().notifyError(shutdownErrorMessage);
 				}
 			}
 
