@@ -29,9 +29,12 @@ import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.List;
 
-import org.hath.base.Out;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class OriginalFloodControl {
+	private static final Logger LOGGER = LoggerFactory.getLogger(OriginalFloodControl.class);
+
 	private Hashtable<String, OriginalFloodControlEntry> floodControlTable;
 
 	public OriginalFloodControl() {
@@ -62,6 +65,7 @@ public class OriginalFloodControl {
 	}
 
 	public boolean shouldForceClose(InetAddress addr) {
+		LOGGER.trace("Checking flood limit for {}", addr);
 		// this flood control will stop clients from opening more than ten connections over a (roughly) five second
 		// floating window, and forcibly block them for 60 seconds if they do.
 		String hostAddress = addr.getHostAddress().toLowerCase();
@@ -71,17 +75,20 @@ public class OriginalFloodControl {
 		synchronized (floodControlTable) {
 			fce = floodControlTable.get(hostAddress);
 			if (fce == null) {
+				LOGGER.trace("No flood entry found for {}, creating...", addr);
 				fce = new OriginalFloodControlEntry(addr);
 				floodControlTable.put(hostAddress, fce);
 			}
 		}
 
 		if (!fce.isBlocked()) {
+			LOGGER.trace("{} is NOT blocked, checking hit limit...", addr);
 			if (!fce.hit()) {
-				Out.warning("Flood control activated for  " + hostAddress + " (blocking for 60 seconds)");
+				LOGGER.warn("Flood control activated for {} (blocking for 60 seconds)", hostAddress);
 				forceClose = true;
 			}
 		} else {
+			LOGGER.trace("{} is blocked, closing connection.", addr);
 			forceClose = true;
 		}
 
