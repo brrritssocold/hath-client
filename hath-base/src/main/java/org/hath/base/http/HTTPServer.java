@@ -93,7 +93,7 @@ public class HTTPServer implements Runnable {
 			ServerSocket ss = listener.socket();
 			ss.bind(new InetSocketAddress(port));
 
-			myThread = new Thread(this);
+			myThread = new Thread(this, "HTTP Server");
 			myThread.start();
 
 			Out.info("Internal HTTP Server was successfully started, and is listening on port " + port);
