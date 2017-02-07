@@ -36,14 +36,22 @@ import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.regex.Pattern;
 
 import org.hath.base.HentaiAtHomeClient;
 import org.hath.base.Out;
 import org.hath.base.Settings;
 import org.hath.base.Stats;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class HTTPServer implements Runnable {
+	private static final Logger LOGGER = LoggerFactory.getLogger(HTTPServer.class);
+
+	private static final int THREAD_LOAD_FACTOR = 5;
+	private static final int CORE_POOL_SIZE = 1;
+
 	private HentaiAtHomeClient client;
 	private HTTPBandwidthMonitor bandwidthMonitor = null;
 	private ServerSocketChannel listener = null;
@@ -57,12 +65,7 @@ public class HTTPServer implements Runnable {
 
 	public HTTPServer(HentaiAtHomeClient client) {
 		this.client = client;
-		sessionThreadPool = Executors.newCachedThreadPool(new ThreadFactory() {
-			@Override
-			public Thread newThread(Runnable r) {
-				return new Thread(r, "Pooled HTTP Session");
-			}
-		});
+		setupThreadPool();
 
 		sessions = Collections.checkedList(new ArrayList<HTTPSession>(), HTTPSession.class);
 		floodControlTable = new Hashtable<String,FloodControlEntry>();
@@ -73,6 +76,26 @@ public class HTTPServer implements Runnable {
 		
 		//  private network: localhost, 127.x.y.z, 10.0.0.0 - 10.255.255.255, 172.16.0.0 - 172.31.255.255,  192.168.0.0 - 192.168.255.255, 169.254.0.0 -169.254.255.255
 		localNetworkPattern = Pattern.compile("^((localhost)|(127\\.)|(10\\.)|(192\\.168\\.)|(172\\.((1[6-9])|(2[0-9])|(3[0-1]))\\.)|(169\\.254\\.)|(::1)|(0:0:0:0:0:0:0:1)|(fc)|(fd)).*$");
+	}
+
+	private void setupThreadPool() {
+		sessionThreadPool = Executors.newCachedThreadPool(new ThreadFactory() {
+			@Override
+			public Thread newThread(Runnable r) {
+				return new Thread(r, "Pooled HTTP Session");
+			}
+		});
+
+		ThreadPoolExecutor pool = (ThreadPoolExecutor) sessionThreadPool;
+		int maximumPoolSize = sessionPoolSize();
+		pool.setMaximumPoolSize(maximumPoolSize);
+		pool.setCorePoolSize(CORE_POOL_SIZE);
+
+		LOGGER.debug("Session pool size is {} to {} thread(s)", CORE_POOL_SIZE, maximumPoolSize);
+	}
+
+	private int sessionPoolSize() {
+		return Runtime.getRuntime().availableProcessors() * THREAD_LOAD_FACTOR;
 	}
 
 	/**
