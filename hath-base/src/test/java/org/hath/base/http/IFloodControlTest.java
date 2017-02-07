@@ -30,8 +30,8 @@ import org.junit.Test;
 
 public abstract class IFloodControlTest {
 	private static final int FLOOD_HIT_LIMIT = 10;
-	public static final long TABLE_PRUNE_WAIT_MILLI = 60000;
-	private static final long TABLE_PRUNE_WAIT_MARGIN_MILLI = 5000;
+	public static final long TABLE_PRUNE_WAIT_MILLI = 1000;
+	private static final long TABLE_PRUNE_WAIT_MARGIN_MILLI = 1000;
 
 	private static final String ADDRESS = "42.42.42.42";
 
