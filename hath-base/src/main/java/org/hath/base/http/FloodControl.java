@@ -37,6 +37,8 @@ import com.google.common.cache.LoadingCache;
  * seconds if they do.
  */
 public class FloodControl implements IFloodControl {
+	private static final int ONE_SECOND_IN_MILLI = 1000;
+	private static final int MAX_CONNECT_COUNT = 10;
 	private static final int BLOCK_TIME_MILLI = 60000;
 
 	private LoadingCache<String, FloodControlEntry> floodControlTable;
@@ -82,12 +84,12 @@ public class FloodControl implements IFloodControl {
 	private boolean hit(FloodControlEntry entry) {
 		long nowtime = System.currentTimeMillis();
 		int connectCount = Math.max(0,
-				entry.getConnectCount() - (int) Math.floor((nowtime - entry.getLastConnect()) / 1000)) + 1;
+				entry.getConnectCount() - (int) Math.floor((nowtime - entry.getLastConnect()) / ONE_SECOND_IN_MILLI)) + 1;
 
 		entry.setConnectCount(connectCount);
 		entry.setLastConnect(nowtime);
 
-		if (connectCount > 10) {
+		if (connectCount > MAX_CONNECT_COUNT) {
 			entry.setBlocktime(nowtime + BLOCK_TIME_MILLI);
 			return false;
 		} else {
