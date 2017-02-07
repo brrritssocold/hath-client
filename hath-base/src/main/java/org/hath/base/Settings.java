@@ -50,33 +50,50 @@ public class Settings {
 	public static final String CONTENT_TYPE_GIF = "image/gif";
 	public static final String CONTENT_TYPE_WEBM = "video/webm";
 
-	private static HentaiAtHomeClient activeClient = null;
-	private static HathGUI activeGUI = null;
-	private static Object rpcServerLock = new Object();
-	private static InetAddress rpcServers[] = null;
-	private static String rpcServerCurrent = null, rpcServerLastFailed = null;
-	private static Hashtable<String, Integer> staticRanges = null;
-	private static Path logdir = null;
-	private static File datadir = null, cachedir = null, tempdir = null, downloaddir = null;
-	private static String clientKey = "", clientHost = "", dataDirPath = "data", logDirPath = "log", cacheDirPath = "cache", tempDirPath = "tmp", downloadDirPath = "download";
+	private HentaiAtHomeClient activeClient = null;
+	private HathGUI activeGUI = null;
+	private Object rpcServerLock = new Object();
+	private InetAddress rpcServers[] = null;
+	private String rpcServerCurrent = null, rpcServerLastFailed = null;
+	private Hashtable<String, Integer> staticRanges = null;
+	private Path logdir = null;
+	private File datadir = null, cachedir = null, tempdir = null, downloaddir = null;
+	private String clientKey = "", clientHost = "", dataDirPath = "data", logDirPath = "log", cacheDirPath = "cache",
+			tempDirPath = "tmp", downloadDirPath = "download";
 
-	private static int clientID = 0, clientPort = 0, throttle_bytes = 0, overrideConns = 0, serverTimeDelta = 0, maxAllowedFileSize = 104857600, currentStaticRangeCount = 0;
-	private static long disklimit_bytes = 0, diskremaining_bytes = 0;
-	private static boolean verifyCache = false, rescanCache = false, skipFreeSpaceCheck = false, warnNewClient = false, useLessMemory = false, disableBWM = false, disableDownloadBWM = false, disableLogs = false, flushLogs = false;
+	private int clientID = 0, clientPort = 0, throttle_bytes = 0, overrideConns = 0, serverTimeDelta = 0,
+			maxAllowedFileSize = 104857600, currentStaticRangeCount = 0;
+	private long disklimit_bytes = 0, diskremaining_bytes = 0;
+	private boolean verifyCache = false, rescanCache = false, skipFreeSpaceCheck = false, warnNewClient = false,
+			useLessMemory = false, disableBWM = false, disableDownloadBWM = false, disableLogs = false,
+			flushLogs = false;
 
-	public static void setActiveClient(HentaiAtHomeClient client) {
+	private static Settings instance;
+
+	private Settings() {
+	}
+
+	public static Settings getInstance() {
+		if(instance == null) {
+			instance = new Settings();
+		}
+		
+		return instance;
+	}
+
+	public void setActiveClient(HentaiAtHomeClient client) {
 		activeClient = client;
 	}
 
-	public static void setActiveGUI(HathGUI gui) {
+	public void setActiveGUI(HathGUI gui) {
 		activeGUI = gui;
 	}
 
-	public static boolean loginCredentialsAreSyntaxValid() {
+	public boolean loginCredentialsAreSyntaxValid() {
 		return clientID > 0 && java.util.regex.Pattern.matches("^[a-zA-Z0-9]{" + CLIENT_KEY_LENGTH + "}$", clientKey);
 	}
 
-	public static boolean loadClientLoginFromFile() {
+	public boolean loadClientLoginFromFile() {
 		File clientLogin = new File(getDataDir(), CLIENT_LOGIN_FILENAME);
 
 		if(!clientLogin.exists()) {
@@ -105,7 +122,7 @@ public class Settings {
 		return false;
 	}
 
-	public static void promptForIDAndKey(InputQueryHandler iqh) {
+	public void promptForIDAndKey(InputQueryHandler iqh) {
 		Out.info("Before you can use this client, you will have to register it at http://hentaiathome.net/");
 		Out.info("IMPORTANT: YOU NEED A SEPARATE IDENT FOR EACH CLIENT YOU WANT TO RUN.");
 		Out.info("DO NOT ENTER AN IDENT THAT WAS ASSIGNED FOR A DIFFERENT CLIENT UNLESS IT HAS BEEN RETIRED.");
@@ -140,7 +157,7 @@ public class Settings {
 		}
 	}
 
-	public static boolean parseAndUpdateSettings(String[] settings) {
+	public boolean parseAndUpdateSettings(String[] settings) {
 		if(settings == null) {
 			return false;
 		}
@@ -159,7 +176,7 @@ public class Settings {
 	}
 
 	// note that these settings will currently be overwritten by any equal ones read from the server, so it should not be used to override server-side settings.
-	public static boolean parseArgs(String[] args) {
+	public boolean parseArgs(String[] args) {
 		if(args == null) {
 			return false;
 		}
@@ -185,7 +202,7 @@ public class Settings {
 		return true;
 	}
 
-	public static boolean updateSetting(String setting, String value) {
+	public boolean updateSetting(String setting, String value) {
 		setting = setting.replace("-", "_");
 
 		try {
@@ -315,7 +332,7 @@ public class Settings {
 		return false;
 	}
 
-	public static void initializeDirectories() throws java.io.IOException {
+	public void initializeDirectories() throws java.io.IOException {
 		Out.debug("Using --data-dir=" + dataDirPath);
 		datadir = Tools.checkAndCreateDir(new File(dataDirPath));
 
@@ -333,7 +350,7 @@ public class Settings {
 	}
 
 	// accessor methods
-	public static File getDataDir() {
+	public File getDataDir() {
 		return datadir;
 	}
 
@@ -346,7 +363,7 @@ public class Settings {
 	 * 
 	 */
 	@Deprecated
-	public static void setLogDir(File loggingDirectory) {
+	public void setLogDir(File loggingDirectory) {
 		logdir = loggingDirectory.toPath();
 	}
 
@@ -359,115 +376,115 @@ public class Settings {
 	 * 
 	 */
 	@Deprecated
-	public static void setLogDir(Path loggingDirectory) {
+	public void setLogDir(Path loggingDirectory) {
 		logdir = loggingDirectory;
 	}
 
-	public static File getLogDir() {
+	public File getLogDir() {
 		return logdir.toFile();
 	}
 
-	public static File getCacheDir() {
+	public File getCacheDir() {
 		return cachedir;
 	}
 
-	public static File getTempDir() {
+	public File getTempDir() {
 		return tempdir;
 	}
 
-	public static File getDownloadDir() {
+	public File getDownloadDir() {
 		return downloaddir;
 	}
 
-	public static int getClientID() {
+	public int getClientID() {
 		return clientID;
 	}
 
-	public static String getClientKey() {
+	public String getClientKey() {
 		return clientKey;
 	}
 
-	public static String getClientHost() {
+	public String getClientHost() {
 		return clientHost;
 	}
 
-	public static int getClientPort() {
+	public int getClientPort() {
 		return clientPort;
 	}
 
-	public static int getThrottleBytesPerSec() {
+	public int getThrottleBytesPerSec() {
 		return throttle_bytes;
 	}
 
-	public static int getMaxAllowedFileSize() {
+	public int getMaxAllowedFileSize() {
 		return maxAllowedFileSize;
 	}
 
-	public static long getDiskLimitBytes() {
+	public long getDiskLimitBytes() {
 		return disklimit_bytes;
 	}
 
-	public static long getDiskMinRemainingBytes() {
+	public long getDiskMinRemainingBytes() {
 		return diskremaining_bytes;
 	}
 
-	public static int getServerTime() {
+	public int getServerTime() {
 		return (int) (System.currentTimeMillis() / 1000) + serverTimeDelta;
 	}
 
-	public static String getOutputLogPath() {
+	public String getOutputLogPath() {
 		return getLogDir().getPath() + "/log_out";
 	}
 
-	public static String getErrorLogPath() {
+	public String getErrorLogPath() {
 		return getLogDir().getPath() + "/log_err";
 	}
 	
-	public static boolean isFlushLogs() {
+	public boolean isFlushLogs() {
 		return flushLogs;
 	}
 
-	public static boolean isRescanCache() {
+	public boolean isRescanCache() {
 		return rescanCache;
 	}
 
-	public static boolean isVerifyCache() {
+	public boolean isVerifyCache() {
 		return verifyCache;
 	}
 
-	public static boolean isUseLessMemory() {
+	public boolean isUseLessMemory() {
 		return useLessMemory;
 	}
 
-	public static boolean isSkipFreeSpaceCheck() {
+	public boolean isSkipFreeSpaceCheck() {
 		return skipFreeSpaceCheck;
 	}
 
-	public static boolean isWarnNewClient() {
+	public boolean isWarnNewClient() {
 		return warnNewClient;
 	}
 
-	public static boolean isDisableBWM() {
+	public boolean isDisableBWM() {
 		return disableBWM;
 	}
 
-	public static boolean isDisableDownloadBWM() {
+	public boolean isDisableDownloadBWM() {
 		return disableDownloadBWM;
 	}
 
-	public static boolean isDisableLogs() {
+	public boolean isDisableLogs() {
 		return disableLogs;
 	}
 
-	public static HentaiAtHomeClient getActiveClient() {
+	public HentaiAtHomeClient getActiveClient() {
 		return activeClient;
 	}
 
-	public static HathGUI getActiveGUI() {
+	public HathGUI getActiveGUI() {
 		return activeGUI;
 	}
 
-	public static boolean isValidRPCServer(InetAddress compareTo) {
+	public boolean isValidRPCServer(InetAddress compareTo) {
 		synchronized(rpcServerLock) {
 			if(rpcServers == null) {
 				return false;
@@ -483,7 +500,7 @@ public class Settings {
 		}
 	}
 
-	public static String getRPCServerHost() {
+	public String getRPCServerHost() {
 		synchronized(rpcServerLock) {
 			if(rpcServerCurrent == null) {
 				if(rpcServers == null) {
@@ -523,7 +540,7 @@ public class Settings {
 		}
 	}
 
-	public static void clearRPCServerFailure() {
+	public void clearRPCServerFailure() {
 		synchronized(rpcServerLock) {
 			if(rpcServerLastFailed != null) {
 				// to avoid long-term uneven loads on the RPC servers in case one of them goes down for a bit, we run this occasionally to clear the failure
@@ -534,7 +551,7 @@ public class Settings {
 		}
 	}
 	
-	public static void markRPCServerFailure(String failHost) {
+	public void markRPCServerFailure(String failHost) {
 		synchronized(rpcServerLock) {
 			if(rpcServerCurrent != null) {
 				Out.debug("Marking " + failHost + " as rpcServerLastFailed");
@@ -544,7 +561,7 @@ public class Settings {
 		}
 	}
 
-	public static int getMaxConnections() {
+	public int getMaxConnections() {
 		if(overrideConns > 0) {
 			return overrideConns;
 		} else {
@@ -553,7 +570,7 @@ public class Settings {
 		}
 	}
 
-	public static boolean isStaticRange(String fileid) {
+	public boolean isStaticRange(String fileid) {
 		if(staticRanges != null) {
 			// hashtable is thread-safe
 			return staticRanges.containsKey(fileid.substring(0, 4));
@@ -562,7 +579,7 @@ public class Settings {
 		return false;
 	}
 
-	public static int getStaticRangeCount() {
+	public int getStaticRangeCount() {
 		return currentStaticRangeCount;
 	}
 }
