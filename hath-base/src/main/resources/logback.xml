@@ -23,7 +23,7 @@
 
 	<appender name="ERR_FILE"
 		class="ch.qos.logback.core.rolling.RollingFileAppender">
-		<file>data/err_out</file>
+		<file>data/log_err</file>
 		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
 			<!-- daily rollover -->
 			<fileNamePattern>data/log_err.%d.gz</fileNamePattern>
