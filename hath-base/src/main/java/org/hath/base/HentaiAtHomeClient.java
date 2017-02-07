@@ -38,9 +38,15 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
+import java.util.concurrent.TimeUnit;
+
+import org.hath.base.http.FloodControl;
 import org.hath.base.http.HTTPServer;
 
 public class HentaiAtHomeClient implements Runnable {
+	private static final long CONNECTION_BLOCK_DURATION = 60;
+	private static final TimeUnit CONNECTION_BLOCK_UNIT = TimeUnit.SECONDS;
+
 	private InputQueryHandler iqh;
 	private Out out;
 	private ShutdownHook shutdownHook;
@@ -126,7 +132,7 @@ public class HentaiAtHomeClient implements Runnable {
 		Stats.setProgramStatus("Starting HTTP server...");
 
 		// handles HTTP connections used to request images and receive commands from the server
-		httpServer = new HTTPServer(this);
+		httpServer = new HTTPServer(this, new FloodControl(CONNECTION_BLOCK_DURATION, CONNECTION_BLOCK_UNIT));
 
 		if (!httpServer.startConnectionListener(settings.getClientPort())) {
 			setFastShutdown();

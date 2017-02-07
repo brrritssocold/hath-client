@@ -59,12 +59,12 @@ public class HTTPServer implements Runnable {
 	private boolean allowNormalConnections = false;
 	private Pattern localNetworkPattern;
 	private Executor sessionThreadPool;
-	private OriginalFloodControl floodControl;
+	private IFloodControl floodControl;
 
-	public HTTPServer(HentaiAtHomeClient client) {
+	public HTTPServer(HentaiAtHomeClient client, IFloodControl floodControl) {
 		this.client = client;
 		setupThreadPool();
-		floodControl = new OriginalFloodControl();
+		this.floodControl = floodControl;
 
 		sessions = Collections.checkedList(new ArrayList<HTTPSession>(), HTTPSession.class);
 		
@@ -208,7 +208,7 @@ public class HTTPServer implements Runnable {
 								client.getServerHandler().notifyOverload();
 							}
 
-							forceClose = floodControl.shouldForceClose(addr);
+							forceClose = floodControl.hasExceededConnectionLimit(hostAddress);
 						}
 					}
 
