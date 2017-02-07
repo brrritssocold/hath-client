@@ -181,7 +181,9 @@ public class HTTPSession implements Runnable {
 			if(contentLength > 0) {
 				try {
 					// buffer size might be limited by OS. for linux, check net.core.wmem_max
-					int bufferSize = (int) Math.min(contentLength + headerBytes.length + 32, Math.min(Settings.isUseLessMemory() ? 131072 : 524288, Math.round(0.2 * Settings.getThrottleBytesPerSec())));
+					int bufferSize = (int) Math.min(contentLength + headerBytes.length + 32,
+							Math.min(Settings.getInstance().isUseLessMemory() ? 131072 : 524288,
+									Math.round(0.2 * Settings.getInstance().getThrottleBytesPerSec())));
 					socketChannel.socket().setSendBufferSize(bufferSize);
 					//Out.debug("Socket size for " + connId + " is now " + socketChannel.socket().getSendBufferSize() + " (requested " + bufferSize + ")");
 				}

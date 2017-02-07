@@ -49,7 +49,7 @@ public class GalleryDownloader implements Runnable {
 	public GalleryDownloader(HentaiAtHomeClient client) {
 		this.client = client;
 		validator = new FileValidator();
-		downloadLimiter = Settings.isDisableDownloadBWM() ? null : new HTTPBandwidthMonitor();
+		downloadLimiter = Settings.getInstance().isDisableDownloadBWM() ? null : new HTTPBandwidthMonitor();
 		myThread = new Thread(this, GalleryDownloader.class.getSimpleName());
 		myThread.start();
 	}
@@ -124,7 +124,8 @@ public class GalleryDownloader implements Runnable {
 	}
 
 	private boolean downloadDirectoryHasLowSpace() {
-		return !Settings.isSkipFreeSpaceCheck() && Settings.getDownloadDir().getFreeSpace() < Settings.getDiskMinRemainingBytes() + 1048576000;
+		return !Settings.getInstance().isSkipFreeSpaceCheck() && Settings.getInstance().getDownloadDir()
+				.getFreeSpace() < Settings.getInstance().getDiskMinRemainingBytes() + 1048576000;
 	}
 
 	private void finalizeGalleryDownload(boolean success) {
@@ -158,7 +159,8 @@ public class GalleryDownloader implements Runnable {
 		URL metaurl;
 		
 		try {
-			metaurl = new URL(Settings.CLIENT_RPC_PROTOCOL + Settings.getRPCServerHost() + "/hathdl.php?" + ServerHandler.getURLQueryString("fetchqueue", markDownloaded ? gid + ";" + minxres : ""));
+			metaurl = new URL(Settings.CLIENT_RPC_PROTOCOL + Settings.getInstance().getRPCServerHost() + "/hathdl.php?"
+					+ ServerHandler.getURLQueryString("fetchqueue", markDownloaded ? gid + ";" + minxres : ""));
 		}
 		catch(java.net.MalformedURLException e) {
 			e.printStackTrace();
@@ -244,13 +246,15 @@ public class GalleryDownloader implements Runnable {
 						String xresTitle = minxres.equals("org") ? "" : "-" + minxres + "x";
 
 						if(title.length() > 100) {
-							todir = new File(Settings.getDownloadDir(), title.substring(0, 97) + "... [" + gid + xresTitle + "]");
+							todir = new File(Settings.getInstance().getDownloadDir(),
+									title.substring(0, 97) + "... [" + gid + xresTitle + "]");
 						} else {
-							todir = new File(Settings.getDownloadDir(), title + " [" + gid + xresTitle + "]");
+							todir = new File(Settings.getInstance().getDownloadDir(),
+									title + " [" + gid + xresTitle + "]");
 						}
 
 						// just in case, check for directory traversal
-						if( !todir.getParentFile().equals(Settings.getDownloadDir()) ) {
+						if (!todir.getParentFile().equals(Settings.getInstance().getDownloadDir())) {
 							Out.warning("GalleryDownloader: Unexpected download location.");
 							todir = null;
 							break;

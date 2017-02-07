@@ -23,7 +23,6 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
-import java.lang.Thread;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -32,7 +31,6 @@ import java.io.ObjectOutputStream;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.Enumeration;
-import java.util.List;
 import java.util.Hashtable;
 
 public class CacheHandler {
@@ -44,14 +42,16 @@ public class CacheHandler {
 	private int cacheCount = 0, lruClearPointer = 0, lruSkipCheckCycle = 0, pruneAggression = 1;
 	private long cacheSize = 0;
 	private boolean cacheLoaded = false;
+	private Settings settings;
 
-	public CacheHandler(HentaiAtHomeClient client) throws java.io.IOException {
+	public CacheHandler(HentaiAtHomeClient client, Settings settings) throws java.io.IOException {
 		this.client = client;
+		this.settings = settings;
 
-		cachedir = Settings.getCacheDir();
+		cachedir = settings.getCacheDir();
 
 		// delete orphans from the temp dir
-		for(File tmpfile : Settings.getTempDir().listFiles()) {
+		for (File tmpfile : settings.getTempDir().listFiles()) {
 			if(tmpfile.isFile()) {
 				// some silly people might set the data and/or log dir to the same as the temp dir
 				if(!tmpfile.getName().startsWith("log_") && !tmpfile.getName().startsWith("pcache_") && !tmpfile.getName().equals("client_login")) {
@@ -66,7 +66,7 @@ public class CacheHandler {
 
 		boolean fastStartup = false;
 
-		if(!Settings.isRescanCache()) {
+		if (!settings.isRescanCache()) {
 			Out.info("CacheHandler: Attempting to load persistent cache data...");
 
 			if(loadPersistentData()) {
@@ -97,9 +97,9 @@ public class CacheHandler {
 			cacheSize = 0;
 
 			// this is a map with the static ranges in the cache as key and the oldest lastModified file timestamp for every range as value. this is used to find old files to delete if the cache fills up.
-			staticRangeOldest = new Hashtable<String,Long>((int) (Settings.getStaticRangeCount() * 1.5));
+			staticRangeOldest = new Hashtable<String, Long>((int) (settings.getStaticRangeCount() * 1.5));
 
-			if(!Settings.isUseLessMemory()) {
+			if (!settings.isUseLessMemory()) {
 				lruCacheTable = new short[MEMORY_TABLE_ELEMENTS];
 			}
 
@@ -113,16 +113,20 @@ public class CacheHandler {
 		if(!recheckFreeDiskSpace()) {
 			// note: if the client ends up being starved on disk space with static ranges assigned, it will cause a major loss of trust.
 			client.setFastShutdown();
-			client.dieWithError("The storage device does not have enough space available to hold the given cache size.\nFree up space for H@H, or reduce the cache size from the H@H settings page:\nhttps://e-hentai.org/hentaiathome.php?cid=" + Settings.getClientID());
+			client.dieWithError(
+					"The storage device does not have enough space available to hold the given cache size.\nFree up space for H@H, or reduce the cache size from the H@H settings page:\nhttps://e-hentai.org/hentaiathome.php?cid="
+							+ settings.getClientID());
 		}
 
-		if(cacheCount < 1 && Settings.getStaticRangeCount() > 20) {
+		if (cacheCount < 1 && settings.getStaticRangeCount() > 20) {
 			// note: if the client is started with an empty cache and many static ranges assigned, it will cause a major loss of trust.
 			client.setFastShutdown();
-			client.dieWithError("This client has static ranges assigned to it, but the cache is empty. Check file permissions and file system integrity.\nIf the cache has been deleted or is otherwise lost, you have to manually reset your static ranges from the H@H settings page.\nhttps://e-hentai.org/hentaiathome.php?cid=" + Settings.getClientID());
+			client.dieWithError(
+					"This client has static ranges assigned to it, but the cache is empty. Check file permissions and file system integrity.\nIf the cache has been deleted or is otherwise lost, you have to manually reset your static ranges from the H@H settings page.\nhttps://e-hentai.org/hentaiathome.php?cid="
+							+ settings.getClientID());
 		}
 
-		long cacheLimit = Settings.getDiskLimitBytes();
+		long cacheLimit = settings.getDiskLimitBytes();
 
 		if(cacheSize > cacheLimit) {
 			Out.info("CacheHandler: We are over the cache limit, pruning until the limit is met");
@@ -145,15 +149,15 @@ public class CacheHandler {
 	}
 
 	private File getPersistentLRUFile() {
-		return new File(Settings.getDataDir(), "pcache_lru");
+		return new File(settings.getDataDir(), "pcache_lru");
 	}
 
 	private File getPersistentInfoFile() {
-		return new File(Settings.getDataDir(), "pcache_info");
+		return new File(settings.getDataDir(), "pcache_info");
 	}
 
 	private File getPersistentAgesFile() {
-		return new File(Settings.getDataDir(), "pcache_ages");
+		return new File(settings.getDataDir(), "pcache_ages");
 	}
 
 	private boolean loadPersistentData() {
@@ -210,7 +214,7 @@ public class CacheHandler {
 				staticRangeOldest = (Hashtable<String,Long>) readCacheObject(getPersistentAgesFile(), agesHash);
 				Out.info("CacheHandler: Loaded static range ages");
 
-				if(!Settings.isUseLessMemory()) {
+				if (!settings.isUseLessMemory()) {
 					lruCacheTable = (short[]) readCacheObject(getPersistentLRUFile(), lruHash);
 					Out.info("CacheHandler: Loaded LRU cache");
 				}
@@ -296,9 +300,11 @@ public class CacheHandler {
 		int checkedCounter = 0, checkedCounterPct = 0;
 
 		// this sanity check can be tightened up when 1.2.6 is EOL and everyone have upgraded to the two-level cache tree
-		//if(l1dirs.length > Settings.getStaticRangeCount()) {
-		if(l1dirs.length > 5 && Settings.getStaticRangeCount() == 0) {
-			Out.warning("WARNING: There are " + l1dirs.length + " directories in the cache directory, but the server has only assigned us " + Settings.getStaticRangeCount() + " static ranges.");
+		// if(l1dirs.length > settings.getStaticRangeCount()) {
+		if (l1dirs.length > 5 && settings.getStaticRangeCount() == 0) {
+			Out.warning("WARNING: There are " + l1dirs.length
+					+ " directories in the cache directory, but the server has only assigned us "
+					+ settings.getStaticRangeCount() + " static ranges.");
 			Out.warning("If this is NOT expected, please close H@H with Ctrl+C or Program -> Shutdown H@H before this timeout expires.");
 			Out.warning("Waiting 30 seconds before proceeding with cache cleanup...");
 
@@ -340,7 +346,7 @@ public class CacheHandler {
 					Out.debug("CacheHandler: The file " + l2dir + " was not recognized.");
 					l2dir.delete();
 				}
-				else if( !Settings.isStaticRange(hvFile.getFileid()) ) {
+				else if (!settings.isStaticRange(hvFile.getFileid())) {
 					Out.debug("CacheHandler: The file " + l2dir + " was not in an active static range.");
 					l2dir.delete();
 				}
@@ -375,7 +381,7 @@ public class CacheHandler {
 		FileValidator validator = null;
 		int printFreq;
 
-		if(Settings.isVerifyCache()) {
+		if (settings.isVerifyCache()) {
 			Out.info("CacheHandler: Loading cache with full file verification. Depending on the size of your cache, this can take a long time.");
 			validator = new FileValidator();
 			printFreq = 1000;
@@ -421,7 +427,7 @@ public class CacheHandler {
 						Out.debug("CacheHandler: The file " + cfile + " was corrupt.");
 						cfile.delete();
 					}
-					else if( !Settings.isStaticRange(hvFile.getFileid()) ) {
+					else if (!settings.isStaticRange(hvFile.getFileid())) {
 						Out.debug("CacheHandler: The file " + cfile + " was not in an active static range.");
 						cfile.delete();
 					}
@@ -465,7 +471,7 @@ public class CacheHandler {
 		}
 
 		long wantFree = 104857600;
-		long cacheLimit = Settings.getDiskLimitBytes();
+		long cacheLimit = settings.getDiskLimitBytes();
 		long bytesToFree = 0;
 
 		if(cacheSize > cacheLimit) {
@@ -477,7 +483,7 @@ public class CacheHandler {
 
 		Out.debug("CacheHandler: Checked cache space (cacheSize=" + cacheSize + ", cacheLimit=" + cacheLimit + ", cacheFree=" + (cacheLimit - cacheSize) + ")");
 
-		if(bytesToFree > 0 && cacheCount > 0 && Settings.getStaticRangeCount() > 0) {
+		if (bytesToFree > 0 && cacheCount > 0 && settings.getStaticRangeCount() > 0) {
 			String pruneStaticRange = null;
 			long nowtime = System.currentTimeMillis();
 			long oldestRangeAge = nowtime;
@@ -567,14 +573,14 @@ public class CacheHandler {
 		// realistically, this is almost certainly unnecessary since the 1.3.2 pruner was added, but it doesn't hurt to have it just in case
 		pruneAggression = bytesToFree > 10485760 ? (int) (bytesToFree / 10485760) : 1;
 
-		if(Settings.isSkipFreeSpaceCheck()) {
+		if (settings.isSkipFreeSpaceCheck()) {
 			Out.debug("CacheHandler: Disk free space check is disabled.");
 			return true;
 		}
 		else {
 			long diskFreeSpace = cachedir.getFreeSpace();
 
-			if(diskFreeSpace < Math.max(Settings.getDiskMinRemainingBytes(), wantFree)) {
+			if (diskFreeSpace < Math.max(settings.getDiskMinRemainingBytes(), wantFree)) {
 				Out.warning("CacheHandler: Did not meet space constraints: Disk free space limit reached (" + diskFreeSpace + " bytes free on device)");
 				return false;
 			}

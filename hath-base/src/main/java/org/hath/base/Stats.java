@@ -23,10 +23,11 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
+import java.util.ArrayList;
+
 // convenience class for the GUI
 
 import java.util.List;
-import java.util.ArrayList;
 
 public class Stats {
 
@@ -67,7 +68,7 @@ public class Stats {
 	}
 
 	private static void statChanged(String stat) {
-		HentaiAtHomeClient client = Settings.getActiveClient();
+		HentaiAtHomeClient client = Settings.getInstance().getActiveClient();
 		boolean announce = false;
 
 		if(client == null) {
@@ -265,11 +266,12 @@ public class Stats {
 	}
 
 	public static long getCacheFree() {
-		return Settings.getDiskLimitBytes() - cacheSize;
+		return Settings.getInstance().getDiskLimitBytes() - cacheSize;
 	}
 
 	public static float getCacheFill() {
-		return Settings.getDiskLimitBytes() != 0 ? cacheSize / (float) Settings.getDiskLimitBytes() : 0;
+		return Settings.getInstance().getDiskLimitBytes() != 0
+				? cacheSize / (float) Settings.getInstance().getDiskLimitBytes() : 0;
 	}
 
 	public static int getOpenConnections() {

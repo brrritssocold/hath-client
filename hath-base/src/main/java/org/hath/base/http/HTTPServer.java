@@ -70,7 +70,7 @@ public class HTTPServer implements Runnable {
 		sessions = Collections.checkedList(new ArrayList<HTTPSession>(), HTTPSession.class);
 		floodControlTable = new Hashtable<String,FloodControlEntry>();
 		
-		if(!Settings.isDisableBWM()) {
+		if (!Settings.getInstance().isDisableBWM()) {
 			bandwidthMonitor = new HTTPBandwidthMonitor();
 		}
 		
@@ -203,8 +203,9 @@ public class HTTPServer implements Runnable {
 					boolean forceClose = false;
 					InetAddress addr = socketChannel.socket().getInetAddress();
 					String hostAddress = addr.getHostAddress().toLowerCase();
-					boolean localNetworkAccess = Settings.getClientHost().replace("::ffff:", "").equals(hostAddress) || localNetworkPattern.matcher(hostAddress).matches();
-					boolean apiServerAccess = Settings.isValidRPCServer(addr);
+					boolean localNetworkAccess = Settings.getInstance().getClientHost().replace("::ffff:", "")
+							.equals(hostAddress) || localNetworkPattern.matcher(hostAddress).matches();
+					boolean apiServerAccess = Settings.getInstance().isValidRPCServer(addr);
 
 					if(!apiServerAccess && !allowNormalConnections) {
 						Out.warning("Rejecting connection request from " + hostAddress + " during startup.");
@@ -213,7 +214,7 @@ public class HTTPServer implements Runnable {
 					else if(!apiServerAccess && !localNetworkAccess) {
 						// connections from the API Server and the local network are not subject to the max connection limit or the flood control
 
-						int maxConnections = Settings.getMaxConnections();
+						int maxConnections = Settings.getInstance().getMaxConnections();
 						int currentConnections = sessions.size();
 
 						if(currentConnections > maxConnections) {

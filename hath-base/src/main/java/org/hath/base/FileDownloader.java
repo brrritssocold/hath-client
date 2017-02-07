@@ -161,8 +161,10 @@ public class FileDownloader implements Runnable {
 						Out.warning("Reported contentLength " + contentLength + " exceeds max allowed size for memory buffer download");
 						throw new java.net.SocketException("Reply exceeds expected length");
 					}
-					else if(contentLength > Settings.getMaxAllowedFileSize()) {
-						Out.warning("Reported contentLength " + contentLength + " exceeds currently max allowed filesize " + Settings.getMaxAllowedFileSize());
+					else if (contentLength > Settings.getInstance().getMaxAllowedFileSize()) {
+						Out.warning(
+								"Reported contentLength " + contentLength + " exceeds currently max allowed filesize "
+										+ Settings.getInstance().getMaxAllowedFileSize());
 						throw new java.net.SocketException("Reply exceeds expected length");
 					}
 
