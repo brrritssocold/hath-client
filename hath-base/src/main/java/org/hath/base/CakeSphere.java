@@ -23,15 +23,13 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
-import java.lang.Thread;
-
 public class CakeSphere implements Runnable {
 	private Thread myThread;
 	private ServerHandler handler;
 	private HentaiAtHomeClient client;
 	
 	public CakeSphere(ServerHandler handler, HentaiAtHomeClient client) {
-		myThread = new Thread(this);
+		myThread = new Thread(this, CakeSphere.class.getSimpleName());
 		this.handler = handler;
 		this.client = client;
 	}

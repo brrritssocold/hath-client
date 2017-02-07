@@ -22,9 +22,7 @@ along with Hentai@Home GUI.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 package org.hath.gui;
-import org.hath.base.*;
-
-import java.lang.Thread;
+import org.hath.base.HentaiAtHomeClient;
 
 public class GUIThreaded implements Runnable {
 	public static final int ACTION_SHUTDOWN = 1;
@@ -36,7 +34,7 @@ public class GUIThreaded implements Runnable {
 	public GUIThreaded(HentaiAtHomeClient client, int action) {
 		this.client = client;
 		this.action = action;
-		myThread = new Thread(this);
+		myThread = new Thread(this, GUIThreaded.class.getSimpleName());
 		myThread.start();
 	}
 

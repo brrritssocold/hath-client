@@ -91,7 +91,7 @@ public class FileDownloader implements Runnable {
 	public void startAsyncDownload() {
 		// start a new thread to handle the download. this will return immediately
 		if(myThread == null) {
-			myThread = new Thread(this);
+			myThread = new Thread(this, FileDownloader.class.getSimpleName());
 			myThread.start();
 		}
 	}

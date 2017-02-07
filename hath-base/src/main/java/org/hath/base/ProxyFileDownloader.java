@@ -23,17 +23,17 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
-import java.lang.Thread;
+import java.io.File;
+import java.io.InputStream;
+import java.io.RandomAccessFile;
 import java.net.URL;
 import java.net.URLConnection;
-import java.io.File;
-import java.io.RandomAccessFile;
-import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
-import java.nio.ByteBuffer;
 import java.security.MessageDigest;
+
 import javax.xml.bind.DatatypeConverter;
 
 public class ProxyFileDownloader implements Runnable {
@@ -59,7 +59,7 @@ public class ProxyFileDownloader implements Runnable {
 		this.requestedHVFile = HVFile.getHVFileFromFileid(fileid);
 		writeoff = 0;
 		readoff = 0;
-		myThread = new Thread(this);
+		myThread = new Thread(this, ProxyFileDownloader.class.getSimpleName());
 	}
 
 	public int initialize() {
