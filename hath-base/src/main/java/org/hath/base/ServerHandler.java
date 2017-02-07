@@ -24,7 +24,6 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 package org.hath.base;
 
 import java.net.URL;
-import java.lang.StringBuilder;
 import java.util.List;
 
 public class ServerHandler {
@@ -60,10 +59,12 @@ public class ServerHandler {
 
 		try {
 			if(act.equals(ACT_SERVER_STAT)) {
-				serverConnectionURL = new URL(Settings.CLIENT_RPC_PROTOCOL + Settings.getRPCServerHost() + "/" + Settings.CLIENT_RPC_FILE + "clientbuild=" + Settings.CLIENT_BUILD + "&act=" + act);
+				serverConnectionURL = new URL(Settings.CLIENT_RPC_PROTOCOL + Settings.getInstance().getRPCServerHost()
+						+ "/" + Settings.CLIENT_RPC_FILE + "clientbuild=" + Settings.CLIENT_BUILD + "&act=" + act);
 			}
 			else {
-				serverConnectionURL = new URL(Settings.CLIENT_RPC_PROTOCOL + Settings.getRPCServerHost() + "/" + Settings.CLIENT_RPC_FILE + getURLQueryString(act, add));
+				serverConnectionURL = new URL(Settings.CLIENT_RPC_PROTOCOL + Settings.getInstance().getRPCServerHost()
+						+ "/" + Settings.CLIENT_RPC_FILE + getURLQueryString(act, add));
 			}
 		} catch(java.net.MalformedURLException e) {
 			HentaiAtHomeClient.dieWithError(e);
@@ -73,9 +74,12 @@ public class ServerHandler {
 	}
 
 	public static String getURLQueryString(String act, String add) {
-		int correctedTime = Settings.getServerTime();
-		String actkey = Tools.getSHA1String("hentai@home-" + act + "-" + add + "-" + Settings.getClientID() + "-" + correctedTime + "-" + Settings.getClientKey());
-		return "clientbuild=" + Settings.CLIENT_BUILD + "&act=" + act + "&add=" + add + "&cid=" + Settings.getClientID() + "&acttime=" + correctedTime + "&actkey=" + actkey;
+		int correctedTime = Settings.getInstance().getServerTime();
+		String actkey = Tools
+				.getSHA1String("hentai@home-" + act + "-" + add + "-" + Settings.getInstance().getClientID() + "-"
+						+ correctedTime + "-" + Settings.getInstance().getClientKey());
+		return "clientbuild=" + Settings.CLIENT_BUILD + "&act=" + act + "&add=" + add + "&cid="
+				+ Settings.getInstance().getClientID() + "&acttime=" + correctedTime + "&actkey=" + actkey;
 	}
 
 	// communications that do not use additional variables can use this
@@ -83,7 +87,7 @@ public class ServerHandler {
 		ServerResponse sr = ServerResponse.getServerResponse(act, this);
 
 		if(sr.getResponseStatus() == ServerResponse.RESPONSE_STATUS_NULL) {
-			Settings.markRPCServerFailure(sr.getFailHost());
+			Settings.getInstance().markRPCServerFailure(sr.getFailHost());
 		}
 
 		if(sr.getResponseStatus() == ServerResponse.RESPONSE_STATUS_OK) {
@@ -130,7 +134,7 @@ public class ServerHandler {
 		ServerResponse sr = ServerResponse.getServerResponse(ACT_CLIENT_START, this);
 
 		if(sr.getResponseStatus() == ServerResponse.RESPONSE_STATUS_NULL) {
-			Settings.markRPCServerFailure(sr.getFailHost());
+			Settings.getInstance().markRPCServerFailure(sr.getFailHost());
 		}
 
 		if(sr.getResponseStatus() == ServerResponse.RESPONSE_STATUS_OK) {
@@ -145,8 +149,10 @@ public class ServerHandler {
 				Out.info("************************************************************************************************************************************");
 				Out.info("The client has failed the external connection test.");
 				Out.info("The server failed to verify that this client is online and available from the Internet.");
-				Out.info("If you are behind a firewall, please check that port " + Settings.getClientPort() + " is forwarded to this computer.");
-				Out.info("You might also want to check that " + Settings.getClientHost() + " is your actual public IP address.");
+				Out.info("If you are behind a firewall, please check that port "
+						+ Settings.getInstance().getClientPort() + " is forwarded to this computer.");
+				Out.info("You might also want to check that " + Settings.getInstance().getClientHost()
+						+ " is your actual public IP address.");
 				Out.info("If you need assistance with forwarding a port to this client, locate a guide for your particular router at http://portforward.com/");
 				Out.info("The client will remain running so you can run port connection tests.");
 				Out.info("Use Program -> Exit in windowed mode or hit Ctrl+C in console mode to exit the program.");
@@ -187,7 +193,7 @@ public class ServerHandler {
 		ServerResponse sr = ServerResponse.getServerResponse(blacklistURL, this);
 
 		if(sr.getResponseStatus() == ServerResponse.RESPONSE_STATUS_NULL) {
-			Settings.markRPCServerFailure(sr.getFailHost());
+			Settings.getInstance().markRPCServerFailure(sr.getFailHost());
 		}
 
 		if(sr.getResponseStatus() == ServerResponse.RESPONSE_STATUS_OK) {
@@ -205,7 +211,8 @@ public class ServerHandler {
 	// this MUST NOT be called after the client has started up, as it will clear out and reset the client on the server, leaving the client in a limbo until restart
 	public void loadClientSettingsFromServer() {
 		Stats.setProgramStatus("Loading settings from server...");
-		Out.info("Connecting to the Hentai@Home Server to register client with ID " + Settings.getClientID() + "...");
+		Out.info("Connecting to the Hentai@Home Server to register client with ID "
+				+ Settings.getInstance().getClientID() + "...");
 
 		try {
 			do {
@@ -219,7 +226,7 @@ public class ServerHandler {
 				if(sr.getResponseStatus() == ServerResponse.RESPONSE_STATUS_OK) {
 					loginValidated = true;
 					Out.info("Applying settings...");
-					Settings.parseAndUpdateSettings(sr.getResponseText());
+					Settings.getInstance().parseAndUpdateSettings(sr.getResponseText());
 					Out.info("Finished applying settings");
 				}
 				else if(sr.getResponseStatus() == ServerResponse.RESPONSE_STATUS_NULL) {
@@ -227,7 +234,7 @@ public class ServerHandler {
 				}
 				else {
 					Out.warning("\nAuthentication failed, please re-enter your Client ID and Key (Code: " + sr.getFailCode() + ")");
-					Settings.promptForIDAndKey(client.getInputQueryHandler());
+					Settings.getInstance().promptForIDAndKey(client.getInputQueryHandler());
 				}
 			} while(!loginValidated);
 		} catch(Exception e) {
@@ -240,11 +247,11 @@ public class ServerHandler {
 		ServerResponse sr = ServerResponse.getServerResponse(ServerHandler.ACT_CLIENT_SETTINGS, this);
 
 		if(sr.getResponseStatus() == ServerResponse.RESPONSE_STATUS_NULL) {
-			Settings.markRPCServerFailure(sr.getFailHost());
+			Settings.getInstance().markRPCServerFailure(sr.getFailHost());
 		}
 
 		if(sr.getResponseStatus() == ServerResponse.RESPONSE_STATUS_OK) {
-			Settings.parseAndUpdateSettings(sr.getResponseText());
+			Settings.getInstance().parseAndUpdateSettings(sr.getResponseText());
 			Out.info("Finished applying settings");
 			return true;
 		}
@@ -260,11 +267,11 @@ public class ServerHandler {
 		ServerResponse sr = ServerResponse.getServerResponse(ServerHandler.ACT_SERVER_STAT, this);
 
 		if(sr.getResponseStatus() == ServerResponse.RESPONSE_STATUS_NULL) {
-			Settings.markRPCServerFailure(sr.getFailHost());
+			Settings.getInstance().markRPCServerFailure(sr.getFailHost());
 		}
 
 		if(sr.getResponseStatus() == ServerResponse.RESPONSE_STATUS_OK) {
-			Settings.parseAndUpdateSettings(sr.getResponseText());
+			Settings.getInstance().parseAndUpdateSettings(sr.getResponseText());
 			return true;
 		}
 		else {
@@ -277,7 +284,7 @@ public class ServerHandler {
 		ServerResponse sr = ServerResponse.getServerResponse(requestURL, this);
 
 		if(sr.getResponseStatus() == ServerResponse.RESPONSE_STATUS_NULL) {
-			Settings.markRPCServerFailure(sr.getFailHost());
+			Settings.getInstance().markRPCServerFailure(sr.getFailHost());
 		}
 
 		if(sr.getResponseStatus() == ServerResponse.RESPONSE_STATUS_OK) {
@@ -297,7 +304,7 @@ public class ServerHandler {
 		ServerResponse sr = ServerResponse.getServerResponse(requestURL, this);
 
 		if(sr.getResponseStatus() == ServerResponse.RESPONSE_STATUS_NULL) {
-			Settings.markRPCServerFailure(sr.getFailHost());
+			Settings.getInstance().markRPCServerFailure(sr.getFailHost());
 		}
 
 		if(sr.getResponseStatus() == ServerResponse.RESPONSE_STATUS_OK) {
@@ -338,7 +345,7 @@ public class ServerHandler {
 		ServerResponse sr = ServerResponse.getServerResponse(getServerConnectionURL(ACT_DOWNLOADER_FAILREPORT, s.toString()), this);
 
 		if(sr.getResponseStatus() == ServerResponse.RESPONSE_STATUS_NULL) {
-			Settings.markRPCServerFailure(sr.getFailHost());
+			Settings.getInstance().markRPCServerFailure(sr.getFailHost());
 		}
 
 		Out.debug("Reported " + failcount + " download failures with response " + (sr.getResponseStatus() == ServerResponse.RESPONSE_STATUS_OK ? "OK" : "FAIL"));

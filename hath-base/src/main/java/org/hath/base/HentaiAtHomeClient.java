@@ -72,7 +72,7 @@ public class HentaiAtHomeClient implements Runnable {
 	// note that this function also does most of the program initialization, so that the GUI thread doesn't get locked up doing this when the program is launched through the GUI extension.
 	public void run() {
 		out = new Out();
-		settings = new Settings();
+		settings = Settings.getInstance();
 		System.setProperty("http.keepAlive", "false");
 
 		settings.setActiveClient(this);
@@ -301,8 +301,7 @@ public class HentaiAtHomeClient implements Runnable {
 	public static void dieWithError(String error) {
 		Out.error("Critical Error: " + error);
 		Stats.setProgramStatus("Died");
-		// FIXME use singleton getInstance
-		Settings.getActiveClient().shutdown(false, error);
+		Settings.getInstance().getActiveClient().shutdown(false, error);
 	}
 
 	public void setFastShutdown() {

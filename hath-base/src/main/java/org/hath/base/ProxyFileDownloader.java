@@ -23,17 +23,17 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
-import java.lang.Thread;
+import java.io.File;
+import java.io.InputStream;
+import java.io.RandomAccessFile;
 import java.net.URL;
 import java.net.URLConnection;
-import java.io.File;
-import java.io.RandomAccessFile;
-import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
-import java.nio.ByteBuffer;
 import java.security.MessageDigest;
+
 import javax.xml.bind.DatatypeConverter;
 
 public class ProxyFileDownloader implements Runnable {
@@ -72,7 +72,8 @@ public class ProxyFileDownloader implements Runnable {
 			connection = source.openConnection();
 			connection.setConnectTimeout(10000);
 			connection.setReadTimeout(30000);
-			connection.setRequestProperty("Hath-Request", Settings.getClientID() + "-" + Tools.getSHA1String(Settings.getClientKey() + fileid));
+			connection.setRequestProperty("Hath-Request", Settings.getInstance().getClientID() + "-"
+					+ Tools.getSHA1String(Settings.getInstance().getClientKey() + fileid));
 			connection.setRequestProperty("User-Agent", "Hentai@Home " + Settings.CLIENT_VERSION);
 			connection.connect();
 
@@ -84,8 +85,9 @@ public class ProxyFileDownloader implements Runnable {
 				Out.warning("Note: A common reason for this is running firewalls with outgoing restrictions or programs like PeerGuardian/PeerBlock. Verify that the remote host is not blocked.");
 				retval = 502;
 			}
-			else if(tempLength > Settings.getMaxAllowedFileSize()) {
-				Out.warning("Reported contentLength " + contentLength + " exceeds currently max allowed filesize " + Settings.getMaxAllowedFileSize());
+			else if (tempLength > Settings.getInstance().getMaxAllowedFileSize()) {
+				Out.warning("Reported contentLength " + contentLength + " exceeds currently max allowed filesize "
+						+ Settings.getInstance().getMaxAllowedFileSize());
 				retval = 502;
 			}
 			else if(tempLength != requestedHVFile.getSize()) {
@@ -101,7 +103,7 @@ public class ProxyFileDownloader implements Runnable {
 			contentLength = tempLength;
 
 			// create the temporary file used to hold the proxied data
-			tempFile = File.createTempFile("proxyfile_", "", Settings.getTempDir());
+			tempFile = File.createTempFile("proxyfile_", "", Settings.getInstance().getTempDir());
 			fileHandle = new RandomAccessFile(tempFile, "rw");
 			fileChannel = fileHandle.getChannel();
 
@@ -275,7 +277,7 @@ public class ProxyFileDownloader implements Runnable {
 			if( !requestedHVFile.getHash().equals(sha1Hash) ) {
 				Out.debug("Requested file " + fileid + " is corrupt, and will not be stored. (digest=" + sha1Hash + ")");
 			}
-			else if( !Settings.isStaticRange(fileid) ) {
+			else if (!Settings.getInstance().isStaticRange(fileid)) {
 				Out.debug("The file " + fileid + " is not in a static range, and will not be stored.");
 			}
 			else {

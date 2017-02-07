@@ -22,11 +22,33 @@ along with Hentai@Home GUI.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 package org.hath.gui;
-import org.hath.base.*;
+import java.awt.AWTException;
+import java.awt.BorderLayout;
+import java.awt.Image;
+import java.awt.PopupMenu;
+import java.awt.SystemTray;
+import java.awt.Toolkit;
+import java.awt.TrayIcon;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 
-import java.awt.*;
-import java.awt.event.*;
-import javax.swing.*;
+import javax.swing.JFrame;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
+import javax.swing.JSeparator;
+import javax.swing.UIManager;
+
+import org.hath.base.HathGUI;
+import org.hath.base.HentaiAtHomeClient;
+import org.hath.base.Out;
+import org.hath.base.Settings;
+import org.hath.base.Stats;
 
 public class HentaiAtHomeClientGUI extends JFrame implements HathGUI, ActionListener, WindowListener, MouseListener, Runnable {
 	private HentaiAtHomeClient client;
@@ -164,7 +186,7 @@ public class HentaiAtHomeClientGUI extends JFrame implements HathGUI, ActionList
 			Thread.currentThread().sleep(startVisible ? 2000 : 60000);
 		} catch(Exception e) {}
 		
-		Settings.setActiveGUI(this);
+		Settings.getInstance().setActiveGUI(this);
 		Stats.trackBytesSentHistory();
 		client = new HentaiAtHomeClient(new InputQueryHandlerGUI(this), args);
 		setSuspendEnabled(true);

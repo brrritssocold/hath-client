@@ -49,7 +49,7 @@ public class HTTPResponseProcessorFile extends HTTPResponseProcessor {
 
 		try {
 			fileChannel = FileChannel.open(requestedHVFile.getLocalFilePath(), StandardOpenOption.READ);
-			fileBuffer = ByteBuffer.allocateDirect(Settings.isUseLessMemory() ? 8192 : 65536);
+			fileBuffer = ByteBuffer.allocateDirect(Settings.getInstance().isUseLessMemory() ? 8192 : 65536);
 			fileChannel.read(fileBuffer);
 			fileBuffer.flip();
 			responseStatusCode = 200;

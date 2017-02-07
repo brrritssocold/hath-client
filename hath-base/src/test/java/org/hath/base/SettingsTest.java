@@ -37,26 +37,28 @@ public class SettingsTest {
 	private static final String LOG_ERR_FILE_NAME = "log_err";
 
 	private Path logDir;
+	private Settings cut;
 
 	@SuppressWarnings("deprecation")
 	@Before
 	public void setUp() throws Exception {
 		logDir = Files.createTempDirectory("SettingsTest");
-		Settings.setLogDir(logDir.toFile());
+		Settings.getInstance().setLogDir(logDir.toFile());
+		cut = Settings.getInstance();
 	}
 
 	@Test
 	public void testLogDirectoryPath() throws Exception {
-		assertThat(Settings.getLogDir(), is(logDir.toFile()));
+		assertThat(cut.getLogDir(), is(logDir.toFile()));
 	}
 
 	@Test
 	public void testGetOutputLogPath() throws Exception {
-		assertThat(Paths.get(Settings.getOutputLogPath()), is(logDir.resolve(LOG_OUT_FILE_NAME)));
+		assertThat(Paths.get(cut.getOutputLogPath()), is(logDir.resolve(LOG_OUT_FILE_NAME)));
 	}
 
 	@Test
 	public void testGetErrorLogPath() throws Exception {
-		assertThat(Paths.get(Settings.getErrorLogPath()), is(logDir.resolve(LOG_ERR_FILE_NAME)));
+		assertThat(Paths.get(cut.getErrorLogPath()), is(logDir.resolve(LOG_ERR_FILE_NAME)));
 	}
 }

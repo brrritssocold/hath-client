@@ -178,8 +178,12 @@ public class HTTPResponse {
 				if(keystampParts.length == 2) {
 					int keystampTime = Integer.parseInt(keystampParts[0]);
 
-					if(Math.abs(Settings.getServerTime() - keystampTime) < 900) {
-						if( keystampParts[1].equalsIgnoreCase(Tools.getSHA1String(keystampTime + "-" + fileid + "-" + Settings.getClientKey() + "-hotlinkthis").substring(0, 10)) ) {
+					if (Math.abs(Settings.getInstance().getServerTime() - keystampTime) < 900) {
+						if (keystampParts[1]
+								.equalsIgnoreCase(Tools
+										.getSHA1String(keystampTime + "-" + fileid + "-"
+												+ Settings.getInstance().getClientKey() + "-hotlinkthis")
+										.substring(0, 10))) {
 							keystampRejected = false;
 						}
 					}
@@ -201,7 +205,7 @@ public class HTTPResponse {
 				hpc = new HTTPResponseProcessorFile(requestedHVFile);
 				session.getHTTPServer().getHentaiAtHomeClient().getCacheHandler().markRecentlyAccessed(requestedHVFile);
 			}
-			else if(Settings.isStaticRange(fileid)) {
+			else if (Settings.getInstance().isStaticRange(fileid)) {
 				// non-existent file. do an on-demand request of the file directly from the image servers
 				URL source = session.getHTTPServer().getHentaiAtHomeClient().getServerHandler().getStaticRangeFetchURL(fileindex, xres, fileid);
 				
@@ -223,7 +227,7 @@ public class HTTPResponse {
 		else if(urlparts[1].equals("servercmd")) {
 			// form: /servercmd/$command/$additional/$time/$key
 
-			if(!Settings.isValidRPCServer(session.getSocketInetAddress())) {
+			if (!Settings.getInstance().isValidRPCServer(session.getSocketInetAddress())) {
 				Out.debug(session + " Got a servercmd from an unauthorized IP address");
 				responseStatusCode = 403;
 				return;
@@ -240,7 +244,10 @@ public class HTTPResponse {
 			int commandTime = Integer.parseInt(urlparts[4]);
 			String key = urlparts[5];
 
-			if( (Math.abs(commandTime - Settings.getServerTime()) > Settings.MAX_KEY_TIME_DRIFT) || !Tools.getSHA1String("hentai@home-servercmd-" + command + "-" + additional + "-" + Settings.getClientID() + "-" + commandTime + "-" + Settings.getClientKey()).equals(key) ) {
+			if ((Math.abs(commandTime - Settings.getInstance().getServerTime()) > Settings.MAX_KEY_TIME_DRIFT)
+					|| !Tools.getSHA1String("hentai@home-servercmd-" + command + "-" + additional + "-"
+							+ Settings.getInstance().getClientID() + "-" + commandTime + "-"
+							+ Settings.getInstance().getClientKey()).equals(key)) {
 				Out.debug(session + " Got a servercmd with expired or incorrect key");
 				responseStatusCode = 403;
 				return;
@@ -264,13 +271,16 @@ public class HTTPResponse {
 			int testtime = Integer.parseInt(urlparts[3]);
 			String testkey = urlparts[4];
 			
-			if(Math.abs(testtime - Settings.getServerTime()) > Settings.MAX_KEY_TIME_DRIFT) {
+			if (Math.abs(testtime - Settings.getInstance().getServerTime()) > Settings.MAX_KEY_TIME_DRIFT) {
 				Out.debug(session + " Got a speedtest request with expired key");
 				responseStatusCode = 403;
 				return;
 			}
 			
-			if(!Tools.getSHA1String("hentai@home-speedtest-" + testsize + "-" + testtime + "-" + Settings.getClientID() + "-" + Settings.getClientKey()).equals(testkey)) {
+			if (!Tools
+					.getSHA1String("hentai@home-speedtest-" + testsize + "-" + testtime + "-"
+							+ Settings.getInstance().getClientID() + "-" + Settings.getInstance().getClientKey())
+					.equals(testkey)) {
 				Out.debug(session + " Got a speedtest request with invalid key");
 				responseStatusCode = 403;
 				return;

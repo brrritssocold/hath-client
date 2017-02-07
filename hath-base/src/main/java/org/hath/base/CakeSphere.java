@@ -23,8 +23,6 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
-import java.lang.Thread;
-
 public class CakeSphere implements Runnable {
 	private Thread myThread;
 	private ServerHandler handler;
@@ -48,7 +46,7 @@ public class CakeSphere implements Runnable {
 			Stats.serverContact();
 		}
 		else if(sr.getResponseStatus() == ServerResponse.RESPONSE_STATUS_NULL) {
-			Settings.markRPCServerFailure(sr.getFailHost());
+			Settings.getInstance().markRPCServerFailure(sr.getFailHost());
 			Out.warning("Failed to connect to the server for the stillAlive test. This is probably a temporary connection problem.");
 		}
 		else {
