@@ -111,7 +111,7 @@ public class HentaiAtHomeClient implements Runnable {
 
 		// manages the files in the cache
 		try {
-			cacheHandler = new CacheHandler(this);
+			cacheHandler = new CacheHandler(this, settings);
 		}
 		catch(java.io.IOException ioe) {
 			setFastShutdown();
