@@ -137,6 +137,6 @@ public class FloodControlTest extends IFloodControlTest {
 
 	@Override
 	protected IFloodControl getCutInstance() {
-		return new FloodControl(CACHE_EXPIRY_TIME_SECONDS, TimeUnit.SECONDS);
+		return new FloodControl(IFloodControlTest.TABLE_PRUNE_WAIT_MILLI, TimeUnit.MILLISECONDS);
 	}
 }
