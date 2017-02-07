@@ -82,7 +82,9 @@ public class HTTPServer implements Runnable {
 		sessionThreadPool = Executors.newCachedThreadPool(new ThreadFactory() {
 			@Override
 			public Thread newThread(Runnable r) {
-				return new Thread(r, "Pooled HTTP Session");
+				Thread thread = new Thread(r, "Pooled HTTP Session");
+				thread.setDaemon(true);
+				return thread;
 			}
 		});
 
