@@ -119,22 +119,6 @@ public class FloodControlTest extends IFloodControlTest {
 		assertThat(cut.hasExceededConnectionLimit(TEST_ADDRESS), is(false));
 	}
 
-	@Test
-	public void testHasExceededConnectionLimitTooManyHits() throws Exception {
-		hitAddress(TEST_ADDRESS, 19);
-
-		assertThat(cut.hasExceededConnectionLimit(TEST_ADDRESS), is(true));
-		assertThat(cut.isSenseFloodMessageTrigger(), is(false));
-	}
-
-	@Test
-	public void testHasExceededConnectionLimitTriggerFloodControlMessage() throws Exception {
-		hitAddress(TEST_ADDRESS, 10);
-
-		assertThat(cut.hasExceededConnectionLimit(TEST_ADDRESS), is(true));
-		assertThat(cut.isSenseFloodMessageTrigger(), is(true));
-	}
-
 	@Override
 	protected IFloodControl getCutInstance() {
 		return new FloodControl(IFloodControlTest.TABLE_PRUNE_WAIT_MILLI, TimeUnit.MILLISECONDS);
