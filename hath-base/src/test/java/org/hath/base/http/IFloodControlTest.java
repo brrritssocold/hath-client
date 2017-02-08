@@ -22,17 +22,22 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 */
 package org.hath.base.http;
 
+import static org.awaitility.Awaitility.await;
+import static org.awaitility.Awaitility.to;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
+import java.util.concurrent.TimeUnit;
+
+import org.awaitility.Duration;
 import org.junit.Before;
 import org.junit.Test;
 
 public abstract class IFloodControlTest {
 	private static final int FLOOD_HIT_LIMIT = 10;
 	public static final long TABLE_PRUNE_WAIT_MILLI = 1000;
-	private static final long TABLE_PRUNE_WAIT_MARGIN_MILLI = 1000;
 
+	private static final Duration TEST_TIMEOUT = new Duration(5, TimeUnit.SECONDS);
 	private static final String ADDRESS = "42.42.42.42";
 
 	private IFloodControl cut;
@@ -90,19 +95,13 @@ public abstract class IFloodControlTest {
 		cut.pruneTable();
 	}
 
-	/**
-	 * This test will take VERY long to run! Should probably be a integration test, if at all.
-	 */
 	@Test
-	public void testConnectionAllowedAfterPrune() throws Exception {
+	public void testConnectionAllowedAfterBlockExpires() throws Exception {
 		hitFloodControl(FLOOD_HIT_LIMIT);
 
 		assertThat(cut.hasExceededConnectionLimit(ADDRESS), is(true)); // guard assert
 
-		Thread.sleep(TABLE_PRUNE_WAIT_MILLI + TABLE_PRUNE_WAIT_MARGIN_MILLI);
-		cut.pruneTable();
-
-		assertThat(cut.hasExceededConnectionLimit(ADDRESS), is(false));
+		await().atMost(TEST_TIMEOUT).pollDelay(TABLE_PRUNE_WAIT_MILLI, TimeUnit.MILLISECONDS)
+				.untilCall(to(cut).hasExceededConnectionLimit(ADDRESS), is(false));
 	}
-
 }
