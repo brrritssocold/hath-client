@@ -1,7 +1,7 @@
 /*
 
 Copyright 2008-2016 E-Hentai.org
-http://forums.e-hentai.org/
+https://forums.e-hentai.org/
 ehentai@gmail.com
 
 This file is part of Hentai@Home.
@@ -57,15 +57,41 @@ public class FloodControl implements IFloodControl {
 		}
 	}
 
+	/**
+	 * Create a new {@link FloodControl} with the given timeout. The default {@link FloodControlEntryFactory} is used.
+	 * 
+	 * @param expireDuration
+	 *            the timeout duration value
+	 * @param timeUnit
+	 *            the unit of the timeout duration
+	 */
 	public FloodControl(long expireDuration, TimeUnit timeUnit) {
 		this(new FloodControlEntryFactory(), expireDuration, timeUnit);
 	}
 
+	/**
+	 * Create a new {@link FloodControl} with the given timeout. Uses the supplied {@link FloodControlEntryFactory} to
+	 * create new entries.
+	 * 
+	 * @param factory
+	 *            for creating new {@link FloodControlEntry}
+	 * @param expireDuration
+	 *            the timeout duration value
+	 * @param timeUnit
+	 *            the unit of the timeout duration
+	 */
 	public FloodControl(FloodControlEntryFactory factory, long expireDuration, TimeUnit timeUnit) {
 		this.floodControlTable = CacheBuilder.newBuilder().expireAfterAccess(expireDuration, timeUnit)
 				.build(new EntryValueLoader(factory));
 	}
 
+	/**
+	 * Check if the given address is currently blocked.
+	 * 
+	 * @param address
+	 *            to check
+	 * @return true if blocked
+	 */
 	public boolean isBlocked(String address) {
 		FloodControlEntry entry = floodControlTable.getUnchecked(address);
 		return isBlocked(entry);
@@ -75,6 +101,13 @@ public class FloodControl implements IFloodControl {
 		return entry.getBlocktime() > System.currentTimeMillis();
 	}
 
+	/**
+	 * Registers a request for the address
+	 * 
+	 * @param address
+	 *            that initiated the request
+	 * @return true if the request is allowed
+	 */
 	public boolean hit(String address) {
 		FloodControlEntry entry = floodControlTable.getUnchecked(address);
 		return hit(entry);
@@ -96,6 +129,9 @@ public class FloodControl implements IFloodControl {
 		}
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public boolean hasExceededConnectionLimit(String address) {
 		boolean forceClose = false;
@@ -114,6 +150,9 @@ public class FloodControl implements IFloodControl {
 		return forceClose;
 	}
 
+	/**
+	 * This implementation prunes old entries automatically, however a prune can be force with this method.
+	 */
 	@Override
 	public void pruneTable() {
 		floodControlTable.cleanUp();
