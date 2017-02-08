@@ -42,7 +42,6 @@ public class FloodControl implements IFloodControl {
 	private static final int BLOCK_TIME_MILLI = 60000;
 
 	private LoadingCache<String, FloodControlEntry> floodControlTable;
-	private boolean senseFloodMessageTrigger = false;
 
 	private static class EntryValueLoader extends CacheLoader<String, FloodControlEntry> {
 		private FloodControlEntryFactory factory;
@@ -100,7 +99,6 @@ public class FloodControl implements IFloodControl {
 	@Override
 	public boolean hasExceededConnectionLimit(String address) {
 		boolean forceClose = false;
-		senseFloodMessageTrigger = false;
 
 		FloodControlEntry fce = floodControlTable.getUnchecked(address);
 
@@ -108,22 +106,12 @@ public class FloodControl implements IFloodControl {
 			if (!hit(fce)) {
 				Out.warning("Flood control activated for  " + address + " (blocking for 60 seconds)");
 				forceClose = true;
-				senseFloodMessageTrigger = true;
 			}
 		} else {
 			forceClose = true;
 		}
 
 		return forceClose;
-	}
-
-	/**
-	 * Method for testing
-	 * 
-	 * @return true if the flood message has been triggered
-	 */
-	public boolean isSenseFloodMessageTrigger() {
-		return senseFloodMessageTrigger;
 	}
 
 	@Override
