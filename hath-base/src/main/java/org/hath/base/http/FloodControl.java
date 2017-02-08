@@ -25,7 +25,8 @@ package org.hath.base.http;
 
 import java.util.concurrent.TimeUnit;
 
-import org.hath.base.Out;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -37,6 +38,8 @@ import com.google.common.cache.LoadingCache;
  * seconds if they do.
  */
 public class FloodControl implements IFloodControl {
+	private static final Logger LOGGER = LoggerFactory.getLogger(FloodControl.class);
+
 	private static final int ONE_SECOND_IN_MILLI = 1000;
 	private static final int MAX_CONNECT_COUNT = 10;
 	private static final int BLOCK_TIME_MILLI = 60000;
@@ -46,7 +49,7 @@ public class FloodControl implements IFloodControl {
 	private static class EntryValueLoader extends CacheLoader<String, FloodControlEntry> {
 		private FloodControlEntryFactory factory;
 
-		public EntryValueLoader(FloodControlEntryFactory factory) {
+		EntryValueLoader(FloodControlEntryFactory factory) {
 			super();
 			this.factory = factory;
 		}
@@ -140,7 +143,7 @@ public class FloodControl implements IFloodControl {
 
 		if (!isBlocked(fce)) {
 			if (!hit(fce)) {
-				Out.warning("Flood control activated for  " + address + " (blocking for 60 seconds)");
+				LOGGER.warn("Flood control activated for {} (blocking for 60 seconds)", address);
 				forceClose = true;
 			}
 		} else {
