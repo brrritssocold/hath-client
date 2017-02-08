@@ -28,6 +28,21 @@
 		</plugins>
 	</reporting>
 
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>com.googlecode.junit-toolbox</groupId>
+				<artifactId>junit-toolbox</artifactId>
+				<version>2.2</version>
+			</dependency>
+			<dependency>
+				<groupId>org.awaitility</groupId>
+				<artifactId>awaitility</artifactId>
+				<version>2.0.0</version>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
 	<build>
 		<pluginManagement>
 			<plugins>
