@@ -53,9 +53,10 @@
 		<appender-ref ref="LOG_FILE" />
 		<queueSize>512</queueSize>
 		<filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-			<level>DEBUG</level>
+			<level>INFO</level>
 		</filter>
 	</appender>
+	
 	<appender name="ASYNC_ERR_FILE" class="ch.qos.logback.classic.AsyncAppender">
 		<appender-ref ref="ERR_FILE" />
 		<queueSize>512</queueSize>
@@ -66,6 +67,10 @@
 
 	<appender name="ASYNC_STDOUT" class="ch.qos.logback.classic.AsyncAppender">
 		<appender-ref ref="STDOUT" />
+		<queueSize>512</queueSize>
+		<filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+			<level>INFO</level>
+		</filter>
 	</appender>
 
 	<!-- Logging root -->
