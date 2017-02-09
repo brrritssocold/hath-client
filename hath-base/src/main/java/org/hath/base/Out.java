@@ -23,6 +23,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
+import java.util.LinkedList;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -32,7 +33,7 @@ import ch.qos.logback.classic.Level;
 
 public class Out {
 	private static final Logger LOGGER = LoggerFactory.getLogger(Out.class);
-	private static List<OutListener> outListeners;
+	private static List<OutListener> outListeners = new LinkedList<OutListener>();
 
 	public static void startLoggers() {
 		setRootLoggerLevel(Level.DEBUG);
