@@ -1,4 +1,4 @@
-<configuration scan="true">
+<configuration scan="true" scanPeriod="60 seconds">
 	<!-- Ensure the logging framework is shutdown correctly -->
 	<shutdownHook class="ch.qos.logback.core.hook.DelayingShutdownHook" />
 
