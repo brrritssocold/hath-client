@@ -1,7 +1,7 @@
 /*
 
 Copyright 2008-2016 E-Hentai.org
-http://forums.e-hentai.org/
+https://forums.e-hentai.org/
 ehentai@gmail.com
 
 This file is part of Hentai@Home.
@@ -20,19 +20,15 @@ You should have received a copy of the GNU General Public License
 along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
+package org.hath.base;
 
-package org.hath.base.http;
-
-import org.hath.base.http.handlers.AllHandlerTests;
 import org.junit.runner.RunWith;
-import org.junit.runners.Suite;
-import org.junit.runners.Suite.SuiteClasses;
 
-@RunWith(Suite.class)
-@SuiteClasses({ AllHandlerTests.class, FloodControlTest.class, HTTPServerTest.class,
-		SessionTrackerTest.class,
-		HTTPRequestAttributesTest.class, 
-		HTTPServerRoutingTest.class })
-public class AllHttpTests {
+import com.googlecode.junittoolbox.ParallelSuite;
+import com.googlecode.junittoolbox.SuiteClasses;
+
+@RunWith(ParallelSuite.class)
+@SuiteClasses({ "**/*Test.class" })
+public class AllUnitTests {
 
 }

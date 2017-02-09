@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.Before;
 import org.junit.Test;
 
-public class FloodControlTest {
+public class FloodControlTest extends IFloodControlTest {
 	private static final String TEST_ADDRESS = "foo";
 	private static final long CACHE_EXPIRY_TIME_SECONDS = 60;
 
@@ -119,19 +119,8 @@ public class FloodControlTest {
 		assertThat(cut.hasExceededConnectionLimit(TEST_ADDRESS), is(false));
 	}
 
-	@Test
-	public void testHasExceededConnectionLimitTooManyHits() throws Exception {
-		hitAddress(TEST_ADDRESS, 19);
-
-		assertThat(cut.hasExceededConnectionLimit(TEST_ADDRESS), is(true));
-		assertThat(cut.isSenseFloodMessageTrigger(), is(false));
-	}
-
-	@Test
-	public void testHasExceededConnectionLimitTriggerFloodControlMessage() throws Exception {
-		hitAddress(TEST_ADDRESS, 10);
-
-		assertThat(cut.hasExceededConnectionLimit(TEST_ADDRESS), is(true));
-		assertThat(cut.isSenseFloodMessageTrigger(), is(true));
+	@Override
+	protected IFloodControl getCutInstance() {
+		return new FloodControl(IFloodControlTest.TABLE_PRUNE_WAIT_MILLI, TimeUnit.MILLISECONDS);
 	}
 }

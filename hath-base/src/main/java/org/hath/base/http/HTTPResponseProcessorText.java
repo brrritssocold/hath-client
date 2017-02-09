@@ -1,7 +1,7 @@
 /*
 
-Copyright 2008-2012 E-Hentai.org
-http://forums.e-hentai.org/
+Copyright 2008-2016 E-Hentai.org
+https://forums.e-hentai.org/
 ehentai@gmail.com
 
 This file is part of Hentai@Home.
@@ -23,17 +23,18 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.http;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
-import java.util.Arrays;
 
 import org.hath.base.Out;
+import org.hath.base.Settings;
 
 public class HTTPResponseProcessorText extends HTTPResponseProcessor {
 	private byte[] responseBytes;
-	private int off;
+	private int writeoff = 0;
 	private String contentType;
 
-	public HTTPResponseProcessorText(String responseBody) {	
+	public HTTPResponseProcessorText(String responseBody) {
 		this(responseBody, "text/html");
 	}
 
@@ -43,7 +44,7 @@ public class HTTPResponseProcessorText extends HTTPResponseProcessor {
 
 	public HTTPResponseProcessorText(String responseBody, String mimeType, Charset charset) {
 		int strlen = responseBody.length();
-		
+
 		if(strlen > 0) {
 			Out.debug("Response Written:");
 
@@ -51,16 +52,14 @@ public class HTTPResponseProcessorText extends HTTPResponseProcessor {
 				Out.debug(responseBody);
 			}
 			else {
-				Out.debug("tl;dw");		
+				Out.debug("tl;dw");
 			}
 		}
 
-		this.responseBytes = responseBody.getBytes(charset);
-		off = 0;
+		responseBytes = responseBody.getBytes(charset);
 		contentType = mimeType + "; charset=" + charset.name();
 	}
-	
-	@Override
+
 	public int getContentLength() {
 		if(responseBytes != null) {
 			return responseBytes.length;
@@ -70,20 +69,17 @@ public class HTTPResponseProcessorText extends HTTPResponseProcessor {
 		}
 	}
 
-	@Override
 	public String getContentType() {
-		return this.contentType;
+		return contentType;
 	}
-	
-	@Override
-	public byte[] getBytes() {
-		return responseBytes;
+
+	public ByteBuffer getPreparedTCPBuffer(int lingeringBytes) throws Exception {
+		int bytecount = Math.min(getContentLength() - writeoff, Settings.TCP_PACKET_SIZE - lingeringBytes);
+		ByteBuffer buffer = ByteBuffer.wrap(responseBytes, writeoff, bytecount);
+		writeoff += bytecount;
+
+		// this was a wrap, so we do not flip
+		return buffer;
 	}
-	
-	@Override
-	public byte[] getBytesRange(int len) {
-		byte[] range = Arrays.copyOfRange(responseBytes, off, Math.min(responseBytes.length, off + len));
-		off += len;
-		return range;
-	}
+
 }

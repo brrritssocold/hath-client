@@ -1,7 +1,7 @@
 /*
 
 Copyright 2008-2016 E-Hentai.org
-http://forums.e-hentai.org/
+https://forums.e-hentai.org/
 ehentai@gmail.com
 
 This file is part of Hentai@Home.
@@ -20,37 +20,45 @@ You should have received a copy of the GNU General Public License
 along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
-
 package org.hath.base;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.junit.Assert.assertThat;
 
-import org.eclipse.jetty.client.HttpClient;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+import org.junit.Before;
 import org.junit.Test;
 
 public class SettingsTest {
-	@Test
-	public void testGetHttpClientNotNull() throws Exception {
-		HttpClient client = Settings.getHttpClient();
+	private static final String LOG_OUT_FILE_NAME = "log_out";
+	private static final String LOG_ERR_FILE_NAME = "log_err";
 
-		assertThat(client, is(notNullValue()));
+	private Path logDir;
+	private Settings cut;
+
+	@SuppressWarnings("deprecation")
+	@Before
+	public void setUp() throws Exception {
+		logDir = Files.createTempDirectory("SettingsTest");
+		Settings.getInstance().setLogDir(logDir.toFile());
+		cut = Settings.getInstance();
 	}
 
 	@Test
-	public void testGetHttpClientRunning() throws Exception {
-		HttpClient client = Settings.getHttpClient();
-
-		assertThat(client.isRunning(), is(true));
+	public void testLogDirectoryPath() throws Exception {
+		assertThat(cut.getLogDir(), is(logDir.toFile()));
 	}
 
 	@Test
-	public void testGetHttpClientUserStoppedClient() throws Exception {
-		Settings.getHttpClient().stop();
+	public void testGetOutputLogPath() throws Exception {
+		assertThat(Paths.get(cut.getOutputLogPath()), is(logDir.resolve(LOG_OUT_FILE_NAME)));
+	}
 
-		HttpClient client = Settings.getHttpClient();
-
-		assertThat(client.isRunning(), is(true));
+	@Test
+	public void testGetErrorLogPath() throws Exception {
+		assertThat(Paths.get(cut.getErrorLogPath()), is(logDir.resolve(LOG_ERR_FILE_NAME)));
 	}
 }

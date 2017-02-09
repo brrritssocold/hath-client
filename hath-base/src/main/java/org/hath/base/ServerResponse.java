@@ -1,7 +1,7 @@
 /*
 
-Copyright 2008-2012 E-Hentai.org
-http://forums.e-hentai.org/
+Copyright 2008-2016 E-Hentai.org
+https://forums.e-hentai.org/
 ehentai@gmail.com
 
 This file is part of Hentai@Home.
@@ -24,6 +24,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 package org.hath.base;
 
 import java.net.URL;
+import java.util.Arrays;
 
 public class ServerResponse {
 	public static final int RESPONSE_STATUS_NULL = 0;
@@ -32,7 +33,7 @@ public class ServerResponse {
 
 	private int responseStatus;
 	private String[] responseText;
-	private String failCode;
+	private String failCode, failHost;
 
 	private ServerResponse(int responseStatus, String[] responseText) {
 		this.responseStatus = responseStatus;
@@ -40,9 +41,10 @@ public class ServerResponse {
 		this.failCode = null;
 	}
 
-	private ServerResponse(int responseStatus, String failCode) {
+	private ServerResponse(int responseStatus, String failCode, String failHost) {
 		this.responseStatus = responseStatus;
 		this.failCode = failCode;
+		this.failHost = failHost;
 		this.responseText = null;
 	}
 
@@ -50,38 +52,30 @@ public class ServerResponse {
 		URL	serverConnectionURL = ServerHandler.getServerConnectionURL(act);
 		return getServerResponse(serverConnectionURL, retryhandler, act);
 	}
-	
+
 	public static ServerResponse getServerResponse(URL serverConnectionURL, ServerHandler retryhandler) {
 		return getServerResponse(serverConnectionURL, retryhandler, null);
 	}
-	
+
 	private static ServerResponse getServerResponse(URL serverConnectionURL, ServerHandler retryhandler, String retryact) {
-		FileDownloader dler = new FileDownloader(serverConnectionURL, 3600000);
-		String serverResponse = dler.getTextContent();
+		FileDownloader dler = new FileDownloader(serverConnectionURL, 3600000, 3600000);
+		String serverResponse = dler.getResponseAsString("ASCII");
 
 		if(serverResponse == null) {
-			return new ServerResponse(RESPONSE_STATUS_NULL, "NO_RESPONSE");
-		}
-		else if(serverResponse.length() < 1) {
-			return new ServerResponse(RESPONSE_STATUS_NULL, "NO_RESPONSE");
+			return new ServerResponse(RESPONSE_STATUS_NULL, "NO_RESPONSE", serverConnectionURL.getHost().toLowerCase());
 		}
 
-		String[] split = serverResponse.split("\n");
-		
 		Out.debug("Received response: " + serverResponse);
+		String[] split = serverResponse.split("\n");
 
 		if(split.length < 1) {
-			return new ServerResponse(RESPONSE_STATUS_NULL, "NO_RESPONSE");
-		}
-		else if(split[0].startsWith("Log Code") || split[0].startsWith("Database Error")) {
-			return new ServerResponse(RESPONSE_STATUS_NULL, "SERVER_ERROR");
+			return new ServerResponse(RESPONSE_STATUS_NULL, "NO_RESPONSE", serverConnectionURL.getHost().toLowerCase());
 		}
 		else if(split[0].startsWith("TEMPORARILY_UNAVAILABLE")) {
-			return new ServerResponse(RESPONSE_STATUS_NULL, "TEMPORARILY_UNAVAILABLE");
+			return new ServerResponse(RESPONSE_STATUS_NULL, "TEMPORARILY_UNAVAILABLE", serverConnectionURL.getHost().toLowerCase());
 		}
 		else if(split[0].equals("OK")) {
-			Stats.serverContact();
-			return new ServerResponse(RESPONSE_STATUS_OK, java.util.Arrays.copyOfRange(split, 1, split.length));
+			return new ServerResponse(RESPONSE_STATUS_OK, Arrays.copyOfRange(split, 1, split.length));
 		}
 		else if(split[0].equals("KEY_EXPIRED") && retryhandler != null && retryact != null) {
 			Out.warning("Server reported expired key; attempting to refresh time from server and retrying");
@@ -89,8 +83,8 @@ public class ServerResponse {
 			return getServerResponse(ServerHandler.getServerConnectionURL(retryact), null);
 		}
 		else {
-			return new ServerResponse(RESPONSE_STATUS_FAIL, split[0]);
-		}	
+			return new ServerResponse(RESPONSE_STATUS_FAIL, split[0], serverConnectionURL.getHost().toLowerCase());
+		}
 	}
 
 	public String toString() {
@@ -115,6 +109,10 @@ public class ServerResponse {
 
 	public String getFailCode() {
 		return failCode;
+	}
+	
+	public String getFailHost() {
+		return failHost;
 	}
 
 }

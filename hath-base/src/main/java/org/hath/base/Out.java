@@ -1,7 +1,7 @@
 /*
 
-Copyright 2008-2015 E-Hentai.org
-http://forums.e-hentai.org/
+Copyright 2008-2016 E-Hentai.org
+https://forums.e-hentai.org/
 ehentai@gmail.com
 
 This file is part of Hentai@Home.
@@ -23,61 +23,24 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.TimeZone;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ch.qos.logback.classic.Level;
+
 public class Out {
-	public static final int DEBUG = 1;
-	public static final int INFO = 2;
-	public static final int WARNING = 4;
-	public static final int ERROR = 8;
-	
-	public static final int LOGOUT = DEBUG | INFO | WARNING | ERROR;
-	public static final int LOGERR = WARNING | ERROR;
-	public static final int OUTPUT = INFO | WARNING | ERROR;
-	public static final int VERBOSE = ERROR;
+	private static final Logger LOGGER = LoggerFactory.getLogger(Out.class);
+	private static List<OutListener> outListeners = new LinkedList<OutListener>();
 
-	private static int suppressedOutput;
-	private static boolean overridden, writeLogs;
-
-	private static SimpleDateFormat sdf;
-
-	private static List<OutListener> outListeners;
-
-	private static Logger logger = LoggerFactory.getLogger(Out.class);
-
-	static {
-		try {
-			Settings.initializeDataDir();
-		} catch(java.io.IOException ioe) {
-			System.err.println("Could not create data directory. Please check file access permissions and free disk space.");
-			System.exit(-1);
-		}
-
-		overrideDefaultOutput();
+	public static void startLoggers() {
+		setRootLoggerLevel(Level.DEBUG);
+		LOGGER.info("Logging started");
 	}
-	
-	public static void overrideDefaultOutput() {
-		if(overridden) {
-			return;
-		}
-		
-		writeLogs = true;
-		overridden = true;
-		outListeners = new ArrayList<OutListener>();
-	
-		suppressedOutput = 0;
 
-		sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'"); // ISO 8601
-		sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
-	}
-	
+	// FIXME Using SLF4J breaks listeners
 	public static void addOutListener(OutListener listener) {
 		synchronized(outListeners) {
 			if(!outListeners.contains(listener)) {
@@ -85,94 +48,78 @@ public class Out {
 			}
 		}
 	}
-	
+
 	public static void removeOutListener(OutListener listener) {
 		synchronized(outListeners) {
 			outListeners.remove(listener);
-		}		
+		}
 	}
-	
+
 	public static void disableLogging() {
-		if( writeLogs ) {
-			info("Logging ended.");
-			writeLogs = false;
-			flushLogs();
-		}
+		LOGGER.info("Logging stopped");
+		setRootLoggerLevel(Level.OFF);
 	}
-	
+
+	private static void setRootLoggerLevel(Level level) {
+		// FIXME Hard dependency on Logback
+		ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger) LoggerFactory
+				.getLogger(Logger.ROOT_LOGGER_NAME);
+		root.setLevel(level);
+	}
+
+	/**
+	 * @deprecated This function does nothing!
+	 */
+	@Deprecated
 	public static void flushLogs() {
-		// TODO add command from logback or slf4j
+		LOGGER.warn("This method no longer does anything!");
 	}
 
+	/**
+	 * Log the message with severity DEBUG
+	 * 
+	 * @param x
+	 *            message to log
+	 * @deprecated Use SLF4J loggers directly
+	 */
+	@Deprecated
 	public static void debug(String x) {
-		logger.debug(x);
-		notifyListeners(x, "debug", DEBUG);
+		LOGGER.debug(x);
 	}
 
+	/**
+	 * Log the message with severity INFO
+	 * 
+	 * @param x
+	 *            message to log
+	 * @deprecated Use SLF4J loggers directly
+	 */
+	@Deprecated
 	public static void info(String x) {
-		logger.info(x);
-		notifyListeners(x, "info", INFO);
+		LOGGER.info(x);
 	}
 
+	/**
+	 * Log the message with severity WARNING
+	 * 
+	 * @param x
+	 *            message to log
+	 * @deprecated Use SLF4J loggers directly
+	 */
+	@Deprecated
 	public static void warning(String x) {
-		logger.warn(x);
-		notifyListeners(x, "WARN", WARNING);
+		LOGGER.warn(x);
 	}
 
+	/**
+	 * Log the message with severity ERROR
+	 * 
+	 * @param x
+	 *            message to log
+	 * @deprecated Use SLF4J loggers directly
+	 */
+	@Deprecated
 	public static void error(String x) {
-		logger.error(x);
-		notifyListeners(x, "ERROR", ERROR);
-	}
-
-	public static String verbose(int severity) {
-		if ((severity & VERBOSE) > 0) {
-			java.lang.StackTraceElement[] ste = java.lang.Thread.currentThread().getStackTrace();
-			
-			int offset = 0;
-			while (++offset < ste.length) {
-				String s = ste[offset].getClassName();
-				if (!s.equals("org.hath.base.Out") && !s.equals("org.hath.base.Out$OutPrintStream") && !s.equals("java.lang.Thread")) {
-					break;
-				}
-			}
-			
-			if (offset < ste.length) {
-				if (!ste[offset].getClassName().equals("java.lang.Throwable")) {
-					return "{" + ste[offset] + "} ";
-				} else {
-					return "";
-				}
-			} else {
-				return "{Unknown Source}";
-			}
-		} else {
-			return "";
-		}
-	}
-
-	public static void notifyListeners(String x, String name, int severity) {
-		if (x == null) {
-			return;
-		}
-
-		boolean output = (severity & Out.OUTPUT & ~Out.suppressedOutput) > 0;
-		boolean log = (severity & (Out.LOGOUT | Out.LOGERR)) > 0;
-
-		if (output || log) {
-			synchronized (outListeners) {
-				String v = Out.verbose(severity);
-				String[] split = x.split("\n");
-				for (String s : split) {
-					String data = sdf.format(new Date()) + " [" + name + "] " + v + s;
-
-					if (output) {
-
-						for (OutListener listener : outListeners) {
-							listener.outputWritten(data);
-						}
-					}
-				}
-			}
-		}
+		LOGGER.error(x);
 	}
 }

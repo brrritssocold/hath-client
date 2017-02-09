@@ -1,7 +1,7 @@
 /*
 
 Copyright 2008-2016 E-Hentai.org
-http://forums.e-hentai.org/
+https://forums.e-hentai.org/
 ehentai@gmail.com
 
 This file is part of Hentai@Home.
@@ -20,19 +20,23 @@ You should have received a copy of the GNU General Public License
 along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
+package org.hath.base.http;
 
-package org.hath.base;
+/**
+ * Interface for connection flood control.
+ */
+public interface IFloodControl {
+	/**
+	 * Prune the flood control table, removing expired sessions.
+	 */
+	void pruneTable();
 
-import org.hath.base.gallery.AllGalleryTests;
-import org.hath.base.http.AllHttpTests;
-import org.hath.base.util.AllUtilTests;
-import org.junit.runner.RunWith;
-import org.junit.runners.Suite;
-import org.junit.runners.Suite.SuiteClasses;
-
-@RunWith(Suite.class)
-@SuiteClasses({ OutTest.class, AllGalleryTests.class, AllHttpTests.class, AllUtilTests.class, SettingsTest.class,
-		HentaiAtHomeClientTest.class })
-public class AllHathBaseTests {
-
+	/**
+	 * Check if the given address has exceeded the allowed connection limit.
+	 * 
+	 * @param address
+	 *            to check
+	 * @return true if the limit has been exceeded, and the connection should be dropped
+	 */
+	boolean hasExceededConnectionLimit(String address);
 }

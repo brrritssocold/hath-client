@@ -1,7 +1,7 @@
 /*
 
-Copyright 2008-2012 E-Hentai.org
-http://forums.e-hentai.org/
+Copyright 2008-2016 E-Hentai.org
+https://forums.e-hentai.org/
 ehentai@gmail.com
 
 This file is part of Hentai@Home.
@@ -23,13 +23,10 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.http;
 
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.FileInputStream;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.StandardOpenOption;
 
-import javax.servlet.http.HttpServletResponse;
-
-import org.eclipse.jetty.http.HttpStatus;
 import org.hath.base.HVFile;
 import org.hath.base.Out;
 import org.hath.base.Settings;
@@ -38,47 +35,48 @@ import org.hath.base.Stats;
 // this class provides provides a buffered interface to read a file in chunks
 
 public class HTTPResponseProcessorFile extends HTTPResponseProcessor {
-
 	private HVFile requestedHVFile;
-	private BufferedInputStream bis;
+	private FileChannel fileChannel;
+	private ByteBuffer fileBuffer;
+	private int readoff = 0;
 
 	public HTTPResponseProcessorFile(HVFile requestedHVFile) {
 		this.requestedHVFile = requestedHVFile;
 	}
 
-	@Override
-	public void initialize(HttpServletResponse response) {
-		File file = requestedHVFile.getLocalFileRef();
+	public int initialize() {
+		int responseStatusCode = 0;
 
 		try {
-			bis = new BufferedInputStream(new FileInputStream(file), Settings.isUseLessMemory() ? 8192 : 65536);
-			response.setStatus(HttpStatus.OK_200);
+			fileChannel = FileChannel.open(requestedHVFile.getLocalFilePath(), StandardOpenOption.READ);
+			fileBuffer = ByteBuffer.allocateDirect(Settings.getInstance().isUseLessMemory() ? 8192 : 65536);
+			fileChannel.read(fileBuffer);
+			fileBuffer.flip();
+			responseStatusCode = 200;
 			Stats.fileSent();
-		} catch(java.io.IOException e) {
-			Out.warning("Failed reading content from " + file);
-			response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR_500);
 		}
+		catch(java.io.IOException e) {
+			Out.warning("Failed reading content from " + requestedHVFile.getLocalFilePath());
+			responseStatusCode = 500;
+		}
+
+		return responseStatusCode;
 	}
-	
-	@Override
+
 	public void cleanup() {
-		if(bis != null) {
+		if(fileChannel != null) {
 			try {
-				bis.close();
-			} catch(Exception e) {
-				e.printStackTrace();
-			}
+				fileChannel.close();
+			} catch(Exception e) {}
 		}
 	}
 
-	@Override
 	public String getContentType() {
 		return requestedHVFile.getMimeType();
 	}
 
-	@Override
 	public int getContentLength() {
-		if(bis != null) {
+		if(fileChannel != null) {
 			return requestedHVFile.getSize();
 		}
 		else {
@@ -86,22 +84,28 @@ public class HTTPResponseProcessorFile extends HTTPResponseProcessor {
 		}
 	}
 
-	@Override
-	public byte[] getBytes() {
-		return getBytesRange(requestedHVFile.getSize());
-	}
+	public ByteBuffer getPreparedTCPBuffer(int lingeringBytes) throws Exception {
+		int readbytes = Math.min(getContentLength() - readoff, Settings.TCP_PACKET_SIZE - lingeringBytes);
 
-	@Override
-	public byte[] getBytesRange(int len) {
-		byte[] range = null;
-		
-		try {
-			range = new byte[len];
-			bis.read(range);
-		} catch(Exception e) {
-			e.printStackTrace();
+		if(readbytes > fileBuffer.remaining()) {
+			int fileBytes = 0;
+			fileBuffer.compact();
+
+			while(readbytes > fileBuffer.position()) {
+				fileBytes += fileChannel.read(fileBuffer);
+			}
+
+			fileBuffer.flip();
+			//Out.debug("Refilled buffer for " + requestedHVFile + " with " + fileBytes + " bytes, new remaining=" + fileBuffer.remaining());
 		}
 
-		return range;
+		//Out.debug("Reading from file " + requestedHVFile + ", readoff=" + readoff + ", readbytes=" + readbytes + ", remaining=" + fileBuffer.remaining());
+
+		ByteBuffer tcpBuffer = fileBuffer.slice();
+		tcpBuffer.limit(tcpBuffer.position() + readbytes);
+		fileBuffer.position(fileBuffer.position() + readbytes);
+		readoff += readbytes;
+
+		return tcpBuffer;
 	}
 }

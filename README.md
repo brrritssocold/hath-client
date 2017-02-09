@@ -2,8 +2,7 @@
 
 [![Build Status](https://travis-ci.org/brrritssocold/hath-client.svg?branch=master)](https://travis-ci.org/brrritssocold/hath-client)
 [![Coverage Status](https://coveralls.io/repos/github/brrritssocold/hath-client/badge.svg?branch=master)](https://coveralls.io/github/brrritssocold/hath-client?branch=master)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/37cd1054934c4c689912992827cf5c3a)](https://www.codacy.com/app/brrritssocold/hath-client?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=brrritssocold/hath-client&amp;utm_campaign=Badge_Grade)
-
+[![Codacy Badge](https://img.shields.io/codacy/grade/37cd1054934c4c689912992827cf5c3a/master.svg?maxAge=2592000)](https://www.codacy.com/app/brrritssocold/hath-client?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=brrritssocold/hath-client&amp;utm_campaign=Badge_Grade)
 
 Make sure to read and understand the license for this program, found in the file LICENSE or at http://www.gnu.org/licenses/gpl.txt, before you start playing with it.
 
@@ -11,15 +10,15 @@ Note that this package only contains the Hentai@Home Client, which is coded spec
 
 ## Changes
  - Mavenized project
- - SQLite dependency managed with Maven
- - Split Base code and GUI related code into separate modules
- - Replaced most logging code with SLF4J and logback
+ - Split Base and GUI code into separate modules
+ - Replaced logging code with SLF4J and logback
  - Create shaded executable jar files
  - Minor code cleanup
- - Replaced custom HTTP server with embedded jetty
- - Split parsing code into several handlers
- - Replaced custom HTTP client with jetty-client
  - Additional logging code for debugging
+
+## Known issues
+ - Using SLF4J breaks logging output to GUI
+ - Setting logback to rescan the configuration file will override the "Disable logging to disk" setting on the H@H page
  
 ## Building
 In order to build Hentai@Home, you need the following:
@@ -31,6 +30,6 @@ To build run:
 ```mvn package```
 
 ## Running
-```java -Dlogback.configurationFile=logback.xml -jar hath-base-1.2.6.jar```
+```java -Dlogback.configurationFile=logback.xml -jar hath-base-1.4.1-0.0.1.jar```
 
 

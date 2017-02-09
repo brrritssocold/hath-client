@@ -5,8 +5,10 @@ target/
 .project
 .classpath
 .settings/
+.checkstyle
 
 # HatH hardcoded data directory
 /hath-base/data
 /hath-base/tmp
 /hath-gui/data
+/hath-gui/log

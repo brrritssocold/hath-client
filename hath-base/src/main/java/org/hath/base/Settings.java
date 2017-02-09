@@ -1,7 +1,7 @@
 /*
 
-Copyright 2008-2015 E-Hentai.org
-http://forums.e-hentai.org/
+Copyright 2008-2016 E-Hentai.org
+https://forums.e-hentai.org/
 ehentai@gmail.com
 
 This file is part of Hentai@Home.
@@ -25,171 +25,162 @@ package org.hath.base;
 
 import java.io.File;
 import java.net.InetAddress;
+import java.nio.file.Path;
 import java.util.Hashtable;
-
-import org.eclipse.jetty.client.HttpClient;
-import org.hath.base.util.FileTools;
 
 public class Settings {
 	public static final String NEWLINE = System.getProperty("line.separator");
-	
-	// the client build is among others used by the server to determine the client's capabilities. any forks should use the build number as an indication of compatibility with mainline, and not use it as an internal build number.
-	public static final int CLIENT_BUILD = 98;
-	public static final String CLIENT_VERSION = "1.2.6";
-	
-	public static final String CLIENT_API_URL = "http://rpc.hentaiathome.net/clientapi.php?";
-	
-	public static final String DATA_FILENAME_CLIENT_LOGIN = "client_login";
-	public static final String DATA_FILENAME_LASTHIT_HISTORY = "lasthit_history";
 
+	// the client build is among other things used by the server to determine the client's capabilities. any forks should use the build number as an indication of compatibility with mainline, rather than an internal build number.
+	public static final int CLIENT_BUILD = 129;
 	public static final int CLIENT_KEY_LENGTH = 20;
 	public static final int MAX_KEY_TIME_DRIFT = 300;
 	public static final int MAX_CONNECTION_BASE = 20;
-	
+	public static final int TCP_PACKET_SIZE = 1460;
+
+	public static final String CLIENT_VERSION = "1.4.1";
+	public static final String CLIENT_RPC_PROTOCOL = "http://";
+	public static final String CLIENT_RPC_HOST = "rpc.hentaiathome.net";
+	public static final String CLIENT_RPC_FILE = "clientapi13.php?";
+	public static final String CLIENT_LOGIN_FILENAME = "client_login";
 	public static final String CONTENT_TYPE_DEFAULT = "text/html; charset=iso-8859-1";
 	public static final String CONTENT_TYPE_OCTET = "application/octet-stream";
 	public static final String CONTENT_TYPE_JPG = "image/jpeg";
 	public static final String CONTENT_TYPE_PNG = "image/png";
 	public static final String CONTENT_TYPE_GIF = "image/gif";
 	public static final String CONTENT_TYPE_WEBM = "video/webm";
-	
-	public static final int TCP_PACKET_SIZE_HIGH = 1460;
-	public static final int TCP_PACKET_SIZE_LOW = 536;
-	public static final int MAX_REQUEST_LENGTH = 10000;
-	
-	private static HentaiAtHomeClient activeClient;
-	private static HathGUI activeGUI;
-	
-	private static int clientID = 0;
-	private static String clientKey = "";
-	private static int serverTimeDelta = 0;
 
-	private static Object rpcChangeMonitor = new Object();
-	private static InetAddress rpcServers[] = null;
-	private static String imageServer = "";
-	private static String clientName = "";
-	private static String clientHost = "";
-	private static int clientPort = 0;
-	private static String requestServer = "";
-	private static int requestProxyMode = 0;
+	private HentaiAtHomeClient activeClient = null;
+	private HathGUI activeGUI = null;
+	private Object rpcServerLock = new Object();
+	private InetAddress rpcServers[] = null;
+	private String rpcServerCurrent = null, rpcServerLastFailed = null;
+	private Hashtable<String, Integer> staticRanges = null;
+	private Path logdir = null;
+	private File datadir = null, cachedir = null, tempdir = null, downloaddir = null;
+	private String clientKey = "", clientHost = "", dataDirPath = "data", logDirPath = "log", cacheDirPath = "cache",
+			tempDirPath = "tmp", downloadDirPath = "download";
 
-	private static int throttle_bytes = 0;
-	private static long hourbwlimit_bytes = 0;
-	private static long disklimit_bytes = 0;
-	private static long diskremaining_bytes = 0;
-	
-	// read from command-line arguments
-	
-	private static boolean forceDirty = false;
-	private static boolean verifyCache = false;
-	private static boolean skipFreeSpaceCheck = false;
-	private static boolean warnNewClient = false;
-	private static boolean useLessMemory = false;
-	private static boolean disableBWM = false;
-	
-	private static int overrideConns = 0;
-	
-	private static File datadir = null;
-	
-	private static Hashtable<String, Integer> staticRanges = null;
-	
-	private static HttpClient httpClient = null;
+	private int clientID = 0, clientPort = 0, throttle_bytes = 0, overrideConns = 0, serverTimeDelta = 0,
+			maxAllowedFileSize = 104857600, currentStaticRangeCount = 0;
+	private long disklimit_bytes = 0, diskremaining_bytes = 0;
+	private boolean verifyCache = false, rescanCache = false, skipFreeSpaceCheck = false, warnNewClient = false,
+			useLessMemory = false, disableBWM = false, disableDownloadBWM = false, disableLogs = false,
+			flushLogs = false;
 
-	public static void setActiveClient(HentaiAtHomeClient client) {
+	private static Settings instance;
+
+	private Settings() {
+	}
+
+	public static Settings getInstance() {
+		if(instance == null) {
+			instance = new Settings();
+		}
+		
+		return instance;
+	}
+
+	public void setActiveClient(HentaiAtHomeClient client) {
 		activeClient = client;
 	}
-	
-	public static void setActiveGUI(HathGUI gui) {
+
+	public void setActiveGUI(HathGUI gui) {
 		activeGUI = gui;
 	}
-	
-	public static boolean loginCredentialsAreSyntaxValid() {
-		return clientID > 0 && java.util.regex.Pattern.matches("^[a-zA-Z0-9]{" + Settings.CLIENT_KEY_LENGTH + "}$", clientKey);
-	}	
 
-	public static boolean loadClientLoginFromFile() {
-		File clientLogin = new File(Settings.getDataDir(), Settings.DATA_FILENAME_CLIENT_LOGIN);
-		
+	public boolean loginCredentialsAreSyntaxValid() {
+		return clientID > 0 && java.util.regex.Pattern.matches("^[a-zA-Z0-9]{" + CLIENT_KEY_LENGTH + "}$", clientKey);
+	}
+
+	public boolean loadClientLoginFromFile() {
+		File clientLogin = new File(getDataDir(), CLIENT_LOGIN_FILENAME);
+
 		if(!clientLogin.exists()) {
 			return false;
 		}
-		
+
 		try {
-			String filecontent = FileTools.getStringFileContents(clientLogin);
-			
+			String filecontent = Tools.getStringFileContents(clientLogin);
+
 			if(!filecontent.isEmpty()) {
 				String[] split = filecontent.split("-", 2);
-				
-				if(split.length == 2) {				
+
+				if(split.length == 2) {
 					clientID = Integer.parseInt(split[0]);
 					clientKey = split[1];
-					
+					Out.info("Loaded login settings from " + CLIENT_LOGIN_FILENAME);
+
 					return true;
 				}
 			}
-		} catch(Exception e) {
-			Out.warning("Encountered error when reading " + Settings.DATA_FILENAME_CLIENT_LOGIN + ": " + e);
 		}
-		
+		catch(Exception e) {
+			Out.warning("Encountered error when reading " + CLIENT_LOGIN_FILENAME + ": " + e);
+		}
+
 		return false;
 	}
-	
-	public static void promptForIDAndKey(InputQueryHandler iqh) {
+
+	public void promptForIDAndKey(InputQueryHandler iqh) {
 		Out.info("Before you can use this client, you will have to register it at http://hentaiathome.net/");
 		Out.info("IMPORTANT: YOU NEED A SEPARATE IDENT FOR EACH CLIENT YOU WANT TO RUN.");
-		Out.info("DO NOT ENTER AN IDENT THAT WAS ASSIGNED FOR A DIFFERENT CLIENT.");
+		Out.info("DO NOT ENTER AN IDENT THAT WAS ASSIGNED FOR A DIFFERENT CLIENT UNLESS IT HAS BEEN RETIRED.");
 		Out.info("After registering, enter your ID and Key below to start your client.");
 		Out.info("(You will only have to do this once.)\n");
-		
+
 		clientID = 0;
 		clientKey = "";
-		
+
 		do {
 			try {
 				clientID = Integer.parseInt(iqh.queryString("Enter Client ID").trim());
-			} catch(java.lang.NumberFormatException nfe) {
+			}
+			catch(java.lang.NumberFormatException nfe) {
 				Out.warning("Invalid Client ID. Please try again.");
 			}
 		} while(clientID < 1000);
 
 		do {
 			clientKey = iqh.queryString("Enter Client Key").trim();
+
 			if(!loginCredentialsAreSyntaxValid()) {
 				Out.warning("Invalid Client Key, it must be exactly 20 alphanumerical characters. Please try again.");
 			}
 		} while(!loginCredentialsAreSyntaxValid());
-		
+
 		try {
-			FileTools.putStringFileContents(new File(Settings.getDataDir(), Settings.DATA_FILENAME_CLIENT_LOGIN), clientID + "-" + clientKey);
-		} catch(java.io.IOException ioe) {
-			Out.warning("Error encountered when writing " + Settings.DATA_FILENAME_CLIENT_LOGIN + ": " + ioe);
+			Tools.putStringFileContents(new File(getDataDir(), CLIENT_LOGIN_FILENAME), clientID + "-" + clientKey);
+		}
+		catch(java.io.IOException ioe) {
+			Out.warning("Error encountered when writing " + CLIENT_LOGIN_FILENAME + ": " + ioe);
 		}
 	}
-		
-	public static boolean parseAndUpdateSettings(String[] settings) {
+
+	public boolean parseAndUpdateSettings(String[] settings) {
 		if(settings == null) {
 			return false;
 		}
-	
+
 		for(String s : settings) {
 			if(s != null) {
 				String[] split = s.split("=", 2);
-				
+
 				if(split.length == 2) {
 					updateSetting(split[0].toLowerCase(), split[1]);
 				}
 			}
 		}
-		
+
 		return true;
 	}
-	
+
 	// note that these settings will currently be overwritten by any equal ones read from the server, so it should not be used to override server-side settings.
-	public static boolean parseArgs(String[] args) {
+	public boolean parseArgs(String[] args) {
 		if(args == null) {
 			return false;
 		}
-		
+
 		for(String s : args) {
 			if(s != null) {
 				if(s.startsWith("--")) {
@@ -199,7 +190,7 @@ public class Settings {
 						updateSetting(split[0].toLowerCase(), split[1]);
 					}
 					else {
-						updateSetting(split[0].toLowerCase(), "true");					
+						updateSetting(split[0].toLowerCase(), "true");
 					}
 				}
 				else {
@@ -207,42 +198,40 @@ public class Settings {
 				}
 			}
 		}
-		
+
 		return true;
 	}
 
-	public static boolean updateSetting(String setting, String value) {
+	public boolean updateSetting(String setting, String value) {
 		setting = setting.replace("-", "_");
-		
+
 		try {
 			if(setting.equals("min_client_build")) {
 				if(Integer.parseInt(value) > CLIENT_BUILD) {
 					HentaiAtHomeClient.dieWithError("Your client is too old to connect to the Hentai@Home Network. Please download the new version of the client from http://hentaiathome.net/");
 				}
-			} else if(setting.equals("cur_client_build")) {
+			}
+			else if(setting.equals("cur_client_build")) {
 				if(Integer.parseInt(value) > CLIENT_BUILD) {
 					warnNewClient = true;
 				}
-			} else if(setting.equals("server_time")) {
+			}
+			else if(setting.equals("server_time")) {
 				serverTimeDelta = Integer.parseInt(value) - (int) (System.currentTimeMillis() / 1000);
 				Out.debug("Setting altered: serverTimeDelta=" + serverTimeDelta);
 				return true;
 			}
 			else if(setting.equals("rpc_server_ip")) {
-				synchronized(rpcChangeMonitor) {
+				synchronized(rpcServerLock) {
 					String[] split = value.split(";");
 					rpcServers = new java.net.InetAddress[split.length];
 					int i = 0;
 					for(String s : split) {
 						rpcServers[i++] = java.net.InetAddress.getByName(s);
 					}
+					
+					rpcServerCurrent = null;
 				}
-			}
-			else if(setting.equals("image_server")) {
-				imageServer = value;
-			}
-			else if(setting.equals("name")) {
-				clientName = value;
 			}
 			else if(setting.equals("host")) {
 				clientHost = value;
@@ -252,23 +241,13 @@ public class Settings {
 					clientPort = Integer.parseInt(value);
 				}
 			}
-			else if(setting.equals("request_server")) {
-				requestServer = value;
-			}
-			else if(setting.equals("request_proxy_mode")) {
-				requestProxyMode = Integer.parseInt(value);
-			}
 			else if(setting.equals("throttle_bytes")) {
 				// THIS SHOULD NOT BE ALTERED BY THE CLIENT AFTER STARTUP. Using the website interface will update the throttle value for the dispatcher first, and update the client on the first stillAlive test.
 				throttle_bytes = Integer.parseInt(value);
 			}
-			else if(setting.equals("hourbwlimit_bytes")) {
-				// see above
-				hourbwlimit_bytes = Long.parseLong(value);
-			}
 			else if(setting.equals("disklimit_bytes")) {
 				long newLimit = Long.parseLong(value);
-				
+
 				if(newLimit >= disklimit_bytes) {
 					disklimit_bytes = newLimit;
 				}
@@ -279,20 +258,26 @@ public class Settings {
 			else if(setting.equals("diskremaining_bytes")) {
 				diskremaining_bytes = Long.parseLong(value);
 			}
-			else if(setting.equals("force_dirty")) {
-				forceDirty = value.equals("true");
+			else if(setting.equals("rescan_cache")) {
+				rescanCache = value.equals("true");
 			}
 			else if(setting.equals("verify_cache")) {
 				verifyCache = value.equals("true");
+				rescanCache = value.equals("true");
 			}
 			else if(setting.equals("use_less_memory")) {
 				useLessMemory = value.equals("true");
 			}
 			else if(setting.equals("disable_logging")) {
+				disableLogs = value.equals("true");
 				Out.disableLogging();
 			}
 			else if(setting.equals("disable_bwm")) {
 				disableBWM = value.equals("true");
+				disableDownloadBWM = value.equals("true");
+			}
+			else if(setting.equals("disable_download_bwm")) {
+				disableDownloadBWM = value.equals("true");
 			}
 			else if(setting.equals("skip_free_space_check")) {
 				skipFreeSpaceCheck = value.equals("true");
@@ -300,14 +285,37 @@ public class Settings {
 			else if(setting.equals("max_connections")) {
 				overrideConns = Integer.parseInt(value);
 			}
+			else if(setting.equals("max_allowed_filesize")) {
+				maxAllowedFileSize = Integer.parseInt(value);
+			}
 			else if(setting.equals("static_ranges")) {
-				staticRanges = new Hashtable<String,Integer>();
-				String[] split = value.split(";");
-				for(String s : split) {
+				staticRanges = new Hashtable<String,Integer>((int) (value.length() * 0.3));
+				currentStaticRangeCount = 0;
+
+				for(String s : value.split(";")) {
 					if(s.length() == 4) {
+						++currentStaticRangeCount;
 						staticRanges.put(s, 1);
 					}
 				}
+			}
+			else if(setting.equals("cache_dir")) {
+				cacheDirPath = value;
+			}
+			else if(setting.equals("temp_dir")) {
+				tempDirPath = value;
+			}
+			else if(setting.equals("data_dir")) {
+				dataDirPath = value;
+			}
+			else if(setting.equals("log_dir")) {
+				logDirPath = value;
+			}
+			else if(setting.equals("download_dir")) {
+				downloadDirPath = value;
+			}
+			else if(setting.equals("flush_logs")) {
+				flushLogs = value.equals("true");
 			}
 			else if(!setting.equals("silentstart")) {
 				// don't flag errors if the setting is handled by the GUI
@@ -320,204 +328,258 @@ public class Settings {
 		} catch(Exception e) {
 			Out.warning("Failed parsing setting " + setting + " = " + value);
 		}
-		
+
 		return false;
 	}
 
-	public static void initializeDataDir() throws java.io.IOException {
-		datadir = FileTools.checkAndCreateDir(new File("data"));
+	public void initializeDirectories() throws java.io.IOException {
+		Out.debug("Using --data-dir=" + dataDirPath);
+		datadir = Tools.checkAndCreateDir(new File(dataDirPath));
+
+		Out.debug("Using --log-dir=" + logDirPath);
+		logdir = Tools.checkAndCreateDir(new File(logDirPath)).toPath();
+
+		Out.debug("Using --cache-dir=" + cacheDirPath);
+		cachedir = Tools.checkAndCreateDir(new File(cacheDirPath));
+
+		Out.debug("Using --temp-dir=" + tempDirPath);
+		tempdir = Tools.checkAndCreateDir(new File(tempDirPath));
+
+		Out.debug("Using --download-dir=" + downloadDirPath);
+		downloaddir = Tools.checkAndCreateDir(new File(downloadDirPath));
 	}
-	
+
 	// accessor methods
-	public static File getDataDir() {
+	public File getDataDir() {
 		return datadir;
 	}
 
-	public static int getClientID() {
+	/**
+	 * Override the logging directory.
+	 * 
+	 * @param loggingDirectory
+	 *            directory to set
+	 * @deprecated For testing only!
+	 * 
+	 */
+	@Deprecated
+	public void setLogDir(File loggingDirectory) {
+		logdir = loggingDirectory.toPath();
+	}
+
+	/**
+	 * Override the logging directory.
+	 * 
+	 * @param loggingDirectory
+	 *            directory to set
+	 * @deprecated For testing only!
+	 * 
+	 */
+	@Deprecated
+	public void setLogDir(Path loggingDirectory) {
+		logdir = loggingDirectory;
+	}
+
+	public File getLogDir() {
+		return logdir.toFile();
+	}
+
+	public File getCacheDir() {
+		return cachedir;
+	}
+
+	public File getTempDir() {
+		return tempdir;
+	}
+
+	public File getDownloadDir() {
+		return downloaddir;
+	}
+
+	public int getClientID() {
 		return clientID;
 	}
-	
-	/**
-	 * For testing only!
-	 */
-	@Deprecated
-	public static void setClientID(int clientID) {
-		Settings.clientID = clientID;
-	}
 
-	/**
-	 * For testing only!
-	 */
-	@Deprecated
-	public static void setClientKey(String clientKey) {
-		Settings.clientKey = clientKey;
-	}
-
-	public static String getClientKey() {
+	public String getClientKey() {
 		return clientKey;
 	}
-	
-	public static String getImageServer(String fileid) {
-		return imageServer;
-	}
-	
-	public static String getClientName() {
-		return clientName;
-	}
-	
-	public static String getClientHost() {
+
+	public String getClientHost() {
 		return clientHost;
 	}
 
-	public static int getClientPort() {
+	public int getClientPort() {
 		return clientPort;
 	}
-	
-	public static String getRequestServer() {
-		return requestServer;
-	}
-	
-	public static int getRequestProxyMode() {
-		return requestProxyMode;
-	}
-	
-	public static int getThrottleBytesPerSec() {
+
+	public int getThrottleBytesPerSec() {
 		return throttle_bytes;
 	}
 
-	public static long getHourBWLimitBytes() {
-		return hourbwlimit_bytes;
+	public int getMaxAllowedFileSize() {
+		return maxAllowedFileSize;
 	}
 
-	public static long getDiskLimitBytes() {
+	public long getDiskLimitBytes() {
 		return disklimit_bytes;
 	}
 
-	public static long getDiskMinRemainingBytes() {
+	public long getDiskMinRemainingBytes() {
 		return diskremaining_bytes;
 	}
 
-	public static int getServerTime() {
+	public int getServerTime() {
 		return (int) (System.currentTimeMillis() / 1000) + serverTimeDelta;
 	}
-	
-	public static String getOutputLogPath() {
-		return "data/log_out";
-	}
-	
-	public static String getErrorLogPath() {
-		return "data/log_err";
-	}
-	
-	public static boolean isForceDirty() {
-		return forceDirty;
+
+	public String getOutputLogPath() {
+		return getLogDir().getPath() + "/log_out";
 	}
 
-	public static boolean isVerifyCache() {
-		return verifyCache;
+	public String getErrorLogPath() {
+		return getLogDir().getPath() + "/log_err";
 	}
 	
-	public static boolean isUseLessMemory() {
+	public boolean isFlushLogs() {
+		return flushLogs;
+	}
+
+	public boolean isRescanCache() {
+		return rescanCache;
+	}
+
+	public boolean isVerifyCache() {
+		return verifyCache;
+	}
+
+	public boolean isUseLessMemory() {
 		return useLessMemory;
 	}
 
-	public static boolean isSkipFreeSpaceCheck() {
+	public boolean isSkipFreeSpaceCheck() {
 		return skipFreeSpaceCheck;
 	}
-	
-	public static boolean isWarnNewClient() {
+
+	public boolean isWarnNewClient() {
 		return warnNewClient;
 	}
-	
-	public static boolean isDisableBWM() {
+
+	public boolean isDisableBWM() {
 		return disableBWM;
 	}
 
-	public static HentaiAtHomeClient getActiveClient() {
+	public boolean isDisableDownloadBWM() {
+		return disableDownloadBWM;
+	}
+
+	public boolean isDisableLogs() {
+		return disableLogs;
+	}
+
+	public HentaiAtHomeClient getActiveClient() {
 		return activeClient;
 	}
-	
-	public static HathGUI getActiveGUI() {
+
+	public HathGUI getActiveGUI() {
 		return activeGUI;
 	}
-	
-	public static boolean isValidRPCServer(InetAddress compareTo) {
-		synchronized(rpcChangeMonitor) {
+
+	public boolean isValidRPCServer(InetAddress compareTo) {
+		synchronized(rpcServerLock) {
 			if(rpcServers == null) {
 				return false;
 			}
-		
+
 			for(InetAddress i : rpcServers) {
 				if(i.equals(compareTo)) {
 					return true;
 				}
 			}
-			
+
 			return false;
 		}
 	}
-	
-	public static int getMaxConnections() {
-		if(overrideConns > 0) {
-			return overrideConns;
-		}
-		else {
-			int conns = 0;
-			int uptime = Stats.getUptime();
 
-			if(throttle_bytes > 0) {
-				conns = MAX_CONNECTION_BASE + (int) (throttle_bytes / 10000);
-			} else if(uptime > 0) {
-				// to be safe, we'll assume that each connection takes 120 seconds to finish. so 1 connection per second = 120 connections.
-				conns = (int) (Stats.getFilesSent() * 120 / uptime);
-			}
-			
-			return Math.max(Math.min(500, conns), MAX_CONNECTION_BASE);
-		}
-	}
-	
-	public static boolean isStaticRange(String fileid) {
-		if(staticRanges != null) {
-			return staticRanges.containsKey(fileid.substring(0, 4));
-		}
-		
-		return false;
-	}
-	
-	public static int getStaticRangeCount() {
-		if(staticRanges != null) {
-			return staticRanges.size();
-		}
-		
-		return 0;
-	}
+	public String getRPCServerHost() {
+		synchronized(rpcServerLock) {
+			if(rpcServerCurrent == null) {
+				if(rpcServers == null) {
+					return Settings.CLIENT_RPC_HOST;
+				}
 
-	/**
-	 * For testing purposes only!
-	 */
-	public static void clearRPCServers() {
-		rpcServers = null;
-	}
+				if(rpcServers.length < 1) {
+					return Settings.CLIENT_RPC_HOST;
+				}
 
-	/**
-	 * Get an existing {@link HttpClient} instance. If no instance exists, a new one will be created and started.
-	 * Existing but stopped instances will be restarted.
-	 * 
-	 * @return a running {@link HttpClient} instance.
-	 */
-	public static synchronized HttpClient getHttpClient() {
-			if (httpClient == null) {
-				httpClient = new HttpClient();
-			}
+				if(rpcServers.length == 1) {
+					rpcServerCurrent = rpcServers[0].getHostAddress().toLowerCase();
+				}
+				else {
+					int rpcServerSelector = (int) (Math.random() * rpcServers.length);
+					int scanDirection = Math.random() < 0.5 ? -1 : 1;
 
-			if (!httpClient.isRunning()) {
-				try {
-					httpClient.start();
-				} catch (Exception e) {
-					HentaiAtHomeClient.dieWithError(e);
+					while(true) {
+						String candidate = rpcServers[(rpcServers.length + rpcServerSelector) % rpcServers.length].getHostAddress().toLowerCase();
+
+						if(rpcServerLastFailed != null) {
+							if(candidate.equals(rpcServerLastFailed)) {
+								Out.debug(rpcServerLastFailed + " was marked as last failed");
+								rpcServerSelector += scanDirection;
+								continue;
+							}
+						}
+
+						rpcServerCurrent = candidate;
+						Out.debug("Selected rpcServerCurrent=" + rpcServerCurrent);
+						break;
+					}
 				}
 			}
 
-			return httpClient;
+			return rpcServerCurrent;
+		}
+	}
+
+	public void clearRPCServerFailure() {
+		synchronized(rpcServerLock) {
+			if(rpcServerLastFailed != null) {
+				// to avoid long-term uneven loads on the RPC servers in case one of them goes down for a bit, we run this occasionally to clear the failure
+				Out.debug("Cleared rpcServerLastFailed");
+				rpcServerLastFailed = null;
+				rpcServerCurrent = null;
+			}
+		}
+	}
+	
+	public void markRPCServerFailure(String failHost) {
+		synchronized(rpcServerLock) {
+			if(rpcServerCurrent != null) {
+				Out.debug("Marking " + failHost + " as rpcServerLastFailed");
+				rpcServerLastFailed = failHost;
+				rpcServerCurrent = null;
+			}
+		}
+	}
+
+	public int getMaxConnections() {
+		if(overrideConns > 0) {
+			return overrideConns;
+		} else {
+			// throttle_bytes was changed to a required value several years ago
+			return MAX_CONNECTION_BASE + Math.min(480, (int) (throttle_bytes / 10000));
+		}
+	}
+
+	public boolean isStaticRange(String fileid) {
+		if(staticRanges != null) {
+			// hashtable is thread-safe
+			return staticRanges.containsKey(fileid.substring(0, 4));
+		}
+
+		return false;
+	}
+
+	public int getStaticRangeCount() {
+		return currentStaticRangeCount;
 	}
 }

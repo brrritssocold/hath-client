@@ -1,4 +1,4 @@
-<configuration scan="true">
+<configuration scan="true" scanPeriod="60 seconds">
 	<!-- Ensure the logging framework is shutdown correctly -->
 	<shutdownHook class="ch.qos.logback.core.hook.DelayingShutdownHook" />
 
@@ -8,10 +8,10 @@
 		<file>data/log_out</file>
 		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
 			<!-- daily rollover -->
-			<fileNamePattern>data/log_out.%d.gz</fileNamePattern>
+			<fileNamePattern>log_archive/log_out.%d.gz</fileNamePattern>
 
-			<!-- keep 30 days' worth of history -->
-			<maxHistory>30</maxHistory>
+			<!-- keep 7 days' worth of history -->
+			<maxHistory>7</maxHistory>
 
 		</rollingPolicy>
 		<!-- encoders are assigned the type ch.qos.logback.classic.encoder.PatternLayoutEncoder 
@@ -23,13 +23,13 @@
 
 	<appender name="ERR_FILE"
 		class="ch.qos.logback.core.rolling.RollingFileAppender">
-		<file>data/err_out</file>
+		<file>data/log_err</file>
 		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
 			<!-- daily rollover -->
-			<fileNamePattern>data/log_err.%d.gz</fileNamePattern>
+			<fileNamePattern>log_archive/log_err.%d.gz</fileNamePattern>
 
-			<!-- keep 30 days' worth of history -->
-			<maxHistory>30</maxHistory>
+			<!-- keep 7 days' worth of history -->
+			<maxHistory>7</maxHistory>
 
 		</rollingPolicy>
 		<!-- encoders are assigned the type ch.qos.logback.classic.encoder.PatternLayoutEncoder 
@@ -53,9 +53,10 @@
 		<appender-ref ref="LOG_FILE" />
 		<queueSize>512</queueSize>
 		<filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-			<level>DEBUG</level>
+			<level>INFO</level>
 		</filter>
 	</appender>
+	
 	<appender name="ASYNC_ERR_FILE" class="ch.qos.logback.classic.AsyncAppender">
 		<appender-ref ref="ERR_FILE" />
 		<queueSize>512</queueSize>
@@ -66,6 +67,10 @@
 
 	<appender name="ASYNC_STDOUT" class="ch.qos.logback.classic.AsyncAppender">
 		<appender-ref ref="STDOUT" />
+		<queueSize>512</queueSize>
+		<filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+			<level>INFO</level>
+		</filter>
 	</appender>
 
 	<!-- Logging root -->
