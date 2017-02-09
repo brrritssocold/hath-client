@@ -23,6 +23,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base.http;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
@@ -38,8 +39,11 @@ import java.util.regex.Pattern;
 import org.hath.base.Out;
 import org.hath.base.Settings;
 import org.hath.base.Stats;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class HTTPSession implements Runnable {
+	private static final Logger LOGGER = LoggerFactory.getLogger(HTTPSession.class);
 
 	public static final String CRLF = "\r\n";
 
@@ -280,8 +284,10 @@ public class HTTPSession implements Runnable {
 			}
 
 			try {
-				socketChannel.close(); 
-			} catch(Exception e) {}
+				socketChannel.close();
+			} catch (IOException e) {
+				LOGGER.warn("Failed to close socket: {}", e.toString());
+			}
 		}
 
 		connectionFinished();
