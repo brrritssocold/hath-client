@@ -8,7 +8,7 @@
 		<file>data/log_out</file>
 		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
 			<!-- daily rollover -->
-			<fileNamePattern>data/log_out.%d.gz</fileNamePattern>
+			<fileNamePattern>log_archive/log_out.%d.gz</fileNamePattern>
 
 			<!-- keep 7 days' worth of history -->
 			<maxHistory>7</maxHistory>
@@ -26,7 +26,7 @@
 		<file>data/log_err</file>
 		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
 			<!-- daily rollover -->
-			<fileNamePattern>data/log_err.%d.gz</fileNamePattern>
+			<fileNamePattern>log_archive/log_err.%d.gz</fileNamePattern>
 
 			<!-- keep 7 days' worth of history -->
 			<maxHistory>7</maxHistory>
