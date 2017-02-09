@@ -33,6 +33,7 @@ import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -41,6 +42,8 @@ import org.hath.base.Settings;
 import org.hath.base.Stats;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.base.Stopwatch;
 
 public class HTTPSession implements Runnable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(HTTPSession.class);
@@ -234,7 +237,7 @@ public class HTTPSession implements Runnable {
 					Out.info(info + request);
 				}
 
-				long startTime = System.currentTimeMillis();
+				Stopwatch sw = Stopwatch.createStarted();
 
 				if(contentLength > 0) {
 					int writtenBytes = 0;
@@ -268,9 +271,14 @@ public class HTTPSession implements Runnable {
 					}
 				}
 
-				long sendTime = System.currentTimeMillis() - startTime;
-				DecimalFormat df = new DecimalFormat("0.00");
-				Out.info(info + "Finished processing request in " + df.format(sendTime / 1000.0) + " seconds" + (sendTime >= 10 ? " (" + df.format(contentLength / (float) sendTime) + " KB/s)" : ""));
+				sw.stop();
+
+				if (LOGGER.isInfoEnabled()) {
+					long sendTime = sw.elapsed(TimeUnit.MILLISECONDS);
+					DecimalFormat df = new DecimalFormat("0.00");
+					LOGGER.info("{}Finished processing request in {} {}", info, sw,
+							(sendTime >= 10 ? " (" + df.format(contentLength / (float) sendTime) + " KB/s)" : ""));
+				}
 			}
 		}
 		catch(Exception e) {
