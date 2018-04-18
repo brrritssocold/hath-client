@@ -35,7 +35,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.Hashtable;
 import java.security.MessageDigest;
-import javax.xml.bind.DatatypeConverter;
+import java.lang.StringBuilder;
 
 public class Tools {
 	public static File checkAndCreateDir(File dir) throws java.io.IOException {
@@ -111,7 +111,7 @@ public class Tools {
 		String hash = null;
 
 		try {
-			hash = DatatypeConverter.printHexBinary(MessageDigest.getInstance("SHA-1").digest(stringToHash.getBytes())).toLowerCase();
+			hash = binaryToHex(MessageDigest.getInstance("SHA-1").digest(stringToHash.getBytes()));
 		}
 		catch(java.security.NoSuchAlgorithmException e) {
 			HentaiAtHomeClient.dieWithError(e);
@@ -135,13 +135,13 @@ public class Tools {
 				byteBuffer.clear();
 			}
 
-			hash = DatatypeConverter.printHexBinary(messageDigest.digest()).toLowerCase();
+			hash = binaryToHex(messageDigest.digest());
 		}
 		catch(java.security.NoSuchAlgorithmException e) {
 			HentaiAtHomeClient.dieWithError(e);
 		}
 		catch(java.io.IOException e) {
-			Out.warning("Failed to calculate SHA-1 hash of file " + fileToHash);
+			Out.warning("Failed to calculate SHA-1 hash of file " + fileToHash + ": " + e.getMessage());
 		}
 		finally {
 			try {
@@ -150,5 +150,21 @@ public class Tools {
 		}
 
 		return hash;
+	}
+	
+	public static String binaryToHex(byte[] data) {
+		StringBuilder sb = new StringBuilder(data.length * 2);
+
+		for(byte b : data) {
+			int i = (int) b & 0xff;
+			
+			if(i < 0x10) {
+				sb.append("0");
+			}
+			
+			sb.append(Integer.toHexString(i));
+		}
+		
+		return sb.toString().toLowerCase();
 	}
 }

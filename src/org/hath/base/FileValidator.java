@@ -28,7 +28,6 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
-import javax.xml.bind.DatatypeConverter;
 
 public class FileValidator {
 	private MessageDigest messageDigest;
@@ -63,7 +62,7 @@ public class FileValidator {
 				byteBuffer.clear();
 			}
 
-			return DatatypeConverter.printHexBinary(messageDigest.digest()).toLowerCase().equals(expectedSHA1Value);
+			return Tools.binaryToHex(messageDigest.digest()).equals(expectedSHA1Value);
 		}
 		finally {
 			// achievement unlocked: used non-contrived try/finally without catch

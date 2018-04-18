@@ -34,7 +34,6 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
-import javax.xml.bind.DatatypeConverter;
 
 public class ProxyFileDownloader implements Runnable {
 	private HentaiAtHomeClient client;
@@ -270,7 +269,7 @@ public class ProxyFileDownloader implements Runnable {
 			Out.debug("Requested file " + fileid + " is incomplete, and will not be stored. (bytes=" + tempFile.length() + ")");
 		}
 		else {
-			String sha1Hash = DatatypeConverter.printHexBinary(sha1Digest.digest()).toLowerCase();
+			String sha1Hash = Tools.binaryToHex(sha1Digest.digest());
 
 			if( !requestedHVFile.getHash().equals(sha1Hash) ) {
 				Out.debug("Requested file " + fileid + " is corrupt, and will not be stored. (digest=" + sha1Hash + ")");

@@ -140,6 +140,10 @@ public class ServerHandler {
 		}
 		else {
 			String failcode = sr.getFailCode();
+
+			Out.warning("Startup Failure: " + failcode);
+			Out.debug(sr.toString());
+
 			if(failcode.startsWith("FAIL_CONNECT_TEST")) {
 				Out.info("");
 				Out.info("************************************************************************************************************************************");
