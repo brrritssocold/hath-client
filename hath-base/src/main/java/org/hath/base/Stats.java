@@ -23,11 +23,10 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package org.hath.base;
 
-import java.util.ArrayList;
-
 // convenience class for the GUI
 
 import java.util.List;
+import java.util.ArrayList;
 
 public class Stats {
 

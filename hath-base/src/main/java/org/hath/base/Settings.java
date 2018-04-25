@@ -32,13 +32,13 @@ public class Settings {
 	public static final String NEWLINE = System.getProperty("line.separator");
 
 	// the client build is among other things used by the server to determine the client's capabilities. any forks should use the build number as an indication of compatibility with mainline, rather than an internal build number.
-	public static final int CLIENT_BUILD = 129;
+	public static final int CLIENT_BUILD = 134;
 	public static final int CLIENT_KEY_LENGTH = 20;
 	public static final int MAX_KEY_TIME_DRIFT = 300;
 	public static final int MAX_CONNECTION_BASE = 20;
 	public static final int TCP_PACKET_SIZE = 1460;
 
-	public static final String CLIENT_VERSION = "1.4.1";
+	public static final String CLIENT_VERSION = "1.4.2";
 	public static final String CLIENT_RPC_PROTOCOL = "http://";
 	public static final String CLIENT_RPC_HOST = "rpc.hentaiathome.net";
 	public static final String CLIENT_RPC_FILE = "clientapi13.php?";

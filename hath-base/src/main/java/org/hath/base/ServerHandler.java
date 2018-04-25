@@ -24,6 +24,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 package org.hath.base;
 
 import java.net.URL;
+import java.lang.StringBuilder;
 import java.util.List;
 
 public class ServerHandler {

@@ -265,10 +265,13 @@ public class CacheHandler {
 	}
 	
 	private String writeCacheObject(File file, Object object) throws java.io.FileNotFoundException, java.io.IOException {
+		Out.debug("Writing cache object " + file);
 		ObjectOutputStream objectWriter = new ObjectOutputStream(new FileOutputStream(file));
 		objectWriter.writeObject(object);
 		objectWriter.close();
-		return Tools.getSHA1String(file);
+		String hash = Tools.getSHA1String(file);
+		Out.debug("Wrote cache object " + file + " with size=" + file.length() + " hash=" + hash);
+		return hash;
 	}
 
 	private void deletePersistentData() {

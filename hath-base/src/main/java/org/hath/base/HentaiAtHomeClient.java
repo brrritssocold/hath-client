@@ -23,12 +23,22 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 /*
 
-- Malformed requests such as those made by Firefox 51 are now detected and terminated early, rather than having the connection sit around and wait for the standard timeout.
+1.4.2
+
+- Workaround for broken backwards compatibility in Java 9 by removing dependency on module javax.xml.bind.DatatypeConverter that prevented H@H from working without manually loading the module.
+
+- Previously, when shutting down, the client would immediately stop receiving new HTTP connections, then wait 25 seconds before exiting. Now, the client will wait five seconds before closing the socket, then shut down as soon as all pending requests have completed or when 25 additional seconds have passed. This will generally result in both faster and cleaner shutdowns than before.
+
+- If the client was terminated between initializing the cache and finishing startup, the cache state was not saved and a full rescan would be required. This should now be fixed.
+
+- If the client errored out from the program's main loop, most commonly when running out of disk space, the cache state might fail to save depending on thread interrupt timings. This should now be fixed.
+
+- The specific failure reason should now always be printed if startup tests fail.
 
 
-[b]To update an existing client: shut it down, download [url=https://repo.e-hentai.org/hath/HentaiAtHome_1.4.0.zip]Hentai@Home 1.4.0[/url], extract the archive, copy the jar files over the existing ones, then restart the client.[/b]
+[b]To update an existing client: shut it down, download [url=https://repo.e-hentai.org/hath/HentaiAtHome_1.4.2.zip]Hentai@Home 1.4.2[/url], extract the archive, copy the jar files over the existing ones, then restart the client.[/b]
 
-[b]The full source code for H@H is available and licensed under the GNU General Public License v3, and can be downloaded [url=https://repo.e-hentai.org/hath/HentaiAtHome_1.4.0_src.zip]here[/url]. Building it from source only requires the free Java SE 7 JDK.[/b]
+[b]The full source code for H@H is available and licensed under the GNU General Public License v3, and can be downloaded [url=https://repo.e-hentai.org/hath/HentaiAtHome_1.4.2_src.zip]here[/url]. Building it from source only requires the free Java SE 7 JDK.[/b]
 
 [b]For information on how to join Hentai@Home, check out [url=https://forums.e-hentai.org/index.php?showtopic=19795]The Hentai@Home Project FAQ[/url].[/b]
 
@@ -49,8 +59,7 @@ public class HentaiAtHomeClient implements Runnable {
 
 	private InputQueryHandler iqh;
 	private Out out;
-	private ShutdownHook shutdownHook;
-	private boolean shutdown, reportShutdown, fastShutdown;
+	private boolean shutdown, reportShutdown, fastShutdown, threadInterruptable;
 	private HTTPServer httpServer;
 	private ClientAPI clientAPI;
 	private CacheHandler cacheHandler;
@@ -68,6 +77,7 @@ public class HentaiAtHomeClient implements Runnable {
 		this.args = args;
 		shutdown = false;
 		reportShutdown = false;
+		threadInterruptable = false;
 		runtime = Runtime.getRuntime();
 
 		myThread = new Thread(this, HentaiAtHomeClient.class.getSimpleName());
@@ -93,8 +103,8 @@ public class HentaiAtHomeClient implements Runnable {
 		}
 
 		Out.startLoggers();
-		Out.info("Hentai@Home " + settings.CLIENT_VERSION + " (Build " + settings.CLIENT_BUILD + ") starting up\n");
-		Out.info("Copyright (c) 2008-2016, E-Hentai.org - all rights reserved.");
+		Out.info("Hentai@Home " + Settings.CLIENT_VERSION + " (Build " + Settings.CLIENT_BUILD + ") starting up\n");
+		Out.info("Copyright (c) 2008-2017, E-Hentai.org - all rights reserved.");
 		Out.info("This software comes with ABSOLUTELY NO WARRANTY. This is free software, and you are welcome to modify and redistribute it under the GPL v3 license.\n");
 		
 		Stats.resetStats();
@@ -115,8 +125,8 @@ public class HentaiAtHomeClient implements Runnable {
 
 		Stats.setProgramStatus("Initializing cache handler...");
 
-		// manages the files in the cache
 		try {
+			// manages the files in the cache
 			cacheHandler = new CacheHandler(this, settings);
 		}
 		catch(java.io.IOException ioe) {
@@ -128,6 +138,9 @@ public class HentaiAtHomeClient implements Runnable {
 		if(isShuttingDown()) {
 			return;
 		}
+
+		// if something causes the client to terminate after this point, we want the cache to be shut down cleanly to store the state
+		java.lang.Runtime.getRuntime().addShutdownHook(new ShutdownHook());
 
 		Stats.setProgramStatus("Starting HTTP server...");
 
@@ -153,8 +166,6 @@ public class HentaiAtHomeClient implements Runnable {
 		httpServer.allowNormalConnections();
 
 		reportShutdown = true;
-		shutdownHook = new ShutdownHook();
-		java.lang.Runtime.getRuntime().addShutdownHook(shutdownHook);
 
 		if (settings.isWarnNewClient()) {
 			String newClientWarning = "A new client version is available. Please download it from http://hentaiathome.net/ at your convenience.";
@@ -173,7 +184,6 @@ public class HentaiAtHomeClient implements Runnable {
 		// check if we're in an active schedule
 		serverHandler.refreshServerSettings();
 
-		Out.info("Activated.");
 		Stats.resetBytesSentHistory();
 		Stats.programStarted();
 
@@ -186,13 +196,22 @@ public class HentaiAtHomeClient implements Runnable {
 
 		System.gc();
 
+		Out.info("H@H initialization completed successfully. Starting normal operation");
+
 		while(!shutdown) {
+			// this toggle prevents the thread from calling interrupt on itself in case an error triggers a shutdown from the main thread, which could interfere with interruptable filechannel operations when saving cachehandler state
+			// not thread-safe; this variable should not be relied upon outside the shutdown hook
+			threadInterruptable = true;
+
 			try {
 				myThread.sleep(Math.max(1000, 10000 - lastThreadTime));
 			}
 			catch(java.lang.InterruptedException e) {
 				Out.debug("Master thread sleep interrupted");
 			}
+
+			// thread has left the sleep state and is no longer interruptable
+			threadInterruptable = false;
 
 			long startTime = System.currentTimeMillis();
 
@@ -220,6 +239,8 @@ public class HentaiAtHomeClient implements Runnable {
 				}
 
 				cacheHandler.cycleLRUCacheTable();
+				httpServer.nukeOldConnections(false);
+				Stats.shiftBytesSentHistory();
 
 				for(int i = 0; i < cacheHandler.getPruneAggression(); i++) {				
 					if(!cacheHandler.recheckFreeDiskSpace()) {
@@ -230,9 +251,6 @@ public class HentaiAtHomeClient implements Runnable {
 					}
 				}
 
-				httpServer.nukeOldConnections(false);
-				Stats.shiftBytesSentHistory();
-				
 				System.gc();
 				Out.debug("Memory total=" + runtime.totalMemory() / 1024 + "kB free=" + runtime.freeMemory() / 1024 + "kB max=" + runtime.maxMemory() / 1024 + "kB");
 
@@ -330,25 +348,39 @@ public class HentaiAtHomeClient implements Runnable {
 			shutdown = true;
 			Out.info("Shutting down...");
 
-			if(reportShutdown && serverHandler != null) {
-				serverHandler.notifyShutdown();
-			}
+			if(reportShutdown) {
+				if(serverHandler != null) {
+					serverHandler.notifyShutdown();
+				}
 
-			if(!fastShutdown && httpServer != null) {
-				httpServer.stopConnectionListener();
-				Out.info("Shutdown in progress - please wait 25 seconds");
+				if(!fastShutdown && httpServer != null) {
+					Out.info("Shutdown in progress - please wait up to 30 seconds");
 
-				try {
-					Thread.currentThread().sleep(25000);
-				} catch(java.lang.InterruptedException e) {}
+					try {
+						Thread.currentThread().sleep(5000);
+					} catch(java.lang.InterruptedException e) {}
 
-				if(Stats.getOpenConnections() > 0) {
-					httpServer.nukeOldConnections(true);
-					Out.info("All connections cleared.");
+					httpServer.stopConnectionListener();
+					int closeWaitCycles = 0, maxWaitCycles = 25;
+					
+					while(++closeWaitCycles < maxWaitCycles && Stats.getOpenConnections() > 0) {
+						try {
+							Thread.currentThread().sleep(1000);
+						} catch(java.lang.InterruptedException e) {}
+						
+						if(closeWaitCycles % 5 == 0) {
+							Out.info("Waiting for " + Stats.getOpenConnections() + " request(s) to finish; will wait for another " + (maxWaitCycles - closeWaitCycles) + " seconds");
+						}
+					}
+					
+					if(Stats.getOpenConnections() > 0) {
+						httpServer.nukeOldConnections(true);
+						Out.info("All connections cleared.");
+					}
 				}
 			}
 
-			if(myThread != null) {
+			if(threadInterruptable) {
 				myThread.interrupt();
 			}
 
@@ -373,12 +405,15 @@ public class HentaiAtHomeClient implements Runnable {
 "         ,:+$H@M#######M#$-    .$$=\n" +
 "              .,-=;+$@###X:    ;/=.\n" +
 "                     .,/X$;   .::,\n" +
-"                         .,    ..    \n"
-);
+"                         .,    ..    \n");
 			}
 			else {
 				String[] sd = {"I don't hate you", "Whyyyyyyyy...", "No hard feelings", "Your business is appreciated", "Good-night"};
 				Out.info(sd[(int) Math.floor(Math.random() * sd.length)]);
+			}
+
+			if(cacheHandler != null) {
+				cacheHandler.terminateCache();
 			}
 
 			if(shutdownErrorMessage != null) {
@@ -387,7 +422,6 @@ public class HentaiAtHomeClient implements Runnable {
 				}
 			}
 
-			cacheHandler.terminateCache();
 			Out.disableLogging();
 		}
 
