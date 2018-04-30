@@ -122,6 +122,7 @@ public class HTTPSession implements Runnable {
 					if(isValid) {
 						for(int i = 1; i < rcvdBytesTotal; i++) {
 							if(buffer[i] == '\n' && buffer[i - 1] == '\r') {
+								// only return the first line with the request string, sans the CRLF
 								return new String(buffer, 0, i - 1);
 							}
 						}
@@ -133,12 +134,12 @@ public class HTTPSession implements Runnable {
 					return null;
 				}
 
-				Out.debug("Request still not valid");
+				Out.debug("Request incomplete; looping");
 				//Out.debug(currentFullHeader);
 			}
 
 			if(!byteBuffer.hasRemaining()) {
-				Out.debug("Oversize request header");
+				Out.debug("Oversize request");
 				return null;
 			}
 		} while (true);
