@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>org.hath</groupId>
+	<artifactId>hath-report</artifactId>
+	<version>1.4.2-0.0.2</version>
+	<name>Hentai@Home Client report</name>
+	<description>Generate coverage report for all modules</description>
+	<packaging>pom</packaging>
+
+	<parent>
+		<groupId>org.hath</groupId>
+		<artifactId>hath-client</artifactId>
+		<version>1.4.2-0.0.2</version>
+	</parent>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+	</properties>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>0.7.9</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>report-aggregate</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.hath</groupId>
+			<artifactId>hath-base</artifactId>
+			<version>1.4.2-0.0.2</version>
+		</dependency>
+		<dependency>
+			<groupId>org.hath</groupId>
+			<artifactId>hath-gui</artifactId>
+			<version>1.4.2-0.0.2</version>
+		</dependency>
+	</dependencies>
+</project>

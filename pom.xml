@@ -16,6 +16,7 @@
 	<modules>
 		<module>hath-base</module>
 		<module>hath-gui</module>
+		<module>hath-report</module>
 	</modules>
 
 	<reporting>
@@ -123,6 +124,25 @@
 						<maxmem>256m</maxmem>
 					</configuration>
 				</plugin>
+				<plugin>
+					<groupId>org.jacoco</groupId>
+					<artifactId>jacoco-maven-plugin</artifactId>
+					<version>0.7.9</version>
+					<configuration>
+						<excludes>
+							<exclude>**/component/*</exclude>
+							<exclude>**/module/*</exclude>
+							<exclude>**/*_Factory.*</exclude>
+						</excludes>
+					</configuration>
+					<executions>
+						<execution>
+							<goals>
+								<goal>prepare-agent</goal>
+							</goals>
+						</execution>
+					</executions>
+				</plugin>					
 			</plugins>
 		</pluginManagement>
 
@@ -148,8 +168,8 @@
 				<artifactId>maven-pmd-plugin</artifactId>
 			</plugin>
 			<plugin>
-				<groupId>org.codehaus.mojo</groupId>
-				<artifactId>cobertura-maven-plugin</artifactId>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
 			</plugin>
 		</plugins>
 	</build>
