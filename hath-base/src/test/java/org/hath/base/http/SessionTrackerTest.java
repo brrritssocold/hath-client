@@ -25,11 +25,9 @@ package org.hath.base.http;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
-import static org.mockito.Mockito.mock;
 
 import java.util.concurrent.TimeUnit;
 
-import org.eclipse.jetty.server.Request;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -37,13 +35,15 @@ public class SessionTrackerTest {
 	private static final long START_SESSIONS = 5;
 	private static final int MAX_SESSIONS = 10;
 	private static final double OVERLOAD_PERCENTAGE = 0.8;
+	private static final String DUMMY_SESSION = "just a session";
 
-	private SessionTracker cut;
+
+	private SessionTracker<String> cut;
 	private int sessionCounter;
 
 	@Before
 	public void setUp() throws Exception {
-		cut = new SessionTracker(3, TimeUnit.SECONDS, MAX_SESSIONS, OVERLOAD_PERCENTAGE);
+		cut = new SessionTracker<String>(3, TimeUnit.SECONDS, MAX_SESSIONS, OVERLOAD_PERCENTAGE);
 		sessionCounter = 0;
 
 		addNumberOfSessions(START_SESSIONS);
@@ -51,7 +51,7 @@ public class SessionTrackerTest {
 
 	private void addNumberOfSessions(long numToAdd) {
 		for (long i = 0; i < numToAdd; i++) {
-			cut.add(sessionCounter++, mock(Request.class));
+			cut.add(sessionCounter++, DUMMY_SESSION);
 		}
 	}
 
@@ -69,7 +69,7 @@ public class SessionTrackerTest {
 
 	@Test
 	public void testIsOverloadedDisabledByOverloadPercentage() throws Exception {
-		cut = new SessionTracker(3, TimeUnit.SECONDS, MAX_SESSIONS, 0);
+		cut = new SessionTracker<String>(3, TimeUnit.SECONDS, MAX_SESSIONS, 0);
 		addNumberOfSessions(5);
 
 		assertThat(cut.isOverloaded(), is(false));
@@ -77,7 +77,7 @@ public class SessionTrackerTest {
 
 	@Test
 	public void testIsOverloadedDisabledByMaxsessions() throws Exception {
-		cut = new SessionTracker(3, TimeUnit.SECONDS, 0, OVERLOAD_PERCENTAGE);
+		cut = new SessionTracker<String>(3, TimeUnit.SECONDS, 0, OVERLOAD_PERCENTAGE);
 		addNumberOfSessions(5);
 
 		assertThat(cut.isOverloaded(), is(false));
@@ -104,9 +104,9 @@ public class SessionTrackerTest {
 
 	@Test(timeout = 500)
 	public void testSessionTimeout() throws Exception {
-		cut = new SessionTracker(1, TimeUnit.MILLISECONDS);
+		cut = new SessionTracker<String>(1, TimeUnit.MILLISECONDS);
 
-		cut.add(9, mock(Request.class));
+		cut.add(9, DUMMY_SESSION);
 
 		while (cut.isActive(1)) {
 			Thread.sleep(10);
@@ -125,17 +125,17 @@ public class SessionTrackerTest {
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testInvalidMaxSession() throws Exception {
-		new SessionTracker(3, TimeUnit.SECONDS, -1, 0.8);
+		new SessionTracker<String>(3, TimeUnit.SECONDS, -1, 0.8);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testInvalidOverloadPercentageNegative() throws Exception {
-		new SessionTracker(3, TimeUnit.SECONDS, 5, -1);
+		new SessionTracker<String>(3, TimeUnit.SECONDS, 5, -1);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testInvalidOverloadPercentageOver100Percent() throws Exception {
-		new SessionTracker(3, TimeUnit.SECONDS, 5, 1.1);
+		new SessionTracker<String>(3, TimeUnit.SECONDS, 5, 1.1);
 	}
 
 	@Test
@@ -145,7 +145,7 @@ public class SessionTrackerTest {
 
 	@Test
 	public void testIsMaxSessionsDisabledWhenZero() throws Exception {
-		cut = new SessionTracker(3, TimeUnit.SECONDS, 0, OVERLOAD_PERCENTAGE);
+		cut = new SessionTracker<String>(3, TimeUnit.SECONDS, 0, OVERLOAD_PERCENTAGE);
 
 		assertThat(cut.isMaxSessionsDisabled(), is(true));
 	}
@@ -157,7 +157,7 @@ public class SessionTrackerTest {
 
 	@Test
 	public void testIsOverloadPercentageDisabledWhenZero() throws Exception {
-		cut = new SessionTracker(3, TimeUnit.SECONDS, MAX_SESSIONS, 0.0);
+		cut = new SessionTracker<String>(3, TimeUnit.SECONDS, MAX_SESSIONS, 0.0);
 
 		assertThat(cut.isOverloadPercentageDisabled(), is(true));
 	}

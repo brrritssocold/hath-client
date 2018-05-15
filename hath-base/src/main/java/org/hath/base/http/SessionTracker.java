@@ -25,21 +25,19 @@ package org.hath.base.http;
 
 import java.util.concurrent.TimeUnit;
 
-import org.eclipse.jetty.server.Request;
-
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 
 /**
  * This class is used as a light weight session tracker.
  */
-public class SessionTracker {
+public class SessionTracker<T> {
 	TimeUnit timeoutUnit;
 	long timeoutValue;
 
 	long maxSessions;
 	double overloadPercentage;
-	Cache<Integer, Request> sessionCache;
+	Cache<Integer, T> sessionCache;
 
 	/**
 	 * Create a {@link SessionTracker} with the given Timeout. Sets a limit for
@@ -108,7 +106,7 @@ public class SessionTracker {
 	 * @param request
 	 *            the session corresponds to
 	 */
-	public void add(int sessionId, Request request) {
+	public void add(int sessionId, T request) {
 		sessionCache.put(sessionId, request);
 	}
 
