@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2016 E-Hentai.org
+Copyright 2008-2019 E-Hentai.org
 https://forums.e-hentai.org/
 ehentai@gmail.com
 
@@ -21,7 +21,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base;
+package hath.base;
 
 import java.nio.ByteBuffer;
 
@@ -42,11 +42,7 @@ public abstract class HTTPResponseProcessor {
 	
 	public void cleanup() {}
 
-	public ByteBuffer getPreparedTCPBuffer() throws Exception {
-		return getPreparedTCPBuffer(0);
-	}
-
-	public abstract ByteBuffer getPreparedTCPBuffer(int lingeringBytes) throws Exception;
+	public abstract ByteBuffer getPreparedTCPBuffer() throws Exception;
 
 	public String getHeader() {
 		return this.header;

@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2016 E-Hentai.org
+Copyright 2008-2019 E-Hentai.org
 https://forums.e-hentai.org/
 ehentai@gmail.com
 
@@ -21,7 +21,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base;
+package hath.base;
 
 import java.lang.Thread;
 import java.util.ArrayList;
@@ -158,7 +158,7 @@ public class GalleryDownloader implements Runnable {
 		URL metaurl;
 		
 		try {
-			metaurl = new URL(Settings.CLIENT_RPC_PROTOCOL + Settings.getRPCServerHost() + "/hathdl.php?" + ServerHandler.getURLQueryString("fetchqueue", markDownloaded ? gid + ";" + minxres : ""));
+			metaurl = new URL(Settings.CLIENT_RPC_PROTOCOL + Settings.getRPCServerHost() + "/15/dl?" + ServerHandler.getURLQueryString("fetchqueue", markDownloaded ? gid + ";" + minxres : ""));
 		}
 		catch(java.net.MalformedURLException e) {
 			e.printStackTrace();
@@ -256,7 +256,17 @@ public class GalleryDownloader implements Runnable {
 							break;
 						}
 
-						Tools.checkAndCreateDir(todir);
+						try {
+							Tools.checkAndCreateDir(todir);
+						}
+						catch(Exception e) {}
+						
+						if(!todir.exists()) {
+							Out.warning("GalleryDownloader: Could not create gallery download directory \"" + todir.getName() + "\". Your filesystem may not support Unicode. Attempting fallback.");
+							todir = new File(Settings.getDownloadDir(), gid + xresTitle);
+							Tools.checkAndCreateDir(todir);
+						}
+
 						Out.debug("GalleryDownloader: Created directory " + todir);
 					}
 				}

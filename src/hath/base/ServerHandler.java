@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2016 E-Hentai.org
+Copyright 2008-2019 E-Hentai.org
 https://forums.e-hentai.org/
 ehentai@gmail.com
 
@@ -21,7 +21,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base;
+package hath.base;
 
 import java.net.URL;
 import java.lang.StringBuilder;
@@ -30,6 +30,7 @@ import java.util.List;
 public class ServerHandler {
 	public static final String ACT_SERVER_STAT = "server_stat";
 	public static final String ACT_GET_BLACKLIST = "get_blacklist";
+	public static final String ACT_GET_CERTIFICATE = "get_cert";
 	public static final String ACT_CLIENT_LOGIN = "client_login";
 	public static final String ACT_CLIENT_SETTINGS = "client_settings";
 	public static final String ACT_CLIENT_START = "client_start";
@@ -201,9 +202,9 @@ public class ServerHandler {
 		}
 	}
 
-	public void stillAliveTest() {
+	public void stillAliveTest(boolean resume) {
 		CakeSphere cs = new CakeSphere(this, client);
-		cs.stillAlive();
+		cs.stillAlive(resume);
 	}
 
 	// this MUST NOT be called after the client has started up, as it will clear out and reset the client on the server, leaving the client in a limbo until restart

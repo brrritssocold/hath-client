@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2016 E-Hentai.org
+Copyright 2008-2019 E-Hentai.org
 https://forums.e-hentai.org/
 ehentai@gmail.com
 
@@ -21,7 +21,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base;
+package hath.base;
 
 import java.util.Date;
 import java.util.TimeZone;
@@ -232,7 +232,7 @@ public class Out {
 			int offset = 0;
 			while(++offset < ste.length) {
 				String s = ste[offset].getClassName();
-				if(!s.equals("org.hath.base.Out") && !s.equals("org.hath.base.Out$OutPrintStream") && !s.equals("java.lang.Thread")) {
+				if(!s.equals("hath.base.Out") && !s.equals("hath.base.Out$OutPrintStream") && !s.equals("java.lang.Thread")) {
 					break;
 				}
 			}

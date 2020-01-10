@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2016 E-Hentai.org
+Copyright 2008-2019 E-Hentai.org
 https://forums.e-hentai.org/
 ehentai@gmail.com
 
@@ -21,7 +21,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base;
+package hath.base;
 
 import java.lang.Thread;
 import java.io.File;
@@ -296,7 +296,10 @@ public class CacheHandler {
 		Out.info("CacheHandler: Cache cleanup pass..");
 
 		File[] l1dirs = Tools.listSortedFiles(cachedir);
-		int checkedCounter = 0, checkedCounterPct = 0;
+		
+		if(l1dirs == null) {
+			client.dieWithError("CacheHandler: Unable to access " + cachedir + "; check permissions and I/O errors.");
+		}
 
 		// this sanity check can be tightened up when 1.2.6 is EOL and everyone have upgraded to the two-level cache tree
 		//if(l1dirs.length > Settings.getStaticRangeCount()) {
@@ -315,18 +318,25 @@ public class CacheHandler {
 			return;
 		}
 
+		int checkedCounter = 0, checkedCounterPct = 0;
+
 		for(File l1dir : l1dirs) {
 			// time to take out the trash
 			System.gc();
-
+			
 			if(!l1dir.isDirectory()) {
 				l1dir.delete();
 				continue;
 			}
 
 			File[] l2dirs = Tools.listSortedFiles(l1dir);
+			
+			if(l2dirs == null) {
+				Out.warning("CacheHandler: Unable to access " + l1dir + "; check permissions and I/O errors.");
+				continue;
+			}
 
-			if(l2dirs == null || l2dirs.length == 0) {
+			if(l2dirs.length == 0) {
 				l1dir.delete();
 				continue;
 			}
@@ -367,8 +377,6 @@ public class CacheHandler {
 	}
 
 	private void startupInitCache() {
-		long recentlyAccessedCutoff = System.currentTimeMillis() - 604800000;
-
 		// update actions:
 		// staticRangeOldest	- add oldest modified timestamp for every static range
 		// addFileToActiveCache	- increments cacheCount and cacheSize
@@ -388,6 +396,7 @@ public class CacheHandler {
 			printFreq = 10000;
 		}
 		
+		long recentlyAccessedCutoff = System.currentTimeMillis() - 604800000;
 		int foundStaticRanges = 0;
 
 		// cache register pass
@@ -395,8 +404,16 @@ public class CacheHandler {
 			if(!l1dir.isDirectory()) {
 				continue;
 			}
+			
+			File[] l2dirs = Tools.listSortedFiles(l1dir);
 
-			for(File l2dir : Tools.listSortedFiles(l1dir)) {
+			if(l2dirs == null) {
+				// we already warned about level 1 issues in startupCacheCleanup
+				//Out.warning("CacheHandler: Unable to access " + l1dir + "; check permissions and I/O errors.");
+				continue;
+			}
+
+			for(File l2dir : l2dirs) {
 				// the garbage, it must be collected
 				System.gc();
 
@@ -405,6 +422,11 @@ public class CacheHandler {
 				}
 
 				File[] files = Tools.listSortedFiles(l2dir);
+				
+				if(files == null) {
+					Out.warning("CacheHandler: Unable to access " + l2dir + "; check permissions and I/O errors.");
+					continue;
+				}
 
 				if(files.length == 0) {
 					l2dir.delete();

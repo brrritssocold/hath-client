@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2016 E-Hentai.org
+Copyright 2008-2019 E-Hentai.org
 https://forums.e-hentai.org/
 ehentai@gmail.com
 
@@ -21,8 +21,8 @@ along with Hentai@Home GUI.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.gui;
-import org.hath.base.*;
+package hath.gui;
+import hath.base.*;
 
 import java.awt.*;
 import java.awt.event.*;
@@ -53,8 +53,8 @@ public class HentaiAtHomeClientGUI extends JFrame implements HathGUI, ActionList
 			System.exit(-1);
     	}
 
-		Image icon16 = Toolkit.getDefaultToolkit().getImage(getClass().getResource("/src/org/hath/gui/icon16.png"));
-		Image icon32 = Toolkit.getDefaultToolkit().getImage(getClass().getResource("/src/org/hath/gui/icon32.png"));
+		Image icon16 = Toolkit.getDefaultToolkit().getImage(getClass().getResource("/src/hath/gui/icon16.png"));
+		Image icon32 = Toolkit.getDefaultToolkit().getImage(getClass().getResource("/src/hath/gui/icon32.png"));
 
 		setTitle("Hentai@Home " + Settings.CLIENT_VERSION + " (Build " + Settings.CLIENT_BUILD + ")");
 		setIconImage(icon32);

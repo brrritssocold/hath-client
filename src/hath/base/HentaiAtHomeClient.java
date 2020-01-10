@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2016 E-Hentai.org
+Copyright 2008-2019 E-Hentai.org
 https://forums.e-hentai.org/
 ehentai@gmail.com
 
@@ -23,22 +23,18 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 /*
 
-1.4.2
+1.6.0
 
-- Workaround for broken backwards compatibility in Java 9 by removing dependency on module javax.xml.bind.DatatypeConverter that prevented H@H from working without manually loading the module.
+This is a required update for clients running versions prior to 1.5.4. 1.4 clients will be seeing dropping quality over the next month, and will no longer receive traffic after February 1st. This release only has minor changes compared to 1.5.4, which remains a supported version and will not require an upgrade.
 
-- Previously, when shutting down, the client would immediately stop receiving new HTTP connections, then wait 25 seconds before exiting. Now, the client will wait five seconds before closing the socket, then shut down as soon as all pending requests have completed or when 25 additional seconds have passed. This will generally result in both faster and cleaner shutdowns than before.
+- When refreshing HTTPS certs, the client will now wait longer (up to five minutes) before it attempts starting the server back up if the listening thread takes unexpectedly long to terminate.
 
-- If the client was terminated between initializing the cache and finishing startup, the cache state was not saved and a full rescan would be required. This should now be fixed.
-
-- If the client errored out from the program's main loop, most commonly when running out of disk space, the cache state might fail to save depending on thread interrupt timings. This should now be fixed.
-
-- The specific failure reason should now always be printed if startup tests fail.
+- When handling file requests, cache misses did not count towards the "total files sent" stat. (This only affected the readout in the GUI, server-side stats are not calculated by the clients.)
 
 
-[b]To update an existing client: shut it down, download [url=https://repo.e-hentai.org/hath/HentaiAtHome_1.4.2.zip]Hentai@Home 1.4.2[/url], extract the archive, copy the jar files over the existing ones, then restart the client.[/b]
+[b]To update an existing client: shut it down, download [url=https://repo.e-hentai.org/hath/HentaiAtHome_1.5.4.zip]Hentai@Home 1.5.4[/url], extract the archive, copy the jar files over the existing ones, then restart the client.[/b]
 
-[b]The full source code for H@H is available and licensed under the GNU General Public License v3, and can be downloaded [url=https://repo.e-hentai.org/hath/HentaiAtHome_1.4.2_src.zip]here[/url]. Building it from source only requires the free Java SE 7 JDK.[/b]
+[b]The full source code for H@H is available and licensed under the GNU General Public License v3, and can be downloaded [url=https://repo.e-hentai.org/hath/HentaiAtHome_1.5.4_src.zip]here[/url]. Building it from source only requires OpenJDK 8 or newer.[/b]
 
 [b]For information on how to join Hentai@Home, check out [url=https://forums.e-hentai.org/index.php?showtopic=19795]The Hentai@Home Project FAQ[/url].[/b]
 
@@ -46,7 +42,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base;
+package hath.base;
 
 import java.io.File;
 import java.lang.Thread;
@@ -55,7 +51,7 @@ import java.lang.Runtime;
 public class HentaiAtHomeClient implements Runnable {
 	private InputQueryHandler iqh;
 	private Out out;
-	private boolean shutdown, reportShutdown, fastShutdown, threadInterruptable;
+	private boolean shutdown, reportShutdown, fastShutdown, threadInterruptable, doCertRefresh;
 	private HTTPServer httpServer;
 	private ClientAPI clientAPI;
 	private CacheHandler cacheHandler;
@@ -99,7 +95,7 @@ public class HentaiAtHomeClient implements Runnable {
 
 		Out.startLoggers();
 		Out.info("Hentai@Home " + Settings.CLIENT_VERSION + " (Build " + Settings.CLIENT_BUILD + ") starting up\n");
-		Out.info("Copyright (c) 2008-2017, E-Hentai.org - all rights reserved.");
+		Out.info("Copyright (c) 2008-2019, E-Hentai.org - all rights reserved.");
 		Out.info("This software comes with ABSOLUTELY NO WARRANTY. This is free software, and you are welcome to modify and redistribute it under the GPL v3 license.\n");
 		
 		Stats.resetStats();
@@ -216,8 +212,45 @@ public class HentaiAtHomeClient implements Runnable {
 					resumeMasterThread();
 				}
 
-				if(threadSkipCounter % 11 == 0) {
-					serverHandler.stillAliveTest();
+				if(doCertRefresh) {
+					Out.info("Doing internal restart of HTTP server to refresh certs");
+					
+					if(!serverHandler.notifySuspend()) {
+						Out.warning("Failed to contact server to suspend client traffic; will retry");
+					}
+					else {
+						try {
+							myThread.sleep(5000);
+							httpServerShutdown(true);
+
+							int restartTimeout = 0;
+							
+							do {
+								Out.info("Waiting for HTTPServer thread to fully terminate..." + (restartTimeout > 1 ? " (waited " + (restartTimeout * 5) + " seconds)" : ""));
+								myThread.sleep(5000);
+							} while(!httpServer.isThreadTerminated() && ++restartTimeout < 60);
+							
+							myThread.sleep(1000);
+						} catch(java.lang.InterruptedException e) {}
+
+						httpServer = new HTTPServer(this);
+
+						if(!httpServer.startConnectionListener(Settings.getClientPort())) {
+							setFastShutdown();
+							dieWithError("Failed to reinitialize HTTPServer");
+							return;
+						}
+						
+						httpServer.allowNormalConnections();
+						serverHandler.stillAliveTest(true);
+						
+						doCertRefresh = false;
+
+						Out.info("Internal HTTP server was successfully restarted");
+					}
+				}
+				else if(threadSkipCounter % 11 == 0) {
+					serverHandler.stillAliveTest(false);
 				}
 
 				if(threadSkipCounter % 6 == 2) {
@@ -233,7 +266,7 @@ public class HentaiAtHomeClient implements Runnable {
 				}
 
 				cacheHandler.cycleLRUCacheTable();
-				httpServer.nukeOldConnections(false);
+				httpServer.nukeOldConnections();
 				Stats.shiftBytesSentHistory();
 
 				for(int i = 0; i < cacheHandler.getPruneAggression(); i++) {				
@@ -251,6 +284,10 @@ public class HentaiAtHomeClient implements Runnable {
 
 			lastThreadTime = System.currentTimeMillis() - startTime;
 		}
+	}
+	
+	public void setCertRefresh() {
+		doCertRefresh = true;
 	}
 
 	public boolean isSuspended() {
@@ -347,28 +384,7 @@ public class HentaiAtHomeClient implements Runnable {
 
 				if(!fastShutdown && httpServer != null) {
 					Out.info("Shutdown in progress - please wait up to 30 seconds");
-
-					try {
-						Thread.currentThread().sleep(5000);
-					} catch(java.lang.InterruptedException e) {}
-
-					httpServer.stopConnectionListener();
-					int closeWaitCycles = 0, maxWaitCycles = 25;
-					
-					while(++closeWaitCycles < maxWaitCycles && Stats.getOpenConnections() > 0) {
-						try {
-							Thread.currentThread().sleep(1000);
-						} catch(java.lang.InterruptedException e) {}
-						
-						if(closeWaitCycles % 5 == 0) {
-							Out.info("Waiting for " + Stats.getOpenConnections() + " request(s) to finish; will wait for another " + (maxWaitCycles - closeWaitCycles) + " seconds");
-						}
-					}
-					
-					if(Stats.getOpenConnections() > 0) {
-						httpServer.nukeOldConnections(true);
-						Out.info("All connections cleared.");
-					}
+					httpServerShutdown(false);
 				}
 			}
 
@@ -419,6 +435,25 @@ public class HentaiAtHomeClient implements Runnable {
 
 		if(!fromShutdownHook) {
 			System.exit(0);
+		}
+	}
+	
+	private void httpServerShutdown(boolean restart) {
+		try {
+			Thread.currentThread().sleep(5000);
+		} catch(java.lang.InterruptedException e) {}
+
+		httpServer.stopConnectionListener(restart);
+		int closeWaitCycles = 0, maxWaitCycles = 25;
+		
+		while(++closeWaitCycles < maxWaitCycles && Stats.getOpenConnections() > 0) {
+			try {
+				Thread.currentThread().sleep(1000);
+			} catch(java.lang.InterruptedException e) {}
+			
+			if(closeWaitCycles % 5 == 0) {
+				Out.info("Waiting for " + Stats.getOpenConnections() + " request(s) to finish; will wait for another " + (maxWaitCycles - closeWaitCycles) + " seconds");
+			}
 		}
 	}
 

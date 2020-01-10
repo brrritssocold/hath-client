@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2016 E-Hentai.org
+Copyright 2008-2019 E-Hentai.org
 https://forums.e-hentai.org/
 ehentai@gmail.com
 
@@ -21,7 +21,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base;
+package hath.base;
 
 import java.io.File;
 import java.net.InetAddress;
@@ -32,16 +32,16 @@ public class Settings {
 	public static final String NEWLINE = System.getProperty("line.separator");
 
 	// the client build is among other things used by the server to determine the client's capabilities. any forks should use the build number as an indication of compatibility with mainline, rather than an internal build number.
-	public static final int CLIENT_BUILD = 134;
+	public static final int CLIENT_BUILD = 151;
 	public static final int CLIENT_KEY_LENGTH = 20;
 	public static final int MAX_KEY_TIME_DRIFT = 300;
 	public static final int MAX_CONNECTION_BASE = 20;
 	public static final int TCP_PACKET_SIZE = 1460;
 
-	public static final String CLIENT_VERSION = "1.4.2";
+	public static final String CLIENT_VERSION = "1.6.0";
 	public static final String CLIENT_RPC_PROTOCOL = "http://";
 	public static final String CLIENT_RPC_HOST = "rpc.hentaiathome.net";
-	public static final String CLIENT_RPC_FILE = "clientapi13.php?";
+	public static final String CLIENT_RPC_FILE = "15/rpc?";
 	public static final String CLIENT_LOGIN_FILENAME = "client_login";
 	public static final String CONTENT_TYPE_DEFAULT = "text/html; charset=iso-8859-1";
 	public static final String CONTENT_TYPE_OCTET = "application/octet-stream";
@@ -61,7 +61,7 @@ public class Settings {
 
 	private static int clientID = 0, clientPort = 0, throttle_bytes = 0, overrideConns = 0, serverTimeDelta = 0, maxAllowedFileSize = 104857600, currentStaticRangeCount = 0;
 	private static long disklimit_bytes = 0, diskremaining_bytes = 0;
-	private static boolean verifyCache = false, rescanCache = false, skipFreeSpaceCheck = false, warnNewClient = false, useLessMemory = false, disableBWM = false, disableDownloadBWM = false, disableLogs = false, flushLogs = false;
+	private static boolean verifyCache = false, rescanCache = false, skipFreeSpaceCheck = false, warnNewClient = false, useLessMemory = false, disableBWM = false, disableDownloadBWM = false, disableLogs = false, flushLogs = false, disableIPOriginCheck = false, disableFloodControl = false;
 
 	public static void setActiveClient(HentaiAtHomeClient client) {
 		activeClient = client;
@@ -261,6 +261,12 @@ public class Settings {
 			else if(setting.equals("disable_download_bwm")) {
 				disableDownloadBWM = value.equals("true");
 			}
+			else if(setting.equals("disable_ip_origin_check")) {
+				disableIPOriginCheck = value.equals("true");
+			}
+			else if(setting.equals("disable_flood_control")) {
+				disableFloodControl = value.equals("true");
+			}
 			else if(setting.equals("skip_free_space_check")) {
 				skipFreeSpaceCheck = value.equals("true");
 			}
@@ -431,6 +437,14 @@ public class Settings {
 	public static boolean isDisableLogs() {
 		return disableLogs;
 	}
+	
+	public static boolean isDisableIPOriginCheck() {
+		return disableIPOriginCheck;
+	}
+
+	public static boolean isDisableFloodControl() {
+		return disableFloodControl;
+	}
 
 	public static HentaiAtHomeClient getActiveClient() {
 		return activeClient;
@@ -441,6 +455,10 @@ public class Settings {
 	}
 
 	public static boolean isValidRPCServer(InetAddress compareTo) {
+		if(disableIPOriginCheck) {
+			return true;
+		}
+		
 		synchronized(rpcServerLock) {
 			if(rpcServers == null) {
 				return false;

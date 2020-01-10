@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2016 E-Hentai.org
+Copyright 2008-2019 E-Hentai.org
 https://forums.e-hentai.org/
 ehentai@gmail.com
 
@@ -21,7 +21,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base;
+package hath.base;
 
 import java.lang.Thread;
 import java.net.URL;
@@ -63,7 +63,8 @@ public class ProxyFileDownloader implements Runnable {
 
 	public int initialize() {
 		// we'll need to run this in a private thread so we can push data to the originating client at the same time we download it (pass-through)
-		Out.info("Proxy file download request initializing for " + fileid + "...");
+		// this will NOT work with HTTPS (see FileDownloader), but upstream can be kept as HTTP so This Is Fine™
+		Out.debug("Proxy file download request initializing for " + fileid + "...");
 
 		try {
 			Out.debug("ProxyFileDownloader: Requesting file download from " + source);
@@ -236,6 +237,7 @@ public class ProxyFileDownloader implements Runnable {
 	}
 
 	public void proxyThreadCompleted() {
+		Stats.fileSent();
 		proxyThreadComplete = true;
 		checkFinalizeDownloadedFile();
 	}
@@ -285,7 +287,7 @@ public class ProxyFileDownloader implements Runnable {
 					Out.debug("Requested file " + fileid + " exists or cannot be cached.");
 				}
 
-				Out.info("Proxy file download request complete for " + fileid);
+				Out.debug("Proxy file download request complete for " + fileid);
 			}
 		}
 

@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2016 E-Hentai.org
+Copyright 2008-2019 E-Hentai.org
 https://forums.e-hentai.org/
 ehentai@gmail.com
 
@@ -21,7 +21,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base;
+package hath.base;
 
 import java.nio.charset.Charset;
 import java.nio.ByteBuffer;
@@ -70,8 +70,8 @@ public class HTTPResponseProcessorText extends HTTPResponseProcessor {
 		return contentType;
 	}
 
-	public ByteBuffer getPreparedTCPBuffer(int lingeringBytes) throws Exception {
-		int bytecount = Math.min(getContentLength() - writeoff, Settings.TCP_PACKET_SIZE - lingeringBytes);
+	public ByteBuffer getPreparedTCPBuffer() throws Exception {
+		int bytecount = Math.min(getContentLength() - writeoff, Settings.TCP_PACKET_SIZE);
 		ByteBuffer buffer = ByteBuffer.wrap(responseBytes, writeoff, bytecount);
 		writeoff += bytecount;
 

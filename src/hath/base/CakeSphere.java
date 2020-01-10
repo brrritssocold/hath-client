@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2016 E-Hentai.org
+Copyright 2008-2019 E-Hentai.org
 https://forums.e-hentai.org/
 ehentai@gmail.com
 
@@ -21,7 +21,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base;
+package hath.base;
 
 import java.lang.Thread;
 
@@ -29,6 +29,7 @@ public class CakeSphere implements Runnable {
 	private Thread myThread;
 	private ServerHandler handler;
 	private HentaiAtHomeClient client;
+	private boolean doResume;
 	
 	public CakeSphere(ServerHandler handler, HentaiAtHomeClient client) {
 		myThread = new Thread(this);
@@ -36,13 +37,15 @@ public class CakeSphere implements Runnable {
 		this.client = client;
 	}
 	
-	public void stillAlive() {
+	public void stillAlive(boolean resume) {
 		// Cake and grief counseling will be available at the conclusion of the test.
+		doResume = resume;
 		myThread.start();
 	}
 	
 	public void run() {
-		ServerResponse sr = ServerResponse.getServerResponse(ServerHandler.ACT_STILL_ALIVE, handler);
+		ServerResponse sr = ServerResponse.getServerResponse(ServerHandler.getServerConnectionURL(ServerHandler.ACT_STILL_ALIVE, doResume ? "resume" : ""), handler);
+
 		if(sr.getResponseStatus() == ServerResponse.RESPONSE_STATUS_OK) {
 			Out.debug("Successfully performed a stillAlive test for the server.");
 			Stats.serverContact();

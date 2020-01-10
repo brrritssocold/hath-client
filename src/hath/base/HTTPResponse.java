@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2016 E-Hentai.org
+Copyright 2008-2019 E-Hentai.org
 https://forums.e-hentai.org/
 ehentai@gmail.com
 
@@ -21,7 +21,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-package org.hath.base;
+package hath.base;
 
 import java.util.*;
 import java.util.regex.Pattern;
@@ -68,6 +68,10 @@ public class HTTPResponse {
 				client.startDownloader();
 				return new HTTPResponseProcessorText("");
 			}
+			else if(command.equalsIgnoreCase("refresh_certs")) {
+				client.setCertRefresh();
+				return new HTTPResponseProcessorText("");
+			}
 		}
 		catch(Exception e) {
 			e.printStackTrace();
@@ -78,14 +82,15 @@ public class HTTPResponse {
 	}
 	
 	private HTTPResponseProcessorText processThreadedProxyTest(Hashtable<String,String> addTable) {
-		String ipaddr = addTable.get("ipaddr");
+		String hostname = addTable.get("hostname");
+		String protocol = addTable.get("protocol");
 		int port = Integer.parseInt(addTable.get("port"));
 		int testsize = Integer.parseInt(addTable.get("testsize"));
 		int testcount = Integer.parseInt(addTable.get("testcount"));
 		int testtime = Integer.parseInt(addTable.get("testtime"));
 		String testkey = addTable.get("testkey");
 		
-		Out.debug("Running threaded proxy test against ipaddr=" + ipaddr + " port=" + port + " testsize=" + testsize + " testcount=" + testcount + " testtime=" + testtime + " testkey=" + testkey);
+		Out.debug("Running threaded proxy test against hostname=" + hostname + " protocol=" + protocol + " port=" + port + " testsize=" + testsize + " testcount=" + testcount + " testtime=" + testtime + " testkey=" + testkey);
 
 		int successfulTests = 0;
 		long totalTimeMillis = 0;
@@ -94,7 +99,7 @@ public class HTTPResponse {
 			List<FileDownloader> testfiles = Collections.checkedList(new ArrayList<FileDownloader>(), FileDownloader.class);
 
 			for(int i=0; i<testcount; i++) {
-				URL source = new URL("http", ipaddr, port, "/t/" + testsize + "/" + testtime + "/" + testkey + "/" + (int) Math.floor(Math.random() * Integer.MAX_VALUE));
+				URL source = new URL(protocol == null ? "http" : protocol, hostname, port, "/t/" + testsize + "/" + testtime + "/" + testkey + "/" + (int) Math.floor(Math.random() * Integer.MAX_VALUE));
 				Out.debug("Test thread: " + source);
 				FileDownloader dler = new FileDownloader(source, 10000, 60000, true);
 				testfiles.add(dler);
