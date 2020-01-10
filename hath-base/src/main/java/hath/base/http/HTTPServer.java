@@ -31,26 +31,13 @@ import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.regex.Pattern;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import hath.base.HentaiAtHomeClient;
 import hath.base.Out;
 import hath.base.Settings;
 import hath.base.Stats;
 
 public class HTTPServer implements Runnable {
-	private static final Logger LOGGER = LoggerFactory.getLogger(HTTPServer.class);
-
-	private static final int THREAD_LOAD_FACTOR = 5;
-	private static final int CORE_POOL_SIZE = 1;
-
 	private HentaiAtHomeClient client;
 	private HTTPBandwidthMonitor bandwidthMonitor = null;
 	private ServerSocketChannel listener = null;
@@ -59,12 +46,13 @@ public class HTTPServer implements Runnable {
 	private int currentConnId = 0;
 	private boolean allowNormalConnections = false;
 	private Pattern localNetworkPattern;
-	private Executor sessionThreadPool;
+	
 	private IFloodControl floodControl;
+	private HTTPSessionPool sessionPool;
 
 	public HTTPServer(HentaiAtHomeClient client, IFloodControl floodControl) {
 		this.client = client;
-		setupThreadPool();
+		sessionPool = new HTTPSessionPool();
 		this.floodControl = floodControl;
 
 		sessions = Collections.checkedList(new ArrayList<HTTPSession>(), HTTPSession.class);
@@ -77,28 +65,6 @@ public class HTTPServer implements Runnable {
 		localNetworkPattern = Pattern.compile("^((localhost)|(127\\.)|(10\\.)|(192\\.168\\.)|(172\\.((1[6-9])|(2[0-9])|(3[0-1]))\\.)|(169\\.254\\.)|(::1)|(0:0:0:0:0:0:0:1)|(fc)|(fd)).*$");
 	}
 
-	private void setupThreadPool() {
-		sessionThreadPool = Executors.newCachedThreadPool(new ThreadFactory() {
-			@Override
-			public Thread newThread(Runnable r) {
-				Thread thread = new Thread(r, "Pooled HTTP Session");
-				thread.setDaemon(true);
-				return thread;
-			}
-		});
-
-		ThreadPoolExecutor pool = (ThreadPoolExecutor) sessionThreadPool;
-		int maximumPoolSize = sessionPoolSize();
-		pool.setMaximumPoolSize(maximumPoolSize);
-		pool.setCorePoolSize(CORE_POOL_SIZE);
-
-		LOGGER.debug("Session pool size is {} to {} thread(s)", CORE_POOL_SIZE, maximumPoolSize);
-	}
-
-	private int sessionPoolSize() {
-		return Runtime.getRuntime().availableProcessors() * THREAD_LOAD_FACTOR;
-	}
-
 	/**
 	 * Add a session to the thread pool for execution.
 	 * 
@@ -106,7 +72,7 @@ public class HTTPServer implements Runnable {
 	 *            to execute
 	 */
 	private void handleSession(HTTPSession session) {
-		sessionThreadPool.execute(session);
+		sessionPool.execute(session);
 	}
 
 	public boolean startConnectionListener(int port) {
