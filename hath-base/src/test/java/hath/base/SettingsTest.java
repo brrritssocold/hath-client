@@ -45,8 +45,8 @@ public class SettingsTest {
 	@Before
 	public void setUp() throws Exception {
 		logDir = Files.createTempDirectory("SettingsTest");
-		Settings.getInstance().setLogDir(logDir.toFile());
-		cut = Settings.getInstance();
+		Settings.setLogDir(logDir.toFile());
+		cut = new Settings();
 	}
 
 	@Test

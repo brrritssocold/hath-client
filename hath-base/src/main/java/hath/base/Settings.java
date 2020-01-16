@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2016 E-Hentai.org
+Copyright 2008-2019 E-Hentai.org
 https://forums.e-hentai.org/
 ehentai@gmail.com
 
@@ -50,50 +50,33 @@ public class Settings {
 	public static final String CONTENT_TYPE_GIF = "image/gif";
 	public static final String CONTENT_TYPE_WEBM = "video/webm";
 
-	private HentaiAtHomeClient activeClient = null;
-	private HathGUI activeGUI = null;
-	private Object rpcServerLock = new Object();
-	private InetAddress rpcServers[] = null;
-	private String rpcServerCurrent = null, rpcServerLastFailed = null;
-	private Hashtable<String, Integer> staticRanges = null;
-	private Path logdir = null;
-	private File datadir = null, cachedir = null, tempdir = null, downloaddir = null;
-	private String clientKey = "", clientHost = "", dataDirPath = "data", logDirPath = "log", cacheDirPath = "cache",
-			tempDirPath = "tmp", downloadDirPath = "download";
+	private static HentaiAtHomeClient activeClient = null;
+	private static HathGUI activeGUI = null;
+	private static Object rpcServerLock = new Object();
+	private static InetAddress rpcServers[] = null;
+	private static String rpcServerCurrent = null, rpcServerLastFailed = null;
+	private static Hashtable<String, Integer> staticRanges = null;
+	private static Path logdir = null;
+	private static File datadir = null, cachedir = null, tempdir = null, downloaddir = null;
+	private static String clientKey = "", clientHost = "", dataDirPath = "data", logDirPath = "log", cacheDirPath = "cache", tempDirPath = "tmp", downloadDirPath = "download";
 
-	private int clientID = 0, clientPort = 0, throttle_bytes = 0, overrideConns = 0, serverTimeDelta = 0,
-			maxAllowedFileSize = 104857600, currentStaticRangeCount = 0;
-	private long disklimit_bytes = 0, diskremaining_bytes = 0;
-	private boolean verifyCache = false, rescanCache = false, skipFreeSpaceCheck = false, warnNewClient = false,
-			useLessMemory = false, disableBWM = false, disableDownloadBWM = false, disableLogs = false,
-			flushLogs = false;
+	private static int clientID = 0, clientPort = 0, throttle_bytes = 0, overrideConns = 0, serverTimeDelta = 0, maxAllowedFileSize = 104857600, currentStaticRangeCount = 0;
+	private static long disklimit_bytes = 0, diskremaining_bytes = 0;
+	private static boolean verifyCache = false, rescanCache = false, skipFreeSpaceCheck = false, warnNewClient = false, useLessMemory = false, disableBWM = false, disableDownloadBWM = false, disableLogs = false, flushLogs = false, disableIPOriginCheck = false, disableFloodControl = false;
 
-	private static Settings instance;
-
-	private Settings() {
-	}
-
-	public static Settings getInstance() {
-		if(instance == null) {
-			instance = new Settings();
-		}
-		
-		return instance;
-	}
-
-	public void setActiveClient(HentaiAtHomeClient client) {
+	public static void setActiveClient(HentaiAtHomeClient client) {
 		activeClient = client;
 	}
 
-	public void setActiveGUI(HathGUI gui) {
+	public static void setActiveGUI(HathGUI gui) {
 		activeGUI = gui;
 	}
 
-	public boolean loginCredentialsAreSyntaxValid() {
+	public static boolean loginCredentialsAreSyntaxValid() {
 		return clientID > 0 && java.util.regex.Pattern.matches("^[a-zA-Z0-9]{" + CLIENT_KEY_LENGTH + "}$", clientKey);
 	}
 
-	public boolean loadClientLoginFromFile() {
+	public static boolean loadClientLoginFromFile() {
 		File clientLogin = new File(getDataDir(), CLIENT_LOGIN_FILENAME);
 
 		if(!clientLogin.exists()) {
@@ -122,7 +105,7 @@ public class Settings {
 		return false;
 	}
 
-	public void promptForIDAndKey(InputQueryHandler iqh) {
+	public static void promptForIDAndKey(InputQueryHandler iqh) {
 		Out.info("Before you can use this client, you will have to register it at http://hentaiathome.net/");
 		Out.info("IMPORTANT: YOU NEED A SEPARATE IDENT FOR EACH CLIENT YOU WANT TO RUN.");
 		Out.info("DO NOT ENTER AN IDENT THAT WAS ASSIGNED FOR A DIFFERENT CLIENT UNLESS IT HAS BEEN RETIRED.");
@@ -157,7 +140,7 @@ public class Settings {
 		}
 	}
 
-	public boolean parseAndUpdateSettings(String[] settings) {
+	public static boolean parseAndUpdateSettings(String[] settings) {
 		if(settings == null) {
 			return false;
 		}
@@ -176,7 +159,7 @@ public class Settings {
 	}
 
 	// note that these settings will currently be overwritten by any equal ones read from the server, so it should not be used to override server-side settings.
-	public boolean parseArgs(String[] args) {
+	public static boolean parseArgs(String[] args) {
 		if(args == null) {
 			return false;
 		}
@@ -202,7 +185,7 @@ public class Settings {
 		return true;
 	}
 
-	public boolean updateSetting(String setting, String value) {
+	public static boolean updateSetting(String setting, String value) {
 		setting = setting.replace("-", "_");
 
 		try {
@@ -279,6 +262,12 @@ public class Settings {
 			else if(setting.equals("disable_download_bwm")) {
 				disableDownloadBWM = value.equals("true");
 			}
+			else if(setting.equals("disable_ip_origin_check")) {
+				disableIPOriginCheck = value.equals("true");
+			}
+			else if(setting.equals("disable_flood_control")) {
+				disableFloodControl = value.equals("true");
+			}
 			else if(setting.equals("skip_free_space_check")) {
 				skipFreeSpaceCheck = value.equals("true");
 			}
@@ -332,7 +321,7 @@ public class Settings {
 		return false;
 	}
 
-	public void initializeDirectories() throws java.io.IOException {
+	public static void initializeDirectories() throws java.io.IOException {
 		Out.debug("Using --data-dir=" + dataDirPath);
 		datadir = Tools.checkAndCreateDir(new File(dataDirPath));
 
@@ -349,10 +338,7 @@ public class Settings {
 		downloaddir = Tools.checkAndCreateDir(new File(downloadDirPath));
 	}
 
-	// accessor methods
-	public File getDataDir() {
-		return datadir;
-	}
+
 
 	/**
 	 * Override the logging directory.
@@ -363,7 +349,7 @@ public class Settings {
 	 * 
 	 */
 	@Deprecated
-	public void setLogDir(File loggingDirectory) {
+	public static void setLogDir(File loggingDirectory) {
 		logdir = loggingDirectory.toPath();
 	}
 
@@ -376,115 +362,132 @@ public class Settings {
 	 * 
 	 */
 	@Deprecated
-	public void setLogDir(Path loggingDirectory) {
+	public static void setLogDir(Path loggingDirectory) {
 		logdir = loggingDirectory;
 	}
 
-	public File getLogDir() {
+	// accessor methods
+	public static File getDataDir() {
+		return datadir;
+	}
+	
+	public static File getLogDir() {
 		return logdir.toFile();
 	}
 
-	public File getCacheDir() {
+	public static File getCacheDir() {
 		return cachedir;
 	}
 
-	public File getTempDir() {
+	public static File getTempDir() {
 		return tempdir;
 	}
 
-	public File getDownloadDir() {
+	public static File getDownloadDir() {
 		return downloaddir;
 	}
 
-	public int getClientID() {
+	public static int getClientID() {
 		return clientID;
 	}
 
-	public String getClientKey() {
+	public static String getClientKey() {
 		return clientKey;
 	}
 
-	public String getClientHost() {
+	public static String getClientHost() {
 		return clientHost;
 	}
 
-	public int getClientPort() {
+	public static int getClientPort() {
 		return clientPort;
 	}
 
-	public int getThrottleBytesPerSec() {
+	public static int getThrottleBytesPerSec() {
 		return throttle_bytes;
 	}
 
-	public int getMaxAllowedFileSize() {
+	public static int getMaxAllowedFileSize() {
 		return maxAllowedFileSize;
 	}
 
-	public long getDiskLimitBytes() {
+	public static long getDiskLimitBytes() {
 		return disklimit_bytes;
 	}
 
-	public long getDiskMinRemainingBytes() {
+	public static long getDiskMinRemainingBytes() {
 		return diskremaining_bytes;
 	}
 
-	public int getServerTime() {
+	public static int getServerTime() {
 		return (int) (System.currentTimeMillis() / 1000) + serverTimeDelta;
 	}
 
-	public String getOutputLogPath() {
+	public static String getOutputLogPath() {
 		return getLogDir().getPath() + "/log_out";
 	}
 
-	public String getErrorLogPath() {
+	public static String getErrorLogPath() {
 		return getLogDir().getPath() + "/log_err";
 	}
 	
-	public boolean isFlushLogs() {
+	public static boolean isFlushLogs() {
 		return flushLogs;
 	}
 
-	public boolean isRescanCache() {
+	public static boolean isRescanCache() {
 		return rescanCache;
 	}
 
-	public boolean isVerifyCache() {
+	public static boolean isVerifyCache() {
 		return verifyCache;
 	}
 
-	public boolean isUseLessMemory() {
+	public static boolean isUseLessMemory() {
 		return useLessMemory;
 	}
 
-	public boolean isSkipFreeSpaceCheck() {
+	public static boolean isSkipFreeSpaceCheck() {
 		return skipFreeSpaceCheck;
 	}
 
-	public boolean isWarnNewClient() {
+	public static boolean isWarnNewClient() {
 		return warnNewClient;
 	}
 
-	public boolean isDisableBWM() {
+	public static boolean isDisableBWM() {
 		return disableBWM;
 	}
 
-	public boolean isDisableDownloadBWM() {
+	public static boolean isDisableDownloadBWM() {
 		return disableDownloadBWM;
 	}
 
-	public boolean isDisableLogs() {
+	public static boolean isDisableLogs() {
 		return disableLogs;
 	}
+	
+	public static boolean isDisableIPOriginCheck() {
+		return disableIPOriginCheck;
+	}
 
-	public HentaiAtHomeClient getActiveClient() {
+	public static boolean isDisableFloodControl() {
+		return disableFloodControl;
+	}
+
+	public static HentaiAtHomeClient getActiveClient() {
 		return activeClient;
 	}
 
-	public HathGUI getActiveGUI() {
+	public static HathGUI getActiveGUI() {
 		return activeGUI;
 	}
 
-	public boolean isValidRPCServer(InetAddress compareTo) {
+	public static boolean isValidRPCServer(InetAddress compareTo) {
+		if(disableIPOriginCheck) {
+			return true;
+		}
+		
 		synchronized(rpcServerLock) {
 			if(rpcServers == null) {
 				return false;
@@ -500,7 +503,7 @@ public class Settings {
 		}
 	}
 
-	public String getRPCServerHost() {
+	public static String getRPCServerHost() {
 		synchronized(rpcServerLock) {
 			if(rpcServerCurrent == null) {
 				if(rpcServers == null) {
@@ -540,7 +543,7 @@ public class Settings {
 		}
 	}
 
-	public void clearRPCServerFailure() {
+	public static void clearRPCServerFailure() {
 		synchronized(rpcServerLock) {
 			if(rpcServerLastFailed != null) {
 				// to avoid long-term uneven loads on the RPC servers in case one of them goes down for a bit, we run this occasionally to clear the failure
@@ -551,7 +554,7 @@ public class Settings {
 		}
 	}
 	
-	public void markRPCServerFailure(String failHost) {
+	public static void markRPCServerFailure(String failHost) {
 		synchronized(rpcServerLock) {
 			if(rpcServerCurrent != null) {
 				Out.debug("Marking " + failHost + " as rpcServerLastFailed");
@@ -561,7 +564,7 @@ public class Settings {
 		}
 	}
 
-	public int getMaxConnections() {
+	public static int getMaxConnections() {
 		if(overrideConns > 0) {
 			return overrideConns;
 		} else {
@@ -570,7 +573,7 @@ public class Settings {
 		}
 	}
 
-	public boolean isStaticRange(String fileid) {
+	public static boolean isStaticRange(String fileid) {
 		if(staticRanges != null) {
 			// hashtable is thread-safe
 			return staticRanges.containsKey(fileid.substring(0, 4));
@@ -579,7 +582,7 @@ public class Settings {
 		return false;
 	}
 
-	public int getStaticRangeCount() {
+	public static int getStaticRangeCount() {
 		return currentStaticRangeCount;
 	}
 }
