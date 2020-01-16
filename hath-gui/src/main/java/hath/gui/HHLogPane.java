@@ -22,12 +22,11 @@ along with Hentai@Home GUI.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 package hath.gui;
+import hath.base.*;
+
 import java.lang.StringBuilder;
 import java.awt.*;
 import javax.swing.*;
-
-import hath.base.*;
-
 import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
 

@@ -22,24 +22,12 @@ along with Hentai@Home GUI.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 package hath.gui;
-import java.awt.BasicStroke;
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
-import java.text.DecimalFormat;
+import hath.base.*;
+
 import java.util.Arrays;
-
-import javax.swing.BorderFactory;
-import javax.swing.JPanel;
-
-import hath.base.Settings;
-import hath.base.StatListener;
-import hath.base.Stats;
+import java.text.DecimalFormat;
+import java.awt.*;
+import javax.swing.*;
 
 public class HHControlPane extends JPanel {
 
@@ -154,9 +142,8 @@ public class HHControlPane extends JPanel {
 			g2.drawString(StorageUnit.of(rawcacheSize).format(rawcacheSize), x2pos, yoff + yspace * 5);
 			g2.drawString(df.format(Stats.getCacheFill() * 100) + "%", x1pos, yoff + yspace * 6);
 			g2.drawString(StorageUnit.of(rawcacheFree).format(rawcacheFree), x2pos, yoff + yspace * 6);
-			g2.drawString(Settings.getInstance().getStaticRangeCount() + "", x1pos, yoff + yspace * 7);
-			g2.drawString(Stats.getOpenConnections() + " / " + Settings.getInstance().getMaxConnections(), x2pos,
-					yoff + yspace * 7);
+			g2.drawString(Settings.getStaticRangeCount() + "", x1pos, yoff + yspace * 7);
+			g2.drawString(Stats.getOpenConnections() + " / " + Settings.getMaxConnections(), x2pos, yoff + yspace * 7);
 		}
 	}
 
