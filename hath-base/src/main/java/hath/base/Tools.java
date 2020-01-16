@@ -44,7 +44,9 @@ public class Tools {
 		}
 
 		if(!dir.isDirectory()) {
-			dir.mkdirs();
+			if(!dir.mkdirs()) {
+				throw new java.io.IOException("Could not create directory " + dir + "; check permissions and I/O errors.");
+			}
 		}
 
 		return dir;

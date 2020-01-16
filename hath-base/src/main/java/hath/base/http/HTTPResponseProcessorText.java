@@ -73,8 +73,8 @@ public class HTTPResponseProcessorText extends HTTPResponseProcessor {
 		return contentType;
 	}
 
-	public ByteBuffer getPreparedTCPBuffer(int lingeringBytes) throws Exception {
-		int bytecount = Math.min(getContentLength() - writeoff, Settings.TCP_PACKET_SIZE - lingeringBytes);
+	public ByteBuffer getPreparedTCPBuffer() throws Exception {
+		int bytecount = Math.min(getContentLength() - writeoff, Settings.TCP_PACKET_SIZE);
 		ByteBuffer buffer = ByteBuffer.wrap(responseBytes, writeoff, bytecount);
 		writeoff += bytecount;
 

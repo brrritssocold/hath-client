@@ -28,9 +28,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
-import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
@@ -40,7 +38,6 @@ public class FileDownloader implements Runnable {
 	private int timeout = 30000, maxDLTime = Integer.MAX_VALUE, retries = 3;
 	private long timeDownloadStart = 0, timeFirstByte = 0, timeDownloadFinish = 0;
 	private ByteBuffer byteBuffer = null;
-	private FileChannel outputChannel = null;
 	private HTTPBandwidthMonitor downloadLimiter = null;
 	private Path outputPath = null;
 	private URL source;
@@ -132,21 +129,30 @@ public class FileDownloader implements Runnable {
 				return;
 			}
 
+			FileChannel outputChannel = null;
 			started = true;
 
 			while(!success && --retries >= 0) {
 				InputStream is = null;
-				ReadableByteChannel rbc = null;
 
 				try {
-					Out.info("Connecting to " + source.getHost() + "...");
+					Out.debug("Connecting to " + source.getHost() + "...");
 
+					// should return a HttpURLConnection for http and HttpsURLConnection for https
 					URLConnection connection = source.openConnection();
+					
 					connection.setConnectTimeout(5000);
 					connection.setReadTimeout(timeout);
 					connection.setRequestProperty("Connection", "Close");
 					connection.setRequestProperty("User-Agent", "Hentai@Home " + Settings.CLIENT_VERSION);
 					connection.connect();
+					
+					/*
+					if(connection instanceof HttpsURLConnection) {
+						HttpsURLConnection testconn = (HttpsURLConnection) connection;
+						Out.debug("type=https cipher=" + testconn.getCipherSuite() + " response=" + testconn.getResponseCode());
+					}
+					*/
 
 					int contentLength = connection.getContentLength();
 
@@ -161,19 +167,14 @@ public class FileDownloader implements Runnable {
 						Out.warning("Reported contentLength " + contentLength + " exceeds max allowed size for memory buffer download");
 						throw new java.net.SocketException("Reply exceeds expected length");
 					}
-					else if (contentLength > Settings.getInstance().getMaxAllowedFileSize()) {
-						Out.warning(
-								"Reported contentLength " + contentLength + " exceeds currently max allowed filesize "
-										+ Settings.getInstance().getMaxAllowedFileSize());
+					else if(contentLength > Settings.getMaxAllowedFileSize()) {
+						Out.warning("Reported contentLength " + contentLength + " exceeds currently max allowed filesize " + Settings.getMaxAllowedFileSize());
 						throw new java.net.SocketException("Reply exceeds expected length");
 					}
 
 					is = connection.getInputStream();
 
 					if(!discardData) {
-						rbc = Channels.newChannel(is);
-						//Out.debug("ReadableByteChannel for input opened");
-
 						if(outputPath == null) {
 							if(byteBuffer != null) {
 								if(byteBuffer.capacity() < contentLength) {
@@ -191,76 +192,69 @@ public class FileDownloader implements Runnable {
 								//Out.debug("Cleared byteBuffer (length=" + byteBuffer.capacity() + ")");
 							}
 						}
-						else if(outputChannel == null) {
-							outputChannel = FileChannel.open(outputPath, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
-							//Out.debug("FileChannel for output opened");
+						else {
+							if(outputChannel == null) {
+								outputChannel = FileChannel.open(outputPath, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+								Out.debug("FileChannel for output opened");
+							}
+							else {
+								outputChannel.truncate(0);
+								Out.debug("Truncated open file, set position to " + outputChannel.position());
+							}
 						}
 					}
 
-					Out.info("Reading " + contentLength + " bytes from " + source);
+					Out.debug("Reading " + contentLength + " bytes from " + source);
 					timeDownloadStart = System.currentTimeMillis();
 
 					long writeoff = 0;	// counts the number of bytes read
-					long readcount = 0;	// the number of bytes in the last read
-					int available = 0;	// the number of bytes available to read
-					int time = 0;		// counts the approximate time (in nanofortnights) since last byte was received
+					int readbytes = 0;	// the number of bytes in the last read
+					
+					// HttpsURLConnection is retarded and breaks (does not download more data) unless we do a blocking read, so now we use a normal byte array as a buffer like some primitive savage
+					byte[] buffer = new byte[1500];
+					
+					do {
+						readbytes = is.read(buffer);
 
-					while(writeoff < contentLength) {
-						available = is.available();
+						if(readbytes > 0) {
+							//Out.debug("Read " + readbytes + " bytes of data");
 
-						if(available > 0) {
 							if(timeFirstByte == 0) {
 								timeFirstByte = System.currentTimeMillis();
 							}
 
-							time = 0;
-
 							if(discardData) {
-								readcount = is.skip(available);
-								//Out.debug("Skipped " + readcount + " bytes");
+								//Out.debug("Skipped " + readbytes + " bytes");
 							}
 							else if(outputPath == null) {
-								readcount = rbc.read(byteBuffer);
-								//Out.debug("Added " + readcount + " bytes to byteBuffer");
+								byteBuffer.put(buffer, 0, readbytes);
+								//Out.debug("Added " + readbytes + " bytes to byteBuffer");
 							}
 							else {
-								readcount = outputChannel.transferFrom(rbc, writeoff, (long) available);
-								//Out.debug("Wrote " + readcount + " bytes to outputChannel");
-							}
-
-							if(readcount >= 0) {
-								writeoff += readcount;
-							}
-							else {
-								// readcount == -1 => EOF
-								Out.warning("\nServer sent premature EOF, aborting.. (" + writeoff + " of " + contentLength + " bytes received)");
-								throw new java.net.SocketException("Unexpected end of file from server");
+								outputChannel.write(ByteBuffer.wrap(buffer, 0, readbytes));
+								//Out.debug("Wrote " + readbytes + " bytes to outputChannel");
 							}
 							
+							writeoff += readbytes;
+							
+							/*
+							if(retries == 2 && writeoff > 50000) {
+								Out.info("Pretented to fail");
+								break;
+							}
+							*/
+
 							if(downloadLimiter != null) {
-								downloadLimiter.waitForQuota(Thread.currentThread(), (int) readcount);
+								downloadLimiter.waitForQuota(Thread.currentThread(), (int) readbytes);
 							}
 						}
-						else {
-							if(System.currentTimeMillis() - timeDownloadStart > maxDLTime) {
-								Out.warning("\nDownload time limit has expired, aborting...");
-								throw new java.net.SocketTimeoutException("Download timed out");
-							}
-							else if(time > timeout) {
-								Out.warning("\nTimeout detected waiting for byte " + writeoff + ", aborting..");
-								throw new java.net.SocketTimeoutException("Read timed out");
-							}
-
-							time += 5;
-							Thread.currentThread().sleep(5);
-						}
-					}
-
+					} while(readbytes > 0);
+					
+					success = writeoff == contentLength;
 					timeDownloadFinish = System.currentTimeMillis();
 					long dltime = getDownloadTimeMillis();
-					Out.debug("Finished in " + dltime + " ms" + (dltime > 0 ? ", speed=" + (writeoff / dltime) + "KB/s" : "") + ", writeoff=" + writeoff);
+					Out.debug("Finished in " + dltime + " ms" + (dltime > 0 ? ", speed=" + (writeoff / dltime) + "KB/s" : "") + ", writeoff=" + writeoff + ", success=" + (success ? "yes" : "no"));
 					Stats.bytesRcvd(contentLength);
-					success = true;
 				}
 				catch(Exception e) {
 					if(e instanceof java.io.FileNotFoundException) {
@@ -277,12 +271,6 @@ public class FileDownloader implements Runnable {
 					continue;
 				}
 				finally {
-					if(rbc != null) {
-						try {
-							rbc.close();
-						} catch(Exception e) {}
-					}
-					
 					try {
 						is.close();
 					} catch(Exception e) {}
@@ -302,6 +290,35 @@ public class FileDownloader implements Runnable {
 			if(!success ) {
 				Out.warning("Exhaused retries or aborted getting " + source);
 			}
+		}
+	}
+	
+	public static void main(String[] args) {
+		try {
+			/*
+			// skippy
+			URL testurl = new URL("https://ehgt.org/b/2019-10/1.jpg");
+			FileDownloader testdl = new FileDownloader(testurl, 30000, 30000, true);
+			testdl.downloadFile();
+			*/
+
+			/*
+			// savey
+			URL testurl = new URL("https://ehgt.org/b/2019-10/1.jpg");
+			File testfile = new File("testfile.jpg");
+			FileDownloader testdl = new FileDownloader(testurl, 30000, 30000, testfile.toPath());
+			testdl.downloadFile();
+			*/
+			
+			/*
+			// showy
+			URL testurl = new URL("https://ehgt.org/g/opensearchdescription.xml");
+			FileDownloader testdl = new FileDownloader(testurl, 30000, 30000);
+			Out.info(testdl.getResponseAsString("UTF8"));
+			*/
+		}
+		catch(Exception e) {
+			e.printStackTrace();
 		}
 	}
 }
