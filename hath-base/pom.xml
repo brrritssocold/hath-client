@@ -95,8 +95,7 @@
 						<configuration>
 							<createDependencyReducedPom>false</createDependencyReducedPom>
 							<transformers>
-								<transformer
-									implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+								<transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
 									<mainClass>org.hath.base.HentaiAtHomeClient</mainClass>
 								</transformer>
 							</transformers>
@@ -126,7 +125,7 @@
 		<dependency>
 			<groupId>org.eclipse.jetty</groupId>
 			<artifactId>jetty-server</artifactId>
-			<version>9.4.19.v20190610</version>
+			<version>9.4.37.v20210219</version>
 		</dependency>
 		<dependency>
 			<groupId>com.google.guava</groupId>
