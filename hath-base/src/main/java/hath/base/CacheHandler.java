@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2019 E-Hentai.org
+Copyright 2008-2020 E-Hentai.org
 https://forums.e-hentai.org/
 ehentai@gmail.com
 
@@ -32,6 +32,7 @@ import java.io.ObjectOutputStream;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.Enumeration;
+import java.util.List;
 import java.util.Hashtable;
 
 public class CacheHandler {
@@ -123,14 +124,14 @@ public class CacheHandler {
 
 		long cacheLimit = Settings.getDiskLimitBytes();
 
-		if(cacheSize > cacheLimit) {
+		if(getCacheSizeWithOverhead() > cacheLimit) {
 			Out.info("CacheHandler: We are over the cache limit, pruning until the limit is met");
 			int iterations = 0;
 			java.text.DecimalFormat f = new java.text.DecimalFormat("###.00");
 
-			while(cacheSize > cacheLimit) {
+			while(getCacheSizeWithOverhead() > cacheLimit) {
 				if(iterations++ % 100 == 0) {
-					Out.info("CacheHandler: Cache is currently at " + f.format(100.0 * cacheSize / cacheLimit) + "%");
+					Out.info("CacheHandler: Cache is currently at " + f.format(100.0 * getCacheSizeWithOverhead() / cacheLimit) + "%");
 				}
 
 				recheckFreeDiskSpace();
@@ -475,9 +476,16 @@ public class CacheHandler {
 			}
 		}
 
-		Out.info("CacheHandler: Finished initializing the cache (" + cacheCount + " files, " + cacheSize + " bytes)");
+		Out.info("CacheHandler: Finished initializing the cache (" + cacheCount + " files, " + cacheSize + " apparent bytes, " + getCacheSizeWithOverhead() + " estimated bytes on disk)");
 		Out.info("CacheHandler: Found a total of " + foundStaticRanges + " static ranges with files");
 		updateStats();
+	}
+	
+	private long getCacheSizeWithOverhead() {
+		// on average, a file will have a wasted slack space (filesystem overhead) of half the blocksize of the storage device. this is assumed to be 4096 bytes but can be overriden with --filesystem-blocksize
+		// we *could* calculate this exactly but this would require additional logic and a cache rescan if the filesystem changes; this is very much close enough
+		// Java 9 has a way to determine the blocksize from the storage device automatically, but we do not want to bump the required version just for this
+		return cacheSize + cacheCount * Settings.getFileSystemBlockSize() / 2;
 	}
 
 	public boolean recheckFreeDiskSpace() {
@@ -490,16 +498,17 @@ public class CacheHandler {
 
 		long wantFree = 104857600;
 		long cacheLimit = Settings.getDiskLimitBytes();
+		long cacheSizeWithOverhead = getCacheSizeWithOverhead();
 		long bytesToFree = 0;
 
-		if(cacheSize > cacheLimit) {
-			bytesToFree = wantFree + cacheSize - cacheLimit;
+		if(cacheSizeWithOverhead > cacheLimit) {
+			bytesToFree = wantFree + cacheSizeWithOverhead - cacheLimit;
 		}
-		else if(cacheLimit - cacheSize < wantFree) {
-			bytesToFree = wantFree - (cacheLimit - cacheSize);
+		else if(cacheLimit - cacheSizeWithOverhead < wantFree) {
+			bytesToFree = wantFree - (cacheLimit - cacheSizeWithOverhead);
 		}
 
-		Out.debug("CacheHandler: Checked cache space (cacheSize=" + cacheSize + ", cacheLimit=" + cacheLimit + ", cacheFree=" + (cacheLimit - cacheSize) + ")");
+		Out.debug("CacheHandler: Checked cache space (cacheSize=" + cacheSize + ", cacheSizeWithOverhead=" + cacheSizeWithOverhead + " cacheLimit=" + cacheLimit + ", cacheFree=" + (cacheLimit - cacheSizeWithOverhead) + ")");
 
 		if(bytesToFree > 0 && cacheCount > 0 && Settings.getStaticRangeCount() > 0) {
 			String pruneStaticRange = null;
@@ -584,7 +593,7 @@ public class CacheHandler {
 			}
 		}
 		else {
-			lruSkipCheckCycle = cacheLimit - cacheSize > wantFree * 10 ? 60 : 6;
+			lruSkipCheckCycle = cacheLimit - cacheSizeWithOverhead > wantFree * 10 ? 60 : 6;
 		}
 
 		// if we are more than 10MB above where we want to be, start turning up the prune aggression, which determines how many times this cleanup function is run per cycle
@@ -645,7 +654,7 @@ public class CacheHandler {
 
 	private void updateStats() {
 		Stats.setCacheCount(cacheCount);
-		Stats.setCacheSize(cacheSize);
+		Stats.setCacheSize(getCacheSizeWithOverhead());
 	}
 
 	public int getCacheCount() {

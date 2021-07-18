@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2019 E-Hentai.org
+Copyright 2008-2020 E-Hentai.org
 https://forums.e-hentai.org/
 ehentai@gmail.com
 
@@ -26,19 +26,20 @@ package hath.base;
 import java.io.File;
 import java.net.InetAddress;
 import java.nio.file.Path;
-import java.util.Hashtable;
+import java.util.*;
+import java.lang.*;
 
 public class Settings {
 	public static final String NEWLINE = System.getProperty("line.separator");
 
 	// the client build is among other things used by the server to determine the client's capabilities. any forks should use the build number as an indication of compatibility with mainline, rather than an internal build number.
-	public static final int CLIENT_BUILD = 151;
+	public static final int CLIENT_BUILD = 154;
 	public static final int CLIENT_KEY_LENGTH = 20;
 	public static final int MAX_KEY_TIME_DRIFT = 300;
 	public static final int MAX_CONNECTION_BASE = 20;
 	public static final int TCP_PACKET_SIZE = 1460;
 
-	public static final String CLIENT_VERSION = "1.6.0";
+	public static final String CLIENT_VERSION = "1.6.1";
 	public static final String CLIENT_RPC_PROTOCOL = "http://";
 	public static final String CLIENT_RPC_HOST = "rpc.hentaiathome.net";
 	public static final String CLIENT_RPC_FILE = "15/rpc?";
@@ -61,7 +62,7 @@ public class Settings {
 	private static String clientKey = "", clientHost = "", dataDirPath = "data", logDirPath = "log", cacheDirPath = "cache", tempDirPath = "tmp", downloadDirPath = "download";
 
 	private static int clientID = 0, clientPort = 0, throttle_bytes = 0, overrideConns = 0, serverTimeDelta = 0, maxAllowedFileSize = 104857600, currentStaticRangeCount = 0;
-	private static long disklimit_bytes = 0, diskremaining_bytes = 0;
+	private static long disklimit_bytes = 0, diskremaining_bytes = 0, fileSystemBlocksize = 4096;
 	private static boolean verifyCache = false, rescanCache = false, skipFreeSpaceCheck = false, warnNewClient = false, useLessMemory = false, disableBWM = false, disableDownloadBWM = false, disableLogs = false, flushLogs = false, disableIPOriginCheck = false, disableFloodControl = false;
 
 	public static void setActiveClient(HentaiAtHomeClient client) {
@@ -202,6 +203,7 @@ public class Settings {
 			else if(setting.equals("server_time")) {
 				serverTimeDelta = Integer.parseInt(value) - (int) (System.currentTimeMillis() / 1000);
 				Out.debug("Setting altered: serverTimeDelta=" + serverTimeDelta);
+
 				return true;
 			}
 			else if(setting.equals("rpc_server_ip")) {
@@ -240,6 +242,14 @@ public class Settings {
 			}
 			else if(setting.equals("diskremaining_bytes")) {
 				diskremaining_bytes = Long.parseLong(value);
+			}
+			else if(setting.equals("filesystem_blocksize")) {
+				fileSystemBlocksize = Long.parseLong(value);
+				
+				if(fileSystemBlocksize < 0 || fileSystemBlocksize > 65536) {
+					Out.warning("A filesystem blocksize of " + fileSystemBlocksize + " bytes is not sane. Using the default of 4096 bytes.");
+					fileSystemBlocksize = 4096;
+				}
 			}
 			else if(setting.equals("rescan_cache")) {
 				rescanCache = value.equals("true");
@@ -419,8 +429,16 @@ public class Settings {
 		return diskremaining_bytes;
 	}
 
+	public static long getFileSystemBlockSize() {
+		return fileSystemBlocksize;
+	}
+
 	public static int getServerTime() {
 		return (int) (System.currentTimeMillis() / 1000) + serverTimeDelta;
+	}
+	
+	public static int getServerTimeDelta() {
+		return serverTimeDelta;
 	}
 
 	public static String getOutputLogPath() {

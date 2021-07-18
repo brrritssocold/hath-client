@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2019 E-Hentai.org
+Copyright 2008-2020 E-Hentai.org
 https://forums.e-hentai.org/
 ehentai@gmail.com
 
@@ -244,12 +244,8 @@ public class HTTPSession implements Runnable {
 				hpc.cleanup();
 			}
 
-			try { reader.close(); writer.close(); } catch(Exception e) {
-				LOGGER.warn("Failed to close reader / writer: {}", e.toString());
-			}
-			try { socket.close(); } catch(Exception e) {
-				LOGGER.warn("Failed to close socket: {}", e.toString());
-			}
+			try { reader.close(); writer.close(); } catch(Exception e) {}
+			try { socket.close(); } catch(Exception e) {}
 		}
 
 		connectionFinished();
