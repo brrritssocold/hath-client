@@ -2,11 +2,11 @@ name: Java CI with Maven
 
 on:
   push:
-    branches:
-      - develop
-      - main
+    branches-ignore:
+      - original_code
   pull_request:
-    branches: [ develop ]
+    branches-ignore:
+      - original_code
 
 jobs:
   build:
