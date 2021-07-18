@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2016 E-Hentai.org
+Copyright 2008-2019 E-Hentai.org
 https://forums.e-hentai.org/
 ehentai@gmail.com
 
@@ -24,8 +24,8 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 package hath.base;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.IOException;
 
 public class InputQueryHandlerCLI implements InputQueryHandler {
 	private BufferedReader cmdreader;
@@ -48,7 +48,7 @@ public class InputQueryHandlerCLI implements InputQueryHandler {
 		
 		if(s == null) {
 			System.out.print("Interrupted");
-			Settings.getInstance().getActiveClient().shutdown();
+			Settings.getActiveClient().shutdown();
 		}
 		
 		return s;

@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2016 E-Hentai.org
+Copyright 2008-2019 E-Hentai.org
 https://forums.e-hentai.org/
 ehentai@gmail.com
 
@@ -22,12 +22,11 @@ along with Hentai@Home GUI.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 package hath.gui;
+import hath.base.*;
+
 import java.lang.StringBuilder;
 import java.awt.*;
 import javax.swing.*;
-
-import hath.base.*;
-
 import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
 

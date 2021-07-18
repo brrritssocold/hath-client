@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2016 E-Hentai.org
+Copyright 2008-2019 E-Hentai.org
 https://forums.e-hentai.org/
 ehentai@gmail.com
 
@@ -44,8 +44,8 @@ public class HTTPResponseProcessorSpeedtest extends HTTPResponseProcessor {
 		return testsize;
 	}
 
-	public ByteBuffer getPreparedTCPBuffer(int lingeringBytes) throws Exception {
-		int bytecount = Math.min(getContentLength() - writeoff, Settings.TCP_PACKET_SIZE - lingeringBytes);
+	public ByteBuffer getPreparedTCPBuffer() throws Exception {
+		int bytecount = Math.min(getContentLength() - writeoff, Settings.TCP_PACKET_SIZE);
 		int startbyte = (int) Math.floor(Math.random() * (randomLength - bytecount));
 
 		// making this read-only is probably not necessary, but doing so is almost free, and we don't want anything messing with our precious random bytes

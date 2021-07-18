@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2016 E-Hentai.org
+Copyright 2008-2019 E-Hentai.org
 https://forums.e-hentai.org/
 ehentai@gmail.com
 
@@ -22,9 +22,8 @@ along with Hentai@Home GUI.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 package hath.gui;
-import javax.swing.*;
-
 import hath.base.*;
+import javax.swing.*;
 
 public class InputQueryHandlerGUI implements InputQueryHandler {
 	private JFrame frame;

@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2016 E-Hentai.org
+Copyright 2008-2019 E-Hentai.org
 https://forums.e-hentai.org/
 ehentai@gmail.com
 
@@ -44,7 +44,9 @@ public class Tools {
 		}
 
 		if(!dir.isDirectory()) {
-			dir.mkdirs();
+			if(!dir.mkdirs()) {
+				throw new java.io.IOException("Could not create directory " + dir + "; check permissions and I/O errors.");
+			}
 		}
 
 		return dir;

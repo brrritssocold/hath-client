@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2016 E-Hentai.org
+Copyright 2008-2019 E-Hentai.org
 https://forums.e-hentai.org/
 ehentai@gmail.com
 
@@ -79,6 +79,10 @@ public class HTTPResponse {
 				client.startDownloader();
 				return new HTTPResponseProcessorText("");
 			}
+			else if(command.equalsIgnoreCase("refresh_certs")) {
+				client.setCertRefresh();
+				return new HTTPResponseProcessorText("");
+			}
 		}
 		catch(Exception e) {
 			e.printStackTrace();
@@ -89,14 +93,15 @@ public class HTTPResponse {
 	}
 	
 	private HTTPResponseProcessorText processThreadedProxyTest(Hashtable<String,String> addTable) {
-		String ipaddr = addTable.get("ipaddr");
+		String hostname = addTable.get("hostname");
+		String protocol = addTable.get("protocol");
 		int port = Integer.parseInt(addTable.get("port"));
 		int testsize = Integer.parseInt(addTable.get("testsize"));
 		int testcount = Integer.parseInt(addTable.get("testcount"));
 		int testtime = Integer.parseInt(addTable.get("testtime"));
 		String testkey = addTable.get("testkey");
 		
-		Out.debug("Running threaded proxy test against ipaddr=" + ipaddr + " port=" + port + " testsize=" + testsize + " testcount=" + testcount + " testtime=" + testtime + " testkey=" + testkey);
+		Out.debug("Running threaded proxy test against hostname=" + hostname + " protocol=" + protocol + " port=" + port + " testsize=" + testsize + " testcount=" + testcount + " testtime=" + testtime + " testkey=" + testkey);
 
 		int successfulTests = 0;
 		long totalTimeMillis = 0;
@@ -105,7 +110,7 @@ public class HTTPResponse {
 			List<FileDownloader> testfiles = Collections.checkedList(new ArrayList<FileDownloader>(), FileDownloader.class);
 
 			for(int i=0; i<testcount; i++) {
-				URL source = new URL("http", ipaddr, port, "/t/" + testsize + "/" + testtime + "/" + testkey + "/" + (int) Math.floor(Math.random() * Integer.MAX_VALUE));
+				URL source = new URL(protocol == null ? "http" : protocol, hostname, port, "/t/" + testsize + "/" + testtime + "/" + testkey + "/" + (int) Math.floor(Math.random() * Integer.MAX_VALUE));
 				Out.debug("Test thread: " + source);
 				FileDownloader dler = new FileDownloader(source, 10000, 60000, true);
 				testfiles.add(dler);
@@ -178,12 +183,8 @@ public class HTTPResponse {
 				if(keystampParts.length == 2) {
 					int keystampTime = Integer.parseInt(keystampParts[0]);
 
-					if (Math.abs(Settings.getInstance().getServerTime() - keystampTime) < 900) {
-						if (keystampParts[1]
-								.equalsIgnoreCase(Tools
-										.getSHA1String(keystampTime + "-" + fileid + "-"
-												+ Settings.getInstance().getClientKey() + "-hotlinkthis")
-										.substring(0, 10))) {
+					if(Math.abs(Settings.getServerTime() - keystampTime) < 900) {
+						if( keystampParts[1].equalsIgnoreCase(Tools.getSHA1String(keystampTime + "-" + fileid + "-" + Settings.getClientKey() + "-hotlinkthis").substring(0, 10)) ) {
 							keystampRejected = false;
 						}
 					}
@@ -205,7 +206,7 @@ public class HTTPResponse {
 				hpc = new HTTPResponseProcessorFile(requestedHVFile);
 				session.getHTTPServer().getHentaiAtHomeClient().getCacheHandler().markRecentlyAccessed(requestedHVFile);
 			}
-			else if (Settings.getInstance().isStaticRange(fileid)) {
+			else if(Settings.isStaticRange(fileid)) {
 				// non-existent file. do an on-demand request of the file directly from the image servers
 				URL source = session.getHTTPServer().getHentaiAtHomeClient().getServerHandler().getStaticRangeFetchURL(fileindex, xres, fileid);
 				
@@ -227,7 +228,7 @@ public class HTTPResponse {
 		else if(urlparts[1].equals("servercmd")) {
 			// form: /servercmd/$command/$additional/$time/$key
 
-			if (!Settings.getInstance().isValidRPCServer(session.getSocketInetAddress())) {
+			if(!Settings.isValidRPCServer(session.getSocketInetAddress())) {
 				Out.debug(session + " Got a servercmd from an unauthorized IP address");
 				responseStatusCode = 403;
 				return;
@@ -244,10 +245,7 @@ public class HTTPResponse {
 			int commandTime = Integer.parseInt(urlparts[4]);
 			String key = urlparts[5];
 
-			if ((Math.abs(commandTime - Settings.getInstance().getServerTime()) > Settings.MAX_KEY_TIME_DRIFT)
-					|| !Tools.getSHA1String("hentai@home-servercmd-" + command + "-" + additional + "-"
-							+ Settings.getInstance().getClientID() + "-" + commandTime + "-"
-							+ Settings.getInstance().getClientKey()).equals(key)) {
+			if( (Math.abs(commandTime - Settings.getServerTime()) > Settings.MAX_KEY_TIME_DRIFT) || !Tools.getSHA1String("hentai@home-servercmd-" + command + "-" + additional + "-" + Settings.getClientID() + "-" + commandTime + "-" + Settings.getClientKey()).equals(key) ) {
 				Out.debug(session + " Got a servercmd with expired or incorrect key");
 				responseStatusCode = 403;
 				return;
@@ -271,16 +269,13 @@ public class HTTPResponse {
 			int testtime = Integer.parseInt(urlparts[3]);
 			String testkey = urlparts[4];
 			
-			if (Math.abs(testtime - Settings.getInstance().getServerTime()) > Settings.MAX_KEY_TIME_DRIFT) {
+			if(Math.abs(testtime - Settings.getServerTime()) > Settings.MAX_KEY_TIME_DRIFT) {
 				Out.debug(session + " Got a speedtest request with expired key");
 				responseStatusCode = 403;
 				return;
 			}
 			
-			if (!Tools
-					.getSHA1String("hentai@home-speedtest-" + testsize + "-" + testtime + "-"
-							+ Settings.getInstance().getClientID() + "-" + Settings.getInstance().getClientKey())
-					.equals(testkey)) {
+			if(!Tools.getSHA1String("hentai@home-speedtest-" + testsize + "-" + testtime + "-" + Settings.getClientID() + "-" + Settings.getClientKey()).equals(testkey)) {
 				Out.debug(session + " Got a speedtest request with invalid key");
 				responseStatusCode = 403;
 				return;

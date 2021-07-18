@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2016 E-Hentai.org
+Copyright 2008-2019 E-Hentai.org
 https://forums.e-hentai.org/
 ehentai@gmail.com
 
@@ -67,7 +67,7 @@ public class Stats {
 	}
 
 	private static void statChanged(String stat) {
-		HentaiAtHomeClient client = Settings.getInstance().getActiveClient();
+		HentaiAtHomeClient client = Settings.getActiveClient();
 		boolean announce = false;
 
 		if(client == null) {
@@ -265,12 +265,11 @@ public class Stats {
 	}
 
 	public static long getCacheFree() {
-		return Settings.getInstance().getDiskLimitBytes() - cacheSize;
+		return Settings.getDiskLimitBytes() - cacheSize;
 	}
 
 	public static float getCacheFill() {
-		return Settings.getInstance().getDiskLimitBytes() != 0
-				? cacheSize / (float) Settings.getInstance().getDiskLimitBytes() : 0;
+		return Settings.getDiskLimitBytes() != 0 ? cacheSize / (float) Settings.getDiskLimitBytes() : 0;
 	}
 
 	public static int getOpenConnections() {

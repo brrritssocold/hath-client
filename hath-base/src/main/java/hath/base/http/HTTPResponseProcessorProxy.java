@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2016 E-Hentai.org
+Copyright 2008-2019 E-Hentai.org
 https://forums.e-hentai.org/
 ehentai@gmail.com
 
@@ -42,7 +42,7 @@ public class HTTPResponseProcessorProxy extends HTTPResponseProcessor {
 	}
 
 	public int initialize() {
-		Out.info(session + ": Initializing proxy request...");
+		Out.debug(session + ": Initializing proxy request...");
 		tcpBuffer = ByteBuffer.allocateDirect(Settings.TCP_PACKET_SIZE);
 		return proxyDownloader.initialize();
 	}
@@ -55,13 +55,9 @@ public class HTTPResponseProcessorProxy extends HTTPResponseProcessor {
 		return proxyDownloader.getContentLength();
 	}
 
-	public ByteBuffer getPreparedTCPBuffer(int lingeringBytes) throws Exception {
+	public ByteBuffer getPreparedTCPBuffer() throws Exception {
 		tcpBuffer.clear();
 		
-		if(lingeringBytes > 0) {
-			tcpBuffer.limit(Settings.TCP_PACKET_SIZE - lingeringBytes);
-		}
-
 		int timeout = 0;
 		int nextReadThrehold = Math.min(getContentLength(), readoff + tcpBuffer.limit());
 		//Out.debug("Filling buffer with limit=" + tcpBuffer.limit() + " at readoff=" + readoff + ", trying to read " + (nextReadThrehold - readoff) + " bytes up to byte " + nextReadThrehold);
