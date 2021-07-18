@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2019 E-Hentai.org
+Copyright 2008-2020 E-Hentai.org
 https://forums.e-hentai.org/
 ehentai@gmail.com
 
@@ -29,9 +29,11 @@ import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.URL;
 import java.security.KeyStore;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.List;
@@ -63,7 +65,8 @@ public class HTTPServer implements Runnable {
 	private Hashtable<String,FloodControlEntry> floodControlTable;
 	private Pattern localNetworkPattern;
 	private final HTTPSessionPool sessionPool;
-	
+	private Date certExpiry;
+
 	public HTTPServer(HentaiAtHomeClient client) {
 		this.client = client;
 		sessions = Collections.checkedList(new ArrayList<HTTPSession>(), HTTPSession.class);
@@ -97,7 +100,15 @@ public class HTTPServer implements Runnable {
 			InputStream keystoreFile = new FileInputStream(certFile.getPath());
 			ks.load(keystoreFile, certPass.toCharArray());
 			
-			Out.debug("Initialized KeyStore with cert=" + ks.getCertificate("hath.network").toString());
+			X509Certificate cert = (X509Certificate) ks.getCertificate("hath.network");
+			certExpiry = cert.getNotAfter();
+			
+			Out.debug("Initialized KeyStore with cert=" + cert.toString());
+
+			if(isCertExpired()) {
+				Out.error("The retrieved certificate is expired, or the system time is off by more than a day. Correct the system time and try again.");
+				return false;
+			}
 
 			TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
 			tmf.init(ks);
@@ -135,13 +146,28 @@ public class HTTPServer implements Runnable {
 			Out.info("");
 			Out.info("************************************************************************************************************************************");
 			Out.info("Could not start the internal HTTP server.");
-			Out.info("This is most likely caused by something else running on the port H@H is trying to use.");
+			Out.info("This is most likely caused by something else running on port " + port + ", which H@H is trying to use.");
 			Out.info("In order to fix this, either shut down whatever else is using the port, or assign a different port to H@H.");
+
+			if(port < 1024) {
+				Out.info("It could also be caused by trying to use port " + port + " on a system that disallows non-root users from binding to low ports.");
+				Out.info("For information on how to work around this, read this post: https://forums.e-hentai.org/index.php?showtopic=232693");
+			}
+
 			Out.info("************************************************************************************************************************************");
 			Out.info("");
 		}
 
 		return false;
+	}
+	
+	public boolean isCertExpired() {
+		Date nowtime = new Date();
+
+		Out.debug("Current system time is " + nowtime + " (" + nowtime.getTime() + ")");
+		Out.debug("Certificate expires on " + certExpiry + " (" + certExpiry.getTime() + ")");
+		
+		return certExpiry.getTime() < nowtime.getTime() + 86400000L;
 	}
 
 	public void stopConnectionListener(boolean restart) {

@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2019 E-Hentai.org
+Copyright 2008-2020 E-Hentai.org
 https://forums.e-hentai.org/
 ehentai@gmail.com
 
@@ -24,6 +24,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 package hath.base;
 
 import java.lang.Thread;
+import java.util.Arrays;
 import java.net.URL;
 import java.net.URLConnection;
 import java.io.File;
@@ -42,7 +43,7 @@ public class ProxyFileDownloader implements Runnable {
 	private File tempFile = null, returnFile = null;
 	private RandomAccessFile fileHandle;
 	private FileChannel fileChannel;
-	private URL source;
+	private URL[] sources;
 	private URLConnection connection;
 	private Thread myThread;
 	private MessageDigest sha1Digest;
@@ -50,10 +51,10 @@ public class ProxyFileDownloader implements Runnable {
 	private boolean streamThreadSuccess = false, streamThreadComplete = false, proxyThreadComplete = false, fileFinalized = false;
 	private Object downloadLock = new Object();
 
-	public ProxyFileDownloader(HentaiAtHomeClient client, String fileid, URL source) {
+	public ProxyFileDownloader(HentaiAtHomeClient client, String fileid, URL[] sources) {
 		this.client = client;
 		this.fileid = fileid;
-		this.source = source;
+		this.sources = sources;
 
 		this.requestedHVFile = HVFile.getHVFileFromFileid(fileid);
 		writeoff = 0;
@@ -64,67 +65,72 @@ public class ProxyFileDownloader implements Runnable {
 	public int initialize() {
 		// we'll need to run this in a private thread so we can push data to the originating client at the same time we download it (pass-through)
 		// this will NOT work with HTTPS (see FileDownloader), but upstream can be kept as HTTP so This Is Fine™
-		Out.debug("Proxy file download request initializing for " + fileid + "...");
 
-		try {
-			Out.debug("ProxyFileDownloader: Requesting file download from " + source);
-
-			connection = source.openConnection();
-			connection.setConnectTimeout(10000);
-			connection.setReadTimeout(30000);
-			connection.setRequestProperty("Hath-Request", Settings.getClientID() + "-" + Tools.getSHA1String(Settings.getClientKey() + fileid));
-			connection.setRequestProperty("User-Agent", "Hentai@Home " + Settings.CLIENT_VERSION);
-			connection.connect();
-
-			int tempLength = connection.getContentLength();
-			int retval = 0;
-
-			if(tempLength < 0) {
-				Out.warning("Request host did not send Content-Length, aborting transfer." + " (" + connection + ")");
-				Out.warning("Note: A common reason for this is running firewalls with outgoing restrictions or programs like PeerGuardian/PeerBlock. Verify that the remote host is not blocked.");
-				retval = 502;
-			}
-			else if(tempLength > Settings.getMaxAllowedFileSize()) {
-				Out.warning("Reported contentLength " + contentLength + " exceeds currently max allowed filesize " + Settings.getMaxAllowedFileSize());
-				retval = 502;
-			}
-			else if(tempLength != requestedHVFile.getSize()) {
-				Out.warning("Reported contentLength " + contentLength + " does not match expected length of file " + fileid + " (" + connection + ")");
-				retval = 502;
-			}
-
-			if(retval > 0) {
-				// file could not be retrieved from upstream server
-				return retval;
-			}
-
-			contentLength = tempLength;
-
-			// create the temporary file used to hold the proxied data
-			tempFile = File.createTempFile("proxyfile_", "", Settings.getTempDir());
-			fileHandle = new RandomAccessFile(tempFile, "rw");
-			fileChannel = fileHandle.getChannel();
-
-			// we need to calculate the SHA-1 hash at some point, so we might as well do it on the fly
-			sha1Digest = MessageDigest.getInstance("SHA-1");
-
-			// at this point, everything is ready to receive data from the server and pass it to the client. in order to do this, we'll fork off a new thread to handle the reading, while this thread returns.
-			// control will thus pass to the HTTPSession where this HRP's read functions will be called, and data will be written to the connection this proxy request originated from.
-			myThread.start();
-
-			return 200;
-		}
-		catch(Exception e) {
-			e.printStackTrace();
-
+		Out.debug("ProxyFileDownloader::initialize with fileid=" + fileid + " sources=" + Arrays.toString(sources)); 
+		int retval = 500;
+		
+		for(URL source : sources) {
 			try {
-				if(fileHandle != null) {
-					fileHandle.close();
+				Out.debug("ProxyFileDownloader: Requesting file download from " + source);
+				
+				connection = source.openConnection();
+				connection.setConnectTimeout(5000);
+				connection.setReadTimeout(30000);
+				connection.setRequestProperty("Hath-Request", Settings.getClientID() + "-" + Tools.getSHA1String(Settings.getClientKey() + fileid));
+				connection.setRequestProperty("User-Agent", "Hentai@Home " + Settings.CLIENT_VERSION);
+				connection.connect();
+
+				int tempLength = connection.getContentLength();
+				retval = 0;
+
+				if(tempLength < 0) {
+					Out.warning("Request host did not send Content-Length, aborting transfer." + " (" + connection + ")");
+					Out.warning("Note: A common reason for this is running firewalls with outgoing restrictions or programs like PeerGuardian/PeerBlock. Verify that the remote host is not blocked.");
+					retval = 502;
 				}
-			} catch(Exception e2) {}
+				else if(tempLength > Settings.getMaxAllowedFileSize()) {
+					Out.warning("Reported contentLength " + contentLength + " exceeds currently max allowed filesize " + Settings.getMaxAllowedFileSize());
+					retval = 502;
+				}
+				else if(tempLength != requestedHVFile.getSize()) {
+					Out.warning("Reported contentLength " + contentLength + " does not match expected length of file " + fileid + " (" + connection + ")");
+					retval = 502;
+				}
+
+				if(retval > 0) {
+					// connection to upstream server could not be properly established; retry if possible
+					continue;
+				}
+
+				contentLength = tempLength;
+
+				// create the temporary file used to hold the proxied data
+				tempFile = File.createTempFile("proxyfile_", "", Settings.getTempDir());
+				fileHandle = new RandomAccessFile(tempFile, "rw");
+				fileChannel = fileHandle.getChannel();
+
+				// we need to calculate the SHA-1 hash at some point, so we might as well do it on the fly
+				sha1Digest = MessageDigest.getInstance("SHA-1");
+
+				// at this point, everything is ready to receive data from the server and pass it to the client. in order to do this, we'll fork off a new thread to handle the reading, while this thread returns.
+				// control will thus pass to the HTTPSession where this HRP's read functions will be called, and data will be written to the connection this proxy request originated from.
+				myThread.start();
+
+				retval = 200;
+				break;
+			}
+			catch(Exception e) {
+				Out.warning(e.getMessage());
+
+				try {
+					if(fileHandle != null) {
+						fileHandle.close();
+					}
+				} catch(Exception e2) {}
+			}
 		}
 
-		return 500;
+		return retval;
 	}
 
 	public void run() {

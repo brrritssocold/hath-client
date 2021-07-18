@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2019 E-Hentai.org
+Copyright 2008-2020 E-Hentai.org
 https://forums.e-hentai.org/
 ehentai@gmail.com
 
@@ -25,6 +25,8 @@ package hath.base;
 
 import java.net.URL;
 import java.lang.StringBuilder;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class ServerHandler {
@@ -277,7 +279,7 @@ public class ServerHandler {
 		}
 	}
 
-	public URL getStaticRangeFetchURL(String fileindex, String xres, String fileid) {
+	public URL[] getStaticRangeFetchURL(String fileindex, String xres, String fileid) {
 		URL requestURL = getServerConnectionURL(ACT_STATIC_RANGE_FETCH, fileindex + ";" + xres + ";" + fileid);
 		ServerResponse sr = ServerResponse.getServerResponse(requestURL, this);
 
@@ -289,7 +291,15 @@ public class ServerHandler {
 			String[] response = sr.getResponseText();
 
 			try {
-				return new URL(response[0]);
+				List<URL> urls = Collections.checkedList(new ArrayList<URL>(), URL.class);
+
+				for(String s : response) {
+					if(!s.equals("")) {
+						urls.add(new URL(s));
+					}
+				}
+				
+				return urls.isEmpty() ? null : urls.toArray(new URL[urls.size()]);
 			} catch(Exception e) {}
 		}
 

@@ -2,7 +2,7 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<artifactId>hath-gui</artifactId>
-	<version>1.6.0-0.1.0</version>
+	<version>1.6.1-0.1.0</version>
 	<name>Hentai@Home Client GUI</name>
 	<description>Client for the Hentai@Home content network, GUI module</description>
 	<packaging>jar</packaging>
@@ -15,7 +15,7 @@
 	<parent>
 		<groupId>org.hath</groupId>
 		<artifactId>hath-client</artifactId>
-		<version>1.6.0-0.1.0</version>
+		<version>1.6.1-0.1.0</version>
 	</parent>
 
 	<build>
@@ -75,7 +75,7 @@
 		<dependency>
 			<groupId>org.hath</groupId>
 			<artifactId>hath-base</artifactId>
-			<version>1.6.0-0.1.0</version>
+			<version>1.6.1-0.1.0</version>
 		</dependency>
 	</dependencies>
 </project>
