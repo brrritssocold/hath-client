@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2019 E-Hentai.org
+Copyright 2008-2020 E-Hentai.org
 https://forums.e-hentai.org/
 ehentai@gmail.com
 
@@ -197,14 +197,14 @@ public class HTTPResponse {
 			}
 			else if(Settings.isStaticRange(fileid)) {
 				// non-existent file. do an on-demand request of the file directly from the image servers
-				URL source = session.getHTTPServer().getHentaiAtHomeClient().getServerHandler().getStaticRangeFetchURL(fileindex, xres, fileid);
+				URL[] sources = session.getHTTPServer().getHentaiAtHomeClient().getServerHandler().getStaticRangeFetchURL(fileindex, xres, fileid);
 				
-				if(source == null) {
+				if(sources == null) {
 					responseStatusCode = 404;
 				}
 				else {
 					// hpc will update responseStatusCode
-					hpc = new HTTPResponseProcessorProxy(session, fileid, source);
+					hpc = new HTTPResponseProcessorProxy(session, fileid, sources);
 				}
 			}
 			else {

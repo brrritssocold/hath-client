@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2019 E-Hentai.org
+Copyright 2008-2020 E-Hentai.org
 https://forums.e-hentai.org/
 ehentai@gmail.com
 
@@ -33,9 +33,9 @@ public class HTTPResponseProcessorProxy extends HTTPResponseProcessor {
 	private int readoff = 0;
 	private ByteBuffer tcpBuffer;
 
-	public HTTPResponseProcessorProxy(HTTPSession session, String fileid, URL source) {
+	public HTTPResponseProcessorProxy(HTTPSession session, String fileid, URL[] sources) {
 		this.session = session;
-		proxyDownloader = new ProxyFileDownloader(session.getHTTPServer().getHentaiAtHomeClient(), fileid, source);
+		proxyDownloader = new ProxyFileDownloader(session.getHTTPServer().getHentaiAtHomeClient(), fileid, sources);
 	}
 
 	public int initialize() {

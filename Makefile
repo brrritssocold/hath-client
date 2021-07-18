@@ -12,4 +12,4 @@ jar:
 all: hath jar
 
 clean:
-	rm -rf org
+	rm -rf build

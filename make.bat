@@ -1,5 +1,5 @@
-@if not exist org mkdir org
+@if not exist build mkdir build
 @cd src
-@dir /s /b *.java > ../org/srcfiles.txt
+@dir /s /b *.java > ../build/srcfiles.txt
 @cd ..
-javac -source 1.7 -target 1.7 -d . -classpath sqlite-jdbc-3.7.2 @org/srcfiles.txt
+javac -source 1.8 -target 1.8 -d ./build  @build/srcfiles.txt
