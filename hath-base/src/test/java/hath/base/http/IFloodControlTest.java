@@ -25,15 +25,13 @@ package hath.base.http;
 import static org.awaitility.Awaitility.await;
 import static org.awaitility.Awaitility.to;
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.util.concurrent.TimeUnit;
 
 import org.awaitility.Duration;
-import org.junit.Before;
-import org.junit.Test;
-
-import hath.base.http.IFloodControl;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public abstract class IFloodControlTest {
 	private static final int FLOOD_HIT_LIMIT = 10;
@@ -44,7 +42,7 @@ public abstract class IFloodControlTest {
 
 	private IFloodControl cut;
 
-	@Before
+	@BeforeEach
 	public void setUp() throws Exception {
 		cut = getCutInstance();
 	}

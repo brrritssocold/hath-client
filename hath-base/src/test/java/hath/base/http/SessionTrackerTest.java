@@ -24,16 +24,16 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 package hath.base.http;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jetty.server.Request;
-import org.junit.Before;
-import org.junit.Test;
-
-import hath.base.http.SessionTracker;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 public class SessionTrackerTest {
 	private static final long START_SESSIONS = 5;
@@ -43,7 +43,7 @@ public class SessionTrackerTest {
 	private SessionTracker cut;
 	private int sessionCounter;
 
-	@Before
+	@BeforeEach
 	public void setUp() throws Exception {
 		cut = new SessionTracker(3, TimeUnit.SECONDS, MAX_SESSIONS, OVERLOAD_PERCENTAGE);
 		sessionCounter = 0;
@@ -104,7 +104,8 @@ public class SessionTrackerTest {
 		assertThat(cut.activeSessions(), is(START_SESSIONS - 1));
 	}
 
-	@Test(timeout = 500)
+	@Test
+	@Timeout(value = 500, unit = TimeUnit.MILLISECONDS)
 	public void testSessionTimeout() throws Exception {
 		cut = new SessionTracker(1, TimeUnit.MILLISECONDS);
 
@@ -125,19 +126,19 @@ public class SessionTrackerTest {
 		assertThat(cut.isActive(100), is(false));
 	}
 
-	@Test(expected = IllegalArgumentException.class)
+	@Test
 	public void testInvalidMaxSession() throws Exception {
-		new SessionTracker(3, TimeUnit.SECONDS, -1, 0.8);
+		assertThrows(IllegalArgumentException.class, () -> new SessionTracker(3, TimeUnit.SECONDS, -1, 0.8));
 	}
 
-	@Test(expected = IllegalArgumentException.class)
+	@Test
 	public void testInvalidOverloadPercentageNegative() throws Exception {
-		new SessionTracker(3, TimeUnit.SECONDS, 5, -1);
+		assertThrows(IllegalArgumentException.class, () -> new SessionTracker(3, TimeUnit.SECONDS, 5, -1));
 	}
 
-	@Test(expected = IllegalArgumentException.class)
+	@Test
 	public void testInvalidOverloadPercentageOver100Percent() throws Exception {
-		new SessionTracker(3, TimeUnit.SECONDS, 5, 1.1);
+		assertThrows(IllegalArgumentException.class, () -> new SessionTracker(3, TimeUnit.SECONDS, 5, 1.1));
 	}
 
 	@Test

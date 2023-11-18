@@ -24,19 +24,14 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 package hath.base.http;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.concurrent.TimeUnit;
 
-import org.junit.Before;
-import org.junit.Test;
-
-import hath.base.http.FloodControl;
-import hath.base.http.FloodControlEntry;
-import hath.base.http.FloodControlEntryFactory;
-import hath.base.http.IFloodControl;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class FloodControlTest extends IFloodControlTest {
 	private static final String TEST_ADDRESS = "foo";
@@ -63,7 +58,7 @@ public class FloodControlTest extends IFloodControlTest {
 		return mockEntry;
 	}
 
-	@Before
+	@BeforeEach
 	public void createFloodControl() throws Exception {
 		cut = new FloodControl(CACHE_EXPIRY_TIME_SECONDS, TimeUnit.SECONDS);
 	}
