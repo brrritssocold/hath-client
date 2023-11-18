@@ -1,8 +1,8 @@
 /*
 
-Copyright 2008-2020 E-Hentai.org
+Copyright 2008-2023 E-Hentai.org
 https://forums.e-hentai.org/
-ehentai@gmail.com
+tenboro@e-hentai.org
 
 This file is part of Hentai@Home.
 
@@ -23,26 +23,22 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 /*
 
-1.6.1
+1.6.2
 
-- A sanity check for certificate expiry has been added. If a client does not successfully refresh the certificate for whatever reason, it will now shut down gracefully 24 hours before the certificate actually expires instead of failing silently.
+- Fixed an issue on some setups where, when running a test against other clients, two competing threads could reach a lock in an unexpected order, which would make the client report a failure before it actually ran the test.
 
-- If the system time is off by more than 24 hours, a warning advising you to correct it will now be printed regularly. Failure to do so might make the certificate check trigger prematurely or fail to trigger at all.
+- Fixed an issue where, if the cache was moved without preserving file modification dates and the cache is full, the cache pruner could get stuck in a loop of not finding any files to prune.
 
-- During proxy requests, when a file is requested but not found in cache, the backend will now provide an alternative source link in addition to the primary one. If the client is unable to connect to the primary source, it will automatically fall back to the secondary one.
+- In very rare cases, when loading persistent cache data on startup, the internal Java object deserializer could get stuck in an infinite loop if the files had been corrupted by some software or hardware issue, which required manually deleting them. We now automatically delete those files on the next startup if this happens.
 
-- H@H now makes a best-effort attempt to include filesystem overhead for slack space in its cache size calculations. By default this calculation assumes a filesystem block size of 4kB which is by far the most common, adding an estimated overhead of 2 GB per 1 million files - roughly 0.5% for your average H@H cache.
+- Added a way for the server to tell a client to shut down in case of persistent network configuration issues.
 
-[b]Note that if your cache was at ~100%, this means it will be slighly over and prune this amount from the cache at the next startup. If you already left some extra space, you can increase the H@H cache by this amount BEFORE starting up to compensate. If you abort startup after seeing the pruning message, it will have to rescan the cache at next startup.[/b]
-
-This does [i]not[/i] reduce the amount of static ranges you can store at a given setting; it just adds 2kB (or blocksize/2) average overhead per file for the internal resource tracking.
-
-You can specify a different blocksize with --filesystem-blocksize=xxx or turn this off by using --filesystem-blocksize=0
+- Added some MIME types for possible future use.
 
 
-[b]To update an existing client: shut it down, download [url=https://repo.e-hentai.org/hath/HentaiAtHome_1.6.1.zip]Hentai@Home 1.6.1[/url], extract the archive, copy the jar files over the existing ones, then restart the client.[/b]
+[b]To update an existing client: shut it down, download [url=https://repo.e-hentai.org/hath/HentaiAtHome_1.6.2.zip]Hentai@Home 1.6.2[/url], extract the archive, copy the jar files over the existing ones, then restart the client.[/b]
 
-[b]The full source code for H@H is available and licensed under the GNU General Public License v3, and can be downloaded [url=https://repo.e-hentai.org/hath/HentaiAtHome_1.6.1_src.zip]here[/url]. Building it from source only requires OpenJDK 8 or newer.[/b]
+[b]The full source code for H@H is available and licensed under the GNU General Public License v3, and can be downloaded [url=https://repo.e-hentai.org/hath/HentaiAtHome_1.6.2_src.zip]here[/url]. Building it from source only requires OpenJDK 8 or newer.[/b]
 
 [b]For information on how to join Hentai@Home, check out [url=https://forums.e-hentai.org/index.php?showtopic=19795]The Hentai@Home Project FAQ[/url].[/b]
 
@@ -103,7 +99,7 @@ public class HentaiAtHomeClient implements Runnable {
 
 		Out.startLoggers();
 		Out.info("Hentai@Home " + Settings.CLIENT_VERSION + " (Build " + Settings.CLIENT_BUILD + ") starting up\n");
-		Out.info("Copyright (c) 2008-2020, E-Hentai.org - all rights reserved.");
+		Out.info("Copyright (c) 2008-2023, E-Hentai.org - all rights reserved.");
 		Out.info("This software comes with ABSOLUTELY NO WARRANTY. This is free software, and you are welcome to modify and redistribute it under the GPL v3 license.\n");
 		
 		Stats.resetStats();

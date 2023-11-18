@@ -1,8 +1,8 @@
 /*
 
-Copyright 2008-2020 E-Hentai.org
+Copyright 2008-2023 E-Hentai.org
 https://forums.e-hentai.org/
-ehentai@gmail.com
+tenboro@e-hentai.org
 
 This file is part of Hentai@Home.
 
@@ -90,7 +90,7 @@ public class HTTPResponse {
 		int testtime = Integer.parseInt(addTable.get("testtime"));
 		String testkey = addTable.get("testkey");
 		
-		Out.debug("Running threaded proxy test against hostname=" + hostname + " protocol=" + protocol + " port=" + port + " testsize=" + testsize + " testcount=" + testcount + " testtime=" + testtime + " testkey=" + testkey);
+		Out.debug("Running speedtest against hostname=" + hostname + " protocol=" + protocol + " port=" + port + " testsize=" + testsize + " testcount=" + testcount + " testtime=" + testtime + " testkey=" + testkey);
 
 		int successfulTests = 0;
 		long totalTimeMillis = 0;
@@ -100,7 +100,7 @@ public class HTTPResponse {
 
 			for(int i=0; i<testcount; i++) {
 				URL source = new URL(protocol == null ? "http" : protocol, hostname, port, "/t/" + testsize + "/" + testtime + "/" + testkey + "/" + (int) Math.floor(Math.random() * Integer.MAX_VALUE));
-				Out.debug("Test thread: " + source);
+				//Out.debug("Test thread: " + source);
 				FileDownloader dler = new FileDownloader(source, 10000, 60000, true);
 				testfiles.add(dler);
 				dler.startAsyncDownload();
@@ -116,6 +116,8 @@ public class HTTPResponse {
 		catch(java.net.MalformedURLException e) {
 			HentaiAtHomeClient.dieWithError(e);
 		}
+
+		Out.debug("Ran speedtest against hostname=" + hostname + " testsize=" + testsize + " testcount=" + testcount + ", reporting successfulTests=" + successfulTests + " totalTimeMillis=" + totalTimeMillis);
 
 		return new HTTPResponseProcessorText("OK:" + successfulTests + "-" + totalTimeMillis);
 	}
@@ -200,6 +202,7 @@ public class HTTPResponse {
 				URL[] sources = session.getHTTPServer().getHentaiAtHomeClient().getServerHandler().getStaticRangeFetchURL(fileindex, xres, fileid);
 				
 				if(sources == null) {
+					Out.debug(session + " Sources was empty for fileindex=" + fileindex + " xres=" + xres + " fileid=" + fileid);
 					responseStatusCode = 404;
 				}
 				else {
@@ -209,6 +212,7 @@ public class HTTPResponse {
 			}
 			else {
 				// file does not exist, and is not in one of the client's static ranges
+				Out.debug(session + " File is not in static ranges for fileindex=" + fileindex + " xres=" + xres + " fileid=" + fileid);
 				responseStatusCode = 404;
 			}						
 

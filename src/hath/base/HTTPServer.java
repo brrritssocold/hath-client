@@ -1,8 +1,8 @@
 /*
 
-Copyright 2008-2020 E-Hentai.org
+Copyright 2008-2023 E-Hentai.org
 https://forums.e-hentai.org/
-ehentai@gmail.com
+tenboro@e-hentai.org
 
 This file is part of Hentai@Home.
 
@@ -88,8 +88,9 @@ public class HTTPServer implements Runnable {
 			
 			X509Certificate cert = (X509Certificate) ks.getCertificate("hath.network");
 			certExpiry = cert.getNotAfter();
-			
-			Out.debug("Initialized KeyStore with cert=" + cert.toString());
+
+			Out.debug("Initialized KeyStore with " + cert.getSubjectX500Principal().getName());
+			//Out.debug("Initialized KeyStore with cert=" + cert.toString());
 
 			if(isCertExpired()) {
 				Out.error("The retrieved certificate is expired, or the system time is off by more than a day. Correct the system time and try again.");

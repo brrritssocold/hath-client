@@ -1,8 +1,8 @@
 /*
 
-Copyright 2008-2020 E-Hentai.org
+Copyright 2008-2023 E-Hentai.org
 https://forums.e-hentai.org/
-ehentai@gmail.com
+tenboro@e-hentai.org
 
 This file is part of Hentai@Home.
 
@@ -39,7 +39,7 @@ public class FileDownloader implements Runnable {
 	private URL source;
 	private Thread myThread;
 	private Object downloadLock = new Object();
-	private boolean started = false, discardData = false;
+	private boolean started = false, discardData = false, successful = false;
 
 	public FileDownloader(URL source, int timeout, int maxDLTime) {
 		// everything will be written to a ByteBuffer
@@ -78,7 +78,7 @@ public class FileDownloader implements Runnable {
 			waitAsyncDownload();
 		}
 
-		return timeDownloadFinish > 0;
+		return successful;
 	}
 
 	public void startAsyncDownload() {
@@ -90,9 +90,22 @@ public class FileDownloader implements Runnable {
 	}
 
 	public boolean waitAsyncDownload() {
+		// make sure the download thread has actually finished starting up
+		try {
+			int timeout = 1000;
+			
+			while(!started && (--timeout > 0)) {
+				Thread.currentThread().sleep(1000);
+			}
+		}
+		catch(Exception e) {}
+
 		// synchronize on the download lock to wait for the download attempts to complete before returning
-		synchronized(downloadLock) {}
-		return timeDownloadFinish > 0;
+		synchronized(downloadLock) {
+			Out.debug("Finished async wait for source=" + source + " with timeDownloadStart=" + timeDownloadStart + " timeFirstByte=" + timeFirstByte + " timeDownloadFinish=" + timeDownloadFinish + " successful=" + successful);
+		}
+
+		return successful;
 	}
 
 	public String getResponseAsString(String charset) {
@@ -119,8 +132,6 @@ public class FileDownloader implements Runnable {
 
 	public void run() {
 		synchronized(downloadLock) {
-			boolean success = false;
-
 			if(started) {
 				return;
 			}
@@ -128,7 +139,7 @@ public class FileDownloader implements Runnable {
 			FileChannel outputChannel = null;
 			started = true;
 
-			while(!success && --retries >= 0) {
+			while(!successful && --retries >= 0) {
 				InputStream is = null;
 
 				try {
@@ -245,11 +256,11 @@ public class FileDownloader implements Runnable {
 							}
 						}
 					} while(readbytes > 0);
-					
-					success = writeoff == contentLength;
+
+					successful = writeoff == contentLength;
 					timeDownloadFinish = System.currentTimeMillis();
 					long dltime = getDownloadTimeMillis();
-					Out.debug("Finished in " + dltime + " ms" + (dltime > 0 ? ", speed=" + (writeoff / dltime) + "KB/s" : "") + ", writeoff=" + writeoff + ", success=" + (success ? "yes" : "no"));
+					Out.debug("Finished download for " + source + " in " + dltime + " ms" + (dltime > 0 ? ", speed=" + (writeoff / dltime) + "KB/s" : "") + ", writeoff=" + writeoff + ", successful=" + (successful ? "yes" : "no"));
 					Stats.bytesRcvd(contentLength);
 				}
 				catch(Exception e) {
@@ -277,13 +288,13 @@ public class FileDownloader implements Runnable {
 				try {
 					outputChannel.close();
 
-					if(!success) {
+					if(!successful) {
 						outputPath.toFile().delete();
 					}
 				} catch(Exception e) {}
 			}
 
-			if(!success ) {
+			if(!successful ) {
 				Out.warning("Exhaused retries or aborted getting " + source);
 			}
 		}

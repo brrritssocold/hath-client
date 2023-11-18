@@ -1,8 +1,8 @@
 /*
 
-Copyright 2008-2020 E-Hentai.org
+Copyright 2008-2023 E-Hentai.org
 https://forums.e-hentai.org/
-ehentai@gmail.com
+tenboro@e-hentai.org
 
 This file is part of Hentai@Home.
 
@@ -165,7 +165,8 @@ public class CacheHandler {
 		boolean success = false;
 
 		try {
-			String[] cacheinfo = Tools.getStringFileContents(getPersistentInfoFile()).split("\n");
+			File persistentInfoFile = getPersistentInfoFile();
+			String[] cacheinfo = Tools.getStringFileContents(persistentInfoFile).split("\n");
 			int infoChecksum = 0;
 			String agesHash = null, lruHash = null;
 
@@ -199,6 +200,12 @@ public class CacheHandler {
 						infoChecksum |= 16;
 						break;
 				}
+			}
+
+			// very rarely, if the files have been corrupted, the java deserializer might get stuck in an infinite loop when deserializing the pcache objects
+			// we delete the info file early so that if this happens, it will force a cache rescan on the next startup
+			if(persistentInfoFile.exists()) {
+				persistentInfoFile.delete();
 			}
 
 			if(infoChecksum != 31) {
@@ -542,18 +549,19 @@ public class CacheHandler {
 				// oldest file is between three and six months old, prune files newer than up to 7 days after this file
 				lruLastModifiedPruneCutoff += 604800000L;
 			}
-			else {
-				// oldest file is less than three months old, prune files newer than up to 3 days after this file
+			else if(oldestRangeAge < nowtime - 2592000000L) {
+				// oldest file is between one and three months old, prune files newer than up to 3 days after this file
 				lruLastModifiedPruneCutoff += 259200000L;
+			}
+			else {
+				// oldest file is less than a month old, prune files newer than up to 1 day after this file
+				lruLastModifiedPruneCutoff += 86400000L;
 			}
 
 			Out.debug("CacheHandler: Trying to free " + bytesToFree + " bytes, currently scanning range " + pruneStaticRange);
 
 			if(!staticRangeDir.isDirectory()) {
 				Out.warning("CacheHandler: Expected static range directory " + staticRangeDir + " could not be accessed");
-			}
-			else if(lruLastModifiedPruneCutoff > System.currentTimeMillis() - 604800000) {
-				Out.warning("CacheHandler: Sanity check failed: lruLastModifiedPruneCutoff " + lruLastModifiedPruneCutoff + " is less than a week old, cache pruning halted");
 			}
 			else {
 				File[] files = staticRangeDir.listFiles();

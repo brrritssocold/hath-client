@@ -1,8 +1,8 @@
 /*
 
-Copyright 2008-2020 E-Hentai.org
+Copyright 2008-2023 E-Hentai.org
 https://forums.e-hentai.org/
-ehentai@gmail.com
+tenboro@e-hentai.org
 
 This file is part of Hentai@Home.
 
@@ -40,7 +40,7 @@ public class HVFile {
 		this.yres = yres;
 		this.type = type;
 	}
-	
+
 	public File getLocalFileRef() {
 		return new File(Settings.getCacheDir(), hash.substring(0, 2) + "/" + hash.substring(2, 4) + "/" + getFileid());
 	}
@@ -49,23 +49,49 @@ public class HVFile {
 		return getLocalFileRef().toPath();
 	}
 
-	// accessors
 	public String getMimeType() {
 		if(type.equals("jpg")) {
-			return Settings.CONTENT_TYPE_JPG;
-		} else if(type.equals("png")) {
-			return Settings.CONTENT_TYPE_PNG;
-		} else if(type.equals("gif")) {
-			return Settings.CONTENT_TYPE_GIF;
-		} else if(type.equals("wbm")) {
-			return Settings.CONTENT_TYPE_WEBM;
-		} else {
-			return Settings.CONTENT_TYPE_OCTET;
+			return "image/jpeg";
 		}
+
+		if(type.equals("png")) {
+			return "image/png";
+		}
+
+		if(type.equals("gif")) {
+			return "image/gif";
+		}
+
+		if(type.equals("mp4")) {
+			return "video/mp4";
+		}
+
+		if(type.equals("wbm")) {
+			return "video/webm";
+		}
+
+		if(type.equals("wbp")) {
+			return "image/webp";
+		}
+
+		if(type.equals("avf")) {
+			return "image/avif";
+		}
+
+		if(type.equals("jxl")) {
+			return "image/jxl";
+		}
+
+		return "application/octet-stream";
 	}
 
 	public String getFileid() {
-		return hash + "-" + size + "-" + xres + "-" + yres + "-" + type;
+		if(xres > 0) {
+			return hash + "-" + size + "-" + xres + "-" + yres + "-" + type;
+		}
+		else {
+			return hash + "-" + size + "-" + type;
+		}
 	}
 	
 	public String getHash() {
@@ -79,15 +105,13 @@ public class HVFile {
 	public String getType() {
 		return type;
 	}
-	
+
 	public String getStaticRange() {
 		return hash.substring(0, 4);
 	}
-	
 
-	// static stuff
 	public static boolean isValidHVFileid(String fileid) {
-		return java.util.regex.Pattern.matches("^[a-f0-9]{40}-[0-9]{1,8}-[0-9]{1,5}-[0-9]{1,5}-((jpg)|(png)|(gif)|(wbm))$", fileid);
+		return java.util.regex.Pattern.matches("^[a-f0-9]{40}-[0-9]{1,10}-[0-9]{1,5}-[0-9]{1,5}-(jpg|png|gif|mp4|wbm|wbp|avf|jxl)$", fileid) || java.util.regex.Pattern.matches("^[a-f0-9]{40}-[0-9]{1,10}-(jpg|png|gif|mp4|wbm|wbp|avf|jxl)$", fileid);
 	}
 
 	public static HVFile getHVFileFromFile(File file) {
@@ -125,16 +149,26 @@ public class HVFile {
 		
 		return null;
 	}
-	
+
 	public static HVFile getHVFileFromFileid(String fileid) {
 		if(isValidHVFileid(fileid)) {
 			try {
 				String[] fileidParts = fileid.split("-");
 				String hash = fileidParts[0];
 				int size = Integer.parseInt(fileidParts[1]);
-				int xres = Integer.parseInt(fileidParts[2]);
-				int yres = Integer.parseInt(fileidParts[3]);
-				String type = fileidParts[4];
+
+				int xres = 0, yres = 0;
+				String type = null;
+
+				if(fileidParts.length == 3) {
+					type = fileidParts[2];
+				}
+				else {
+					xres = Integer.parseInt(fileidParts[2]);
+					yres = Integer.parseInt(fileidParts[3]);
+					type = fileidParts[4];
+				}
+
 				return new HVFile(hash, size, xres, yres, type);
 			}
 			catch(Exception e) {
