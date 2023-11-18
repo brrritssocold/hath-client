@@ -23,16 +23,14 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 package hath.base;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import org.junit.Before;
-import org.junit.Test;
-
-import hath.base.Settings;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class SettingsTest {
 	private static final String LOG_OUT_FILE_NAME = "log_out";
@@ -42,7 +40,7 @@ public class SettingsTest {
 	private Settings cut;
 
 	@SuppressWarnings("deprecation")
-	@Before
+	@BeforeEach
 	public void setUp() throws Exception {
 		logDir = Files.createTempDirectory("SettingsTest");
 		Settings.setLogDir(logDir.toFile());

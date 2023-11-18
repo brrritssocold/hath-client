@@ -23,9 +23,9 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package hath.base.http;
 
-import javax.servlet.http.HttpServletRequest;
 
 import hath.base.HentaiAtHomeClient;
+import jakarta.servlet.http.HttpServletRequest;
 
 public class HTTPRequestAttributes {
 	public enum BooleanAttributes {

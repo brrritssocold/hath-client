@@ -22,23 +22,15 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 */
 package hath.base;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-import hath.base.Out;
-import hath.base.OutListener;
-
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class OutTest {
 	@Mock
 	private OutListener listener;
-
-	@Before
-	public void setUp() throws Exception {
-	}
 
 	@Test
 	public void testAddOutListener() throws Exception {

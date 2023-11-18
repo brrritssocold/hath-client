@@ -25,26 +25,24 @@ package hath.base.http;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import javax.servlet.http.HttpServletRequest;
-
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import hath.base.HentaiAtHomeClient;
-import hath.base.http.HTTPRequestAttributes;
-import hath.base.http.HTTPResponseProcessor;
 import hath.base.http.HTTPRequestAttributes.BooleanAttributes;
 import hath.base.http.HTTPRequestAttributes.ClassAttributes;
 import hath.base.http.HTTPRequestAttributes.IntegerAttributes;
+import jakarta.servlet.http.HttpServletRequest;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class HTTPRequestAttributesTest {
 	@Mock
 	private HttpServletRequest request;
@@ -68,11 +66,11 @@ public class HTTPRequestAttributesTest {
 		assertThat(HTTPRequestAttributes.getAttribute(request, BooleanAttributes.LOCAL_NETWORK_ACCESS), is(true));
 	}
 
-	@Test(expected = ClassCastException.class)
+	@Test
 	public void testGetAttributeSetNotBoolean() throws Exception {
 		when(request.getAttribute(BooleanAttributes.LOCAL_NETWORK_ACCESS.toString())).thenReturn("foobar");
 
-		HTTPRequestAttributes.getAttribute(request, BooleanAttributes.LOCAL_NETWORK_ACCESS);
+		assertThrows(ClassCastException.class, () -> HTTPRequestAttributes.getAttribute(request, BooleanAttributes.LOCAL_NETWORK_ACCESS));
 	}
 
 	@Test
@@ -87,11 +85,11 @@ public class HTTPRequestAttributesTest {
 		assertThat(HTTPRequestAttributes.getAttribute(request, IntegerAttributes.SESSION_ID), is(42));
 	}
 
-	@Test(expected = ClassCastException.class)
+	@Test
 	public void testGetAttributeSetNotInteger() throws Exception {
 		when(request.getAttribute(IntegerAttributes.SESSION_ID.toString())).thenReturn("foobar");
 
-		HTTPRequestAttributes.getAttribute(request, IntegerAttributes.SESSION_ID);
+		assertThrows(ClassCastException.class, () -> HTTPRequestAttributes.getAttribute(request, IntegerAttributes.SESSION_ID));
 	}
 
 	@Test
