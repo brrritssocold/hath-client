@@ -31,8 +31,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import javax.servlet.http.HttpServletRequest;
-
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -42,6 +40,7 @@ import hath.base.HentaiAtHomeClient;
 import hath.base.http.HTTPRequestAttributes.BooleanAttributes;
 import hath.base.http.HTTPRequestAttributes.ClassAttributes;
 import hath.base.http.HTTPRequestAttributes.IntegerAttributes;
+import jakarta.servlet.http.HttpServletRequest;
 
 @ExtendWith(MockitoExtension.class)
 public class HTTPRequestAttributesTest {

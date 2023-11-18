@@ -23,10 +23,10 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package hath.base.util;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import org.eclipse.jetty.server.Request;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 public class HandlerUtils {
 	private HandlerUtils() {
@@ -36,7 +36,10 @@ public class HandlerUtils {
 	 * Returns a String showing if the request has been handled, or null if the request is null.
 	 */
 	public static String isHandledStatus(Request baseRequest) {
-		return "handled: " + (baseRequest == null ? "null" : Boolean.toString(baseRequest.isHandled()));
+		throw new RuntimeException("Not Implemented");
+		// FIXME Need to find a replacement for Request.isHandled
+		// return "handled: " + (baseRequest == null ? "null" :
+		// Boolean.toString(baseRequest.isHandled()));
 	}
 
 	/**
