@@ -23,13 +23,13 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 package hath.base.http;
 
 import static org.awaitility.Awaitility.await;
-import static org.awaitility.Awaitility.to;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
-import org.awaitility.Duration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -37,7 +37,7 @@ public abstract class IFloodControlTest {
 	private static final int FLOOD_HIT_LIMIT = 10;
 	public static final long TABLE_PRUNE_WAIT_MILLI = 1000;
 
-	private static final Duration TEST_TIMEOUT = new Duration(5, TimeUnit.SECONDS);
+	private static final Duration TEST_TIMEOUT = Duration.ofSeconds(5);
 	private static final String ADDRESS = "42.42.42.42";
 
 	private IFloodControl cut;
@@ -102,6 +102,6 @@ public abstract class IFloodControlTest {
 		assertThat(cut.hasExceededConnectionLimit(ADDRESS), is(true)); // guard assert
 
 		await().atMost(TEST_TIMEOUT).pollDelay(TABLE_PRUNE_WAIT_MILLI, TimeUnit.MILLISECONDS)
-				.untilCall(to(cut).hasExceededConnectionLimit(ADDRESS), is(false));
+				.untilAsserted(() -> assertFalse(cut.hasExceededConnectionLimit(ADDRESS)));
 	}
 }
