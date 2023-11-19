@@ -26,7 +26,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jxr-plugin</artifactId>
-				<version>2.5</version>
+				<version>3.3.1</version>
 			</plugin>
 		</plugins>
 	</reporting>
@@ -86,7 +86,7 @@
 			<plugins>
 				<plugin>
 					<artifactId>maven-pmd-plugin</artifactId>
-					<version>3.7</version>
+					<version>3.21.2</version>
 					<configuration>
 						<includeTests>true</includeTests>
 						<minimumTokens>50</minimumTokens>
@@ -123,7 +123,7 @@
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-checkstyle-plugin</artifactId>
-					<version>2.17</version>
+					<version>3.3.1</version>
 					<configuration>
 						<configLocation>checkstyle.xml</configLocation>
 						<propertiesLocation>checkstyle_maven.properties</propertiesLocation>
@@ -152,7 +152,7 @@
 				</plugin>
 				<plugin>
 					<artifactId>maven-compiler-plugin</artifactId>
-					<version>3.1</version>
+					<version>3.11.0</version>
 					<configuration>
 						<source>${java-source-version}</source>
 						<target>${java-target-version}</target>
