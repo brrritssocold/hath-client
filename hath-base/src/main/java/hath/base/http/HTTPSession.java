@@ -1,8 +1,8 @@
 /*
 
-Copyright 2008-2020 E-Hentai.org
+Copyright 2008-2023 E-Hentai.org
 https://forums.e-hentai.org/
-ehentai@gmail.com
+tenboro@e-hentai.org
 
 This file is part of Hentai@Home.
 
@@ -23,20 +23,19 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package hath.base.http;
 
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.InputStreamReader;
+import java.net.InetAddress;
+import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
+import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
-import java.text.DecimalFormat;
-import java.text.SimpleDateFormat;
-import java.net.InetAddress;
-import java.lang.Thread;
-import java.lang.StringBuilder;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.DataOutputStream;
-import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 import java.util.regex.Pattern;
+
 import javax.net.ssl.SSLSocket;
 
 import org.slf4j.Logger;
@@ -69,10 +68,6 @@ public class HTTPSession implements Runnable {
 		this.connId = connId;
 		this.localNetworkAccess = localNetworkAccess;
 		this.httpServer = httpServer;
-	}
-
-	public void handleSession() {
-		myThread = new Thread(this);
 	}
 
 	private void connectionFinished() {

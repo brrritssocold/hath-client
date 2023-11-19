@@ -1,8 +1,8 @@
 /*
 
-Copyright 2008-2020 E-Hentai.org
+Copyright 2008-2023 E-Hentai.org
 https://forums.e-hentai.org/
-ehentai@gmail.com
+tenboro@e-hentai.org
 
 This file is part of Hentai@Home.
 
@@ -23,6 +23,7 @@ along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
 
 package hath.base.http;
 
+import java.lang.Thread;
 import java.net.URL;
 import java.nio.ByteBuffer;
 

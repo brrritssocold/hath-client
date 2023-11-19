@@ -1,8 +1,8 @@
 /*
 
-Copyright 2008-2020 E-Hentai.org
+Copyright 2008-2023 E-Hentai.org
 https://forums.e-hentai.org/
-ehentai@gmail.com
+tenboro@e-hentai.org
 
 This file is part of Hentai@Home.
 
@@ -63,10 +63,10 @@ public class ServerHandler {
 
 		try {
 			if(act.equals(ACT_SERVER_STAT)) {
-				serverConnectionURL = new URL(Settings.CLIENT_RPC_PROTOCOL + Settings.getRPCServerHost() + "/" + Settings.CLIENT_RPC_FILE + "clientbuild=" + Settings.CLIENT_BUILD + "&act=" + act);
+				serverConnectionURL = new URL(Settings.CLIENT_RPC_PROTOCOL + Settings.getRPCServerHost() + "/" + Settings.getRPCPath() + "clientbuild=" + Settings.CLIENT_BUILD + "&act=" + act);
 			}
 			else {
-				serverConnectionURL = new URL(Settings.CLIENT_RPC_PROTOCOL + Settings.getRPCServerHost() + "/" + Settings.CLIENT_RPC_FILE + getURLQueryString(act, add));
+				serverConnectionURL = new URL(Settings.CLIENT_RPC_PROTOCOL + Settings.getRPCServerHost() + "/" + Settings.getRPCPath() + getURLQueryString(act, add));
 			}
 		} catch(java.net.MalformedURLException e) {
 			HentaiAtHomeClient.dieWithError(e);
@@ -199,9 +199,9 @@ public class ServerHandler {
 
 		if(sr.getResponseStatus() == ServerResponse.RESPONSE_STATUS_OK) {
 			return sr.getResponseText();
-		} else {
-			return null;
 		}
+
+		return null;
 	}
 
 	public void stillAliveTest(boolean resume) {

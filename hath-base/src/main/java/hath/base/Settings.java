@@ -1,8 +1,8 @@
 /*
 
-Copyright 2008-2020 E-Hentai.org
+Copyright 2008-2023 E-Hentai.org
 https://forums.e-hentai.org/
-ehentai@gmail.com
+tenboro@e-hentai.org
 
 This file is part of Hentai@Home.
 
@@ -26,30 +26,23 @@ package hath.base;
 import java.io.File;
 import java.net.InetAddress;
 import java.nio.file.Path;
-import java.util.*;
-import java.lang.*;
+import java.util.Hashtable;
 
 public class Settings {
 	public static final String NEWLINE = System.getProperty("line.separator");
 
 	// the client build is among other things used by the server to determine the client's capabilities. any forks should use the build number as an indication of compatibility with mainline, rather than an internal build number.
-	public static final int CLIENT_BUILD = 154;
+	public static final int CLIENT_BUILD = 160;
 	public static final int CLIENT_KEY_LENGTH = 20;
 	public static final int MAX_KEY_TIME_DRIFT = 300;
 	public static final int MAX_CONNECTION_BASE = 20;
 	public static final int TCP_PACKET_SIZE = 1460;
 
-	public static final String CLIENT_VERSION = "1.6.1";
+	public static final String CLIENT_VERSION = "1.6.2";
 	public static final String CLIENT_RPC_PROTOCOL = "http://";
 	public static final String CLIENT_RPC_HOST = "rpc.hentaiathome.net";
-	public static final String CLIENT_RPC_FILE = "15/rpc?";
 	public static final String CLIENT_LOGIN_FILENAME = "client_login";
 	public static final String CONTENT_TYPE_DEFAULT = "text/html; charset=iso-8859-1";
-	public static final String CONTENT_TYPE_OCTET = "application/octet-stream";
-	public static final String CONTENT_TYPE_JPG = "image/jpeg";
-	public static final String CONTENT_TYPE_PNG = "image/png";
-	public static final String CONTENT_TYPE_GIF = "image/gif";
-	public static final String CONTENT_TYPE_WEBM = "video/webm";
 
 	private static HentaiAtHomeClient activeClient = null;
 	private static HathGUI activeGUI = null;
@@ -59,9 +52,9 @@ public class Settings {
 	private static Hashtable<String, Integer> staticRanges = null;
 	private static Path logdir = null;
 	private static File datadir = null, cachedir = null, tempdir = null, downloaddir = null;
-	private static String clientKey = "", clientHost = "", dataDirPath = "data", logDirPath = "log", cacheDirPath = "cache", tempDirPath = "tmp", downloadDirPath = "download";
+	private static String clientKey = "", clientHost = "", dataDirPath = "data", logDirPath = "log", cacheDirPath = "cache", tempDirPath = "tmp", downloadDirPath = "download", rpcPath = "15/rpc?";
 
-	private static int clientID = 0, clientPort = 0, throttle_bytes = 0, overrideConns = 0, serverTimeDelta = 0, maxAllowedFileSize = 104857600, currentStaticRangeCount = 0;
+	private static int clientID = 0, clientPort = 0, throttle_bytes = 0, overrideConns = 0, serverTimeDelta = 0, maxAllowedFileSize = 1073741824, currentStaticRangeCount = 0;
 	private static long disklimit_bytes = 0, diskremaining_bytes = 0, fileSystemBlocksize = 4096;
 	private static boolean verifyCache = false, rescanCache = false, skipFreeSpaceCheck = false, warnNewClient = false, useLessMemory = false, disableBWM = false, disableDownloadBWM = false, disableLogs = false, flushLogs = false, disableIPOriginCheck = false, disableFloodControl = false;
 
@@ -107,7 +100,7 @@ public class Settings {
 	}
 
 	public static void promptForIDAndKey(InputQueryHandler iqh) {
-		Out.info("Before you can use this client, you will have to register it at http://hentaiathome.net/");
+		Out.info("Before you can use this client, you will have to register it at https://e-hentai.org/hentaiathome.php");
 		Out.info("IMPORTANT: YOU NEED A SEPARATE IDENT FOR EACH CLIENT YOU WANT TO RUN.");
 		Out.info("DO NOT ENTER AN IDENT THAT WAS ASSIGNED FOR A DIFFERENT CLIENT UNLESS IT HAS BEEN RETIRED.");
 		Out.info("After registering, enter your ID and Key below to start your client.");
@@ -217,6 +210,9 @@ public class Settings {
 					
 					rpcServerCurrent = null;
 				}
+			}
+			else if(setting.equals("rpc_path")) {
+				rpcPath = value;
 			}
 			else if(setting.equals("host")) {
 				clientHost = value;
@@ -348,13 +344,10 @@ public class Settings {
 		downloaddir = Tools.checkAndCreateDir(new File(downloadDirPath));
 	}
 
-
-
 	/**
 	 * Override the logging directory.
 	 * 
-	 * @param loggingDirectory
-	 *            directory to set
+	 * @param loggingDirectory directory to set
 	 * @deprecated For testing only!
 	 * 
 	 */
@@ -366,8 +359,7 @@ public class Settings {
 	/**
 	 * Override the logging directory.
 	 * 
-	 * @param loggingDirectory
-	 *            directory to set
+	 * @param loggingDirectory directory to set
 	 * @deprecated For testing only!
 	 * 
 	 */
@@ -380,7 +372,7 @@ public class Settings {
 	public static File getDataDir() {
 		return datadir;
 	}
-	
+
 	public static File getLogDir() {
 		return logdir.toFile();
 	}
@@ -519,6 +511,10 @@ public class Settings {
 
 			return false;
 		}
+	}
+
+	public static String getRPCPath() {
+		return rpcPath;
 	}
 
 	public static String getRPCServerHost() {
