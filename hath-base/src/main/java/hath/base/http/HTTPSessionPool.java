@@ -44,6 +44,8 @@ public class HTTPSessionPool {
 	private static final int CORE_POOL_SIZE = 20;
 	
 	private Executor sessionThreadPool;
+	private ThreadPoolExecutor pool;
+	private int lastMaxPoolSize;
 	
 	public HTTPSessionPool() {
 		setupThreadPool();
@@ -58,8 +60,6 @@ public class HTTPSessionPool {
 		sessionThreadPool.execute(runnable);
 	}
 	
-
-	
 	private void setupThreadPool() {
 		sessionThreadPool = Executors.newCachedThreadPool(new ThreadFactory() {
 			@Override
@@ -70,12 +70,28 @@ public class HTTPSessionPool {
 			}
 		});
 
-		ThreadPoolExecutor pool = (ThreadPoolExecutor) sessionThreadPool;
+		pool = (ThreadPoolExecutor) sessionThreadPool;
+
 		int maximumPoolSize = Settings.getMaxConnections();
+		lastMaxPoolSize = maximumPoolSize;
+
 		pool.setMaximumPoolSize(maximumPoolSize);
 		pool.setCorePoolSize(CORE_POOL_SIZE);
 		pool.setKeepAliveTime(5, TimeUnit.MINUTES);
 
 		LOGGER.debug("Session pool size is {} to {} thread(s)", CORE_POOL_SIZE, maximumPoolSize);
+	}
+
+	/**
+	 * Update max thread pool size. Will only apply change and log message if there was any change.
+	 * @param maxPoolSize max pool size to set
+	 */
+	public void updateMaxPoolSize(int maxPoolSize) {
+		if (this.lastMaxPoolSize != maxPoolSize) {
+			this.lastMaxPoolSize = maxPoolSize;
+
+			pool.setMaximumPoolSize(maxPoolSize);
+			LOGGER.debug("Session pool max size updated to {} thread(s)", maxPoolSize);
+		}
 	}
 }

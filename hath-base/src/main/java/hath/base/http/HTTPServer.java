@@ -135,6 +135,7 @@ public class HTTPServer implements Runnable {
 			myThread = new Thread(this, HTTPServer.class.getSimpleName());
 			myThread.start();
 
+
 			Out.info("Internal HTTP Server was successfully started, and is listening on port " + port);
 
 			return true;
@@ -241,6 +242,7 @@ public class HTTPServer implements Runnable {
 				String hostAddress = addr.getHostAddress().toLowerCase();
 				boolean localNetworkAccess = Settings.getClientHost().replace("::ffff:", "").equals(hostAddress) || localNetworkPattern.matcher(hostAddress).matches();
 				boolean apiServerAccess = Settings.isValidRPCServer(addr);
+				sessionPool.updateMaxPoolSize(Settings.getMaxConnections());
 
 				if(!apiServerAccess && !allowNormalConnections) {
 					Out.warning("Rejecting connection request from " + hostAddress + " during startup.");
