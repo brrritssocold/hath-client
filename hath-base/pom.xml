@@ -39,25 +39,8 @@
 		</resources>
 		<plugins>
 			<plugin>
-				<artifactId>maven-compiler-plugin</artifactId>
-			</plugin>
-			<plugin>
-				<groupId>org.codehaus.mojo</groupId>
-				<artifactId>findbugs-maven-plugin</artifactId>
-				<configuration>
-					<effort>Max</effort>
-					<threshold>Normal</threshold>
-					<xmlOutput>true</xmlOutput>
-					<includeTests>true</includeTests>
-					<failOnError>false</failOnError>
-				</configuration>
-				<executions>
-					<execution>
-						<goals>
-							<goal>check</goal>
-						</goals>
-					</execution>
-				</executions>
+				<groupId>com.github.spotbugs</groupId>
+				<artifactId>spotbugs-maven-plugin</artifactId>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
