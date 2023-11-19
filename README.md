@@ -23,7 +23,7 @@ Note that this package only contains the Hentai@Home Client, which is coded spec
 ## Building
 In order to build Hentai@Home, you need the following:
 
-- The Java(TM) SE JDK, version 8 or greater
+- The Java(TM) SE JDK, version 11 or greater
 - Maven 3 or later
 
 To build run:
