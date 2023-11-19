@@ -30,6 +30,6 @@ To build run:
 ```mvn package```
 
 ## Running
-```java -Dlogback.configurationFile=logback.xml -jar hath-base-1.6.1-0.1.0.jar```
+```java -Dlogback.configurationFile=logback.xml -jar hath-base-1.6.2-0.1.0.jar```
 
 

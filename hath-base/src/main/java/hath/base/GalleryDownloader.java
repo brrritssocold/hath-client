@@ -1,8 +1,8 @@
 /*
 
-Copyright 2008-2020 E-Hentai.org
+Copyright 2008-2023 E-Hentai.org
 https://forums.e-hentai.org/
-ehentai@gmail.com
+tenboro@e-hentai.org
 
 This file is part of Hentai@Home.
 
@@ -306,6 +306,7 @@ public class GalleryDownloader implements Runnable {
 	}
 	
 	protected void logFailure(String fail) {
+		// TODO replace with Set & HashSet
 		if(failures == null) {
 			failures = Collections.checkedList(new ArrayList<String>(), String.class);
 		}

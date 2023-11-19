@@ -1,8 +1,8 @@
 /*
 
-Copyright 2008-2020 E-Hentai.org
+Copyright 2008-2023 E-Hentai.org
 https://forums.e-hentai.org/
-ehentai@gmail.com
+tenboro@e-hentai.org
 
 This file is part of Hentai@Home.
 
@@ -27,15 +27,13 @@ import java.util.List;
 
 import hath.base.Out;
 
-import java.lang.Thread;
-
 public class HTTPSessionKiller implements Runnable {
 	private List<HTTPSession> remove;
 	private Thread rachel;
 
 	public HTTPSessionKiller(List<HTTPSession> remove) {
 		this.remove = remove;
-		rachel = new Thread(this);
+		rachel = new Thread(this, HTTPSessionKiller.class.getSimpleName());
 	}
 	
 	public void satsuriku() {

@@ -1,8 +1,8 @@
 /*
 
-Copyright 2008-2020 E-Hentai.org
+Copyright 2008-2023 E-Hentai.org
 https://forums.e-hentai.org/
-ehentai@gmail.com
+tenboro@e-hentai.org
 
 This file is part of Hentai@Home.
 
@@ -53,6 +53,9 @@ public class CakeSphere implements Runnable {
 		else if(sr.getResponseStatus() == ServerResponse.RESPONSE_STATUS_NULL) {
 			Settings.markRPCServerFailure(sr.getFailHost());
 			Out.warning("Failed to connect to the server for the stillAlive test. This is probably a temporary connection problem.");
+		}
+		else if(sr.getFailCode().startsWith("TERM_BAD_NETWORK")) {
+			client.dieWithError("Client is shutting down since the network is misconfigured; correct firewall/forwarding settings then restart the client.");
 		}
 		else {
 			Out.warning("Failed stillAlive test: (" + sr.getFailCode() + ") - will retry later");		
