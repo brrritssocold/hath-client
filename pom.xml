@@ -13,6 +13,7 @@
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<mockito-version>5.7.0</mockito-version>
 		<java-source-version>11</java-source-version>
+		<java-target-version>17</java-target-version>
 	</properties>
 
 	<modules>
@@ -90,7 +91,7 @@
 						<includeTests>true</includeTests>
 						<minimumTokens>50</minimumTokens>
 						<linkXref>true</linkXref>
-						<targetJdk>1.8</targetJdk>
+						<targetJdk>${java-target-version}</targetJdk>
 					</configuration>
 					<executions>
 						<execution>
@@ -154,7 +155,7 @@
 					<version>3.1</version>
 					<configuration>
 						<source>${java-source-version}</source>
-						<target>17</target>
+						<target>${java-target-version}</target>
 					</configuration>
 				</plugin>
 			</plugins>
