@@ -26,18 +26,22 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import hath.base.Settings;
 
 /**
  * Pool for HTTP sessions, so threads can be reused instead of constantly getting created and destroyed (expensive!).
  */
 public class HTTPSessionPool {
 	private static final Logger LOGGER = LoggerFactory.getLogger(HTTPSessionPool.class);
-
-	private static final int THREAD_LOAD_FACTOR = 5;
-	private static final int CORE_POOL_SIZE = 1;
+	/**
+	 * Based on {@link Settings#getMaxConnections()}
+	 */
+	private static final int CORE_POOL_SIZE = 20;
 	
 	private Executor sessionThreadPool;
 	
@@ -54,9 +58,7 @@ public class HTTPSessionPool {
 		sessionThreadPool.execute(runnable);
 	}
 	
-	private int sessionPoolSize() {
-		return Runtime.getRuntime().availableProcessors() * THREAD_LOAD_FACTOR;
-	}
+
 	
 	private void setupThreadPool() {
 		sessionThreadPool = Executors.newCachedThreadPool(new ThreadFactory() {
@@ -69,9 +71,10 @@ public class HTTPSessionPool {
 		});
 
 		ThreadPoolExecutor pool = (ThreadPoolExecutor) sessionThreadPool;
-		int maximumPoolSize = sessionPoolSize();
+		int maximumPoolSize = Settings.getMaxConnections();
 		pool.setMaximumPoolSize(maximumPoolSize);
 		pool.setCorePoolSize(CORE_POOL_SIZE);
+		pool.setKeepAliveTime(5, TimeUnit.MINUTES);
 
 		LOGGER.debug("Session pool size is {} to {} thread(s)", CORE_POOL_SIZE, maximumPoolSize);
 	}
