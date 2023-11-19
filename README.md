@@ -1,6 +1,6 @@
 # HatH Client
 
-[![Build Status](https://travis-ci.org/brrritssocold/hath-client.svg?branch=master)](https://travis-ci.org/brrritssocold/hath-client)
+[![Build Status](https://github.com/brrritssocold/hath-client/actions/workflows/maven.yml/badge.svg?branch=master)](https://github.com/brrritssocold/hath-client/actions/workflows/maven.yml)
 [![codecov](https://codecov.io/gh/brrritssocold/hath-client/branch/master/graph/badge.svg?token=SmxgDI7wEC)](https://codecov.io/gh/brrritssocold/hath-client)
 [![Codacy Badge](https://img.shields.io/codacy/grade/37cd1054934c4c689912992827cf5c3a/master.svg?maxAge=2592000)](https://www.codacy.com/app/brrritssocold/hath-client?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=brrritssocold/hath-client&amp;utm_campaign=Badge_Grade)
 
