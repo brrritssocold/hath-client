@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2023 E-Hentai.org
+Copyright 2008-2024 E-Hentai.org
 https://forums.e-hentai.org/
 tenboro@e-hentai.org
 
@@ -17,7 +17,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
+along with Hentai@Home.  If not, see <https://www.gnu.org/licenses/>.
 
 */
 
@@ -108,8 +108,10 @@ public class HTTPResponse {
 
 			for(FileDownloader dler : testfiles) {
 				if(dler.waitAsyncDownload()) {
-					successfulTests += 1;
-					totalTimeMillis += dler.getDownloadTimeMillis();
+					if(dler.getContentLength() >= testsize) {
+						successfulTests += 1;
+						totalTimeMillis += dler.getDownloadTimeMillis();
+					}
 				}
 			}
 		}
@@ -181,7 +183,7 @@ public class HTTPResponse {
 					}
 				}
 			} catch(Exception e) {}
-			
+
 			String fileindex = additional.get("fileindex");
 			String xres = additional.get("xres");
 			
@@ -197,7 +199,7 @@ public class HTTPResponse {
 				hpc = new HTTPResponseProcessorFile(requestedHVFile);
 				session.getHTTPServer().getHentaiAtHomeClient().getCacheHandler().markRecentlyAccessed(requestedHVFile);
 			}
-			else if(Settings.isStaticRange(fileid)) {
+			else {
 				// non-existent file. do an on-demand request of the file directly from the image servers
 				URL[] sources = session.getHTTPServer().getHentaiAtHomeClient().getServerHandler().getStaticRangeFetchURL(fileindex, xres, fileid);
 				
@@ -210,11 +212,6 @@ public class HTTPResponse {
 					hpc = new HTTPResponseProcessorProxy(session, fileid, sources);
 				}
 			}
-			else {
-				// file does not exist, and is not in one of the client's static ranges
-				Out.debug(session + " File is not in static ranges for fileindex=" + fileindex + " xres=" + xres + " fileid=" + fileid);
-				responseStatusCode = 404;
-			}						
 
 			return;
 		}

@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2023 E-Hentai.org
+Copyright 2008-2024 E-Hentai.org
 https://forums.e-hentai.org/
 tenboro@e-hentai.org
 
@@ -17,7 +17,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
+along with Hentai@Home.  If not, see <https://www.gnu.org/licenses/>.
 
 */
 
@@ -137,7 +137,7 @@ public class ServerHandler {
 		}
 
 		if(sr.getResponseStatus() == ServerResponse.RESPONSE_STATUS_OK) {
-			Out.info("Start notification successful. Note that there may be a short wait before the server registers this client on the network.");
+			Out.info("Start notification successful. There may be a short wait before the server registers this client on the network.");
 			Stats.serverContact();
 			return true;
 		}
@@ -150,12 +150,15 @@ public class ServerHandler {
 			if(failcode.startsWith("FAIL_CONNECT_TEST")) {
 				Out.info("");
 				Out.info("************************************************************************************************************************************");
-				Out.info("The client has failed the external connection test.");
-				Out.info("The server failed to verify that this client is online and available from the Internet.");
-				Out.info("If you are behind a firewall, please check that port " + Settings.getClientPort() + " is forwarded to this computer.");
-				Out.info("You might also want to check that " + Settings.getClientHost() + " is your actual public IP address.");
-				Out.info("If you need assistance with forwarding a port to this client, locate a guide for your particular router at http://portforward.com/");
-				Out.info("The client will remain running so you can run port connection tests.");
+				Out.info("The client has failed the external connectivity test.");
+				Out.info("The server could not connect to the client, which usually means it is not publicly reachable from the internet.");
+				Out.info("If you are behind a NAT and/or firewall, check that port " + Settings.getClientPort() + " is open and forwarded to this computer.");
+				Out.info("If you need assistance with forwarding a port to this client, locate a guide for your particular router at https://portforward.com/");
+				Out.info("You may also want to check that " + Settings.getClientHost().replace("::ffff:", "") + " matches your public IPv4 address.");
+				Out.info("Your outgoing and incoming IP address must be the same; the address above is your current outgoing IP as seen by the server.");
+				Out.info("If your setup is using a non-transparent proxy, you may be able to fix this by starting the client with --disable-ip-origin-check");
+				Out.info("This is mostly applicable if you are seeing 'Rejecting connection request during startup' errors referencing a local network IP.");
+				Out.info("The client will remain running so you can diagnose firewall and port forwarding issues.");
 				Out.info("Use Program -> Exit in windowed mode or hit Ctrl+C in console mode to exit the program.");
 				Out.info("************************************************************************************************************************************");
 				Out.info("");
@@ -166,7 +169,7 @@ public class ServerHandler {
 				Out.info("");
 				Out.info("************************************************************************************************************************************");
 				Out.info("The server detected that another client was already connected from this computer or local network.");
-				Out.info("You can only have one client running per public IP address.");
+				Out.info("You can only have one client running per public IPv4 address.");
 				Out.info("The program will now terminate.");
 				Out.info("************************************************************************************************************************************");
 				Out.info("");
@@ -176,8 +179,9 @@ public class ServerHandler {
 			else if(failcode.startsWith("FAIL_CID_IN_USE")) {
 				Out.info("");
 				Out.info("************************************************************************************************************************************");
-				Out.info("The server detected that another client is already using this client ident.");
-				Out.info("If you want to run more than one client, you have to apply for additional idents.");
+				Out.info("The server detected that another client is already using this Client ID.");
+				Out.info("If the client was not shut down properly and your IP changed, you may have to wait up to 24 hours for the old session to time out.");
+				Out.info("If you want to run more than one client, you have to apply for additional Client IDs.");
 				Out.info("The program will now terminate.");
 				Out.info("************************************************************************************************************************************");
 				Out.info("");
@@ -307,8 +311,8 @@ public class ServerHandler {
 		return null;
 	}
 
-	public URL getDownloaderFetchURL(int gid, int page, int fileindex, String xres, boolean forceImageServer) {
-		URL requestURL = getServerConnectionURL(ACT_DOWNLOADER_FETCH, gid + ";" + page + ";" + fileindex + ";" + xres + ";" + (forceImageServer ? 1 : 0));
+	public URL getDownloaderFetchURL(int gid, int page, int fileindex, String xres, int fileretry) {
+		URL requestURL = getServerConnectionURL(ACT_DOWNLOADER_FETCH, gid + ";" + page + ";" + fileindex + ";" + xres + ";" + fileretry);
 		ServerResponse sr = ServerResponse.getServerResponse(requestURL, this);
 
 		if(sr.getResponseStatus() == ServerResponse.RESPONSE_STATUS_NULL) {

@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2023 E-Hentai.org
+Copyright 2008-2024 E-Hentai.org
 https://forums.e-hentai.org/
 tenboro@e-hentai.org
 
@@ -17,7 +17,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
+along with Hentai@Home.  If not, see <https://www.gnu.org/licenses/>.
 
 */
 
@@ -27,6 +27,7 @@ import java.lang.Thread;
 import java.util.Arrays;
 import java.net.URL;
 import java.net.URLConnection;
+import java.net.Proxy;
 import java.io.File;
 import java.io.RandomAccessFile;
 import java.io.InputStream;
@@ -66,14 +67,22 @@ public class ProxyFileDownloader implements Runnable {
 		// we'll need to run this in a private thread so we can push data to the originating client at the same time we download it (pass-through)
 		// this will NOT work with HTTPS (see FileDownloader), but upstream can be kept as HTTP so This Is Fine™
 
-		Out.debug("ProxyFileDownloader::initialize with fileid=" + fileid + " sources=" + Arrays.toString(sources)); 
+		Out.debug("ProxyFileDownloader::initialize with fileid=" + fileid + " sources=" + Arrays.toString(sources));
 		int retval = 500;
-		
+
 		for(URL source : sources) {
 			try {
 				Out.debug("ProxyFileDownloader: Requesting file download from " + source);
-				
-				connection = source.openConnection();
+
+				Proxy proxy = Settings.getImageProxy();
+
+				if(proxy != null) {
+					connection = source.openConnection(proxy);
+				}
+				else {
+					connection = source.openConnection();
+				}
+
 				connection.setConnectTimeout(5000);
 				connection.setReadTimeout(30000);
 				connection.setRequestProperty("Hath-Request", Settings.getClientID() + "-" + Tools.getSHA1String(Settings.getClientKey() + fileid));
@@ -247,7 +256,7 @@ public class ProxyFileDownloader implements Runnable {
 		proxyThreadComplete = true;
 		checkFinalizeDownloadedFile();
 	}
-	
+
 	private synchronized void checkFinalizeDownloadedFile() {
 		if(!streamThreadComplete || !proxyThreadComplete) {
 			// we have to wait for both the upstream and downstream transfers to complete before we can close this file
@@ -274,26 +283,19 @@ public class ProxyFileDownloader implements Runnable {
 		}
 
 		if(tempFile.length() != getContentLength()) {
-			Out.debug("Requested file " + fileid + " is incomplete, and will not be stored. (bytes=" + tempFile.length() + ")");
+			Out.debug("Proxy-downloaded file " + fileid + " is incomplete, and will not be stored. (bytes=" + tempFile.length() + ")");
 		}
 		else {
 			String sha1Hash = Tools.binaryToHex(sha1Digest.digest());
 
 			if( !requestedHVFile.getHash().equals(sha1Hash) ) {
-				Out.debug("Requested file " + fileid + " is corrupt, and will not be stored. (digest=" + sha1Hash + ")");
+				Out.debug("Proxy-downloaded file " + fileid + " is corrupt, and will not be stored. (digest=" + sha1Hash + ")");
 			}
-			else if( !Settings.isStaticRange(fileid) ) {
-				Out.debug("The file " + fileid + " is not in a static range, and will not be stored.");
+			else if(client.getCacheHandler().importFile(tempFile, requestedHVFile)) {
+				Out.debug("Proxy-downloaded file " + fileid + " was successfully stored in cache.");
 			}
 			else {
-				if(client.getCacheHandler().importFile(tempFile, requestedHVFile)) {
-					Out.debug("Requested file " + fileid + " was successfully stored in cache.");
-				}
-				else {
-					Out.debug("Requested file " + fileid + " exists or cannot be cached.");
-				}
-
-				Out.debug("Proxy file download request complete for " + fileid);
+				Out.debug("Proxy-downloaded file " + fileid + " exists or could not be imported to the cache.");
 			}
 		}
 

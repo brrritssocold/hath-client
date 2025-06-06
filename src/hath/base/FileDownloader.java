@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2023 E-Hentai.org
+Copyright 2008-2024 E-Hentai.org
 https://forums.e-hentai.org/
 tenboro@e-hentai.org
 
@@ -17,7 +17,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
+along with Hentai@Home.  If not, see <https://www.gnu.org/licenses/>.
 
 */
 
@@ -31,7 +31,7 @@ import java.nio.file.*;
 import javax.net.ssl.HttpsURLConnection;
 
 public class FileDownloader implements Runnable {
-	private int timeout = 30000, maxDLTime = Integer.MAX_VALUE, retries = 3;
+	private int timeout = 30000, maxDLTime = Integer.MAX_VALUE, retries = 3, contentLength = 0;
 	private long timeDownloadStart = 0, timeFirstByte = 0, timeDownloadFinish = 0;
 	private ByteBuffer byteBuffer = null;
 	private HTTPBandwidthMonitor downloadLimiter = null;
@@ -39,7 +39,7 @@ public class FileDownloader implements Runnable {
 	private URL source;
 	private Thread myThread;
 	private Object downloadLock = new Object();
-	private boolean started = false, discardData = false, successful = false;
+	private boolean started = false, discardData = false, successful = false, allowProxy = false;
 
 	public FileDownloader(URL source, int timeout, int maxDLTime) {
 		// everything will be written to a ByteBuffer
@@ -56,12 +56,13 @@ public class FileDownloader implements Runnable {
 		this.discardData = discardData;
 	}
 
-	public FileDownloader(URL source, int timeout, int maxDLTime, Path outputPath) {
+	public FileDownloader(URL source, int timeout, int maxDLTime, Path outputPath, boolean allowProxy) {
 		// in this case, the data will be written directly to a channel specified by outputPath
 		this.source = source;
 		this.timeout = timeout;
 		this.maxDLTime = maxDLTime;
 		this.outputPath = outputPath;
+		this.allowProxy = allowProxy;
 	}
 	
 	public void setDownloadLimiter(HTTPBandwidthMonitor limiter) {
@@ -129,6 +130,10 @@ public class FileDownloader implements Runnable {
 	public long getDownloadTimeMillis() {
 		return timeFirstByte > 0 ? timeDownloadFinish - timeFirstByte : 0;
 	}
+	
+	public int getContentLength() {
+		return contentLength;
+	}
 
 	public void run() {
 		synchronized(downloadLock) {
@@ -145,8 +150,17 @@ public class FileDownloader implements Runnable {
 				try {
 					Out.debug("Connecting to " + source.getHost() + "...");
 
+					Proxy proxy = allowProxy ? Settings.getImageProxy() : null;
+
 					// should return a HttpURLConnection for http and HttpsURLConnection for https
-					URLConnection connection = source.openConnection();
+					URLConnection connection = null;
+
+					if(proxy != null) {
+						connection = source.openConnection(proxy);
+					}
+					else {
+						connection = source.openConnection();
+					}
 					
 					connection.setConnectTimeout(5000);
 					connection.setReadTimeout(timeout);
@@ -161,7 +175,7 @@ public class FileDownloader implements Runnable {
 					}
 					*/
 
-					int contentLength = connection.getContentLength();
+					contentLength = connection.getContentLength();
 
 					if(contentLength < 0) {
 						// since we control all systems in this case, we'll demand that clients and servers always send the Content-Length
@@ -313,7 +327,7 @@ public class FileDownloader implements Runnable {
 			// savey
 			URL testurl = new URL("https://ehgt.org/b/2019-10/1.jpg");
 			File testfile = new File("testfile.jpg");
-			FileDownloader testdl = new FileDownloader(testurl, 30000, 30000, testfile.toPath());
+			FileDownloader testdl = new FileDownloader(testurl, 30000, 30000, testfile.toPath(), false);
 			testdl.downloadFile();
 			*/
 			
