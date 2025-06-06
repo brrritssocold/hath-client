@@ -23,32 +23,32 @@ along with Hentai@Home.  If not, see <https://www.gnu.org/licenses/>.
 
 /*
 
-1.6.3
+1.6.4
 
-- Added experimental proxy support for backend image server requests. This allows you to use a SOCKS (v4 or v5) or HTTP proxy if connectivity to the image servers is unreliable, which is mostly relevant in regions with heavy internet censorship.
+- If the filesize of a cached file does not match the expected size, we now ignore it and perform a backend fetch instead.
 
-This adds three arguments that can be passed on startup:
+- To prevent long-term bitrot, we now occasionally verify the integrity of requested files as they are being served. This will check a particular file no more often than once per week, and it will check no more than one file every two seconds. This should cause no additional I/O or RAM usage, and should have negligble impact on CPU usage.
 
---image-proxy-host=<host> - hostname or IP address for the proxy
---image-proxy-type=<type> - can be "socks" or "http". defaults to "socks" if not provided
---image-proxy-port=<port> - the port of the proxy. defaults to 1080 for SOCKS and 8080 for HTTP if not provided
+- CPU-starved clients can disable the verification checking by starting the client with --disable-file-verification, but note that if the monitoring system detects corrupted files in your cache, your client will be flagged for a full cache verification on next startup, which can take a long time.
 
-It does not support proxies that require authentication.
+- Partially because of the new file integrity checking, the LRU cache table is now created even if --use-less-memory is used. This will increase the memory requirements in this mode by about 2 MB.
 
-While it will technically work to use Tor as a SOCKS proxy, this should be avoided as Tor is too slow for this purpose.
+- Fixed an issue where if a directory chosen for cache pruning did not exist or was inaccessible (due to a file system or permission issue), the pruning mechanism would loop trying to prune said directory.
 
-- Improved reliability of reading HTTP request headers with some browser/locale combinations.
+- If the cached number of static ranges is higher than the number of static ranges returned by the server during startup, we now force a cache rescan to prevent files in removed ranges from clogging up the cache.
 
-- Corrected a potential resource exhaustion issue.
+- If a static range was removed, the range directory is now deleted on the first cache rescan. Previously it would delete the files, but leave the directory until the next rescan.
+
+- Re-enabled TLS 1.3, which among other things reduces the latency for establishing a HTTPS connection to the client. It was originally disabled due to a significantly higher failure rate compared to TLS 1.2 caused by broken proxies, filewalls and other network filtering devices, but since most things use it by now, those should not cause problems anymore.
+
+- TLS 1.0 and 1.1 were disabled as they are deprecated and insecure, with support being [url=https://techcommunity.microsoft.com/blog/windows-itpro-blog/tls-1-0-and-tls-1-1-soon-to-be-disabled-in-windows/3887947]dropped[/url] from modern operating systems. Everything that supports the current HTTPS certificate authority should also support TLS 1.2.
 
 
-[b]To update an existing client: shut it down, download [url=https://repo.e-hentai.org/hath/HentaiAtHome_1.6.3.zip]Hentai@Home 1.6.3[/url], extract the archive, copy the jar files over the existing ones, then restart the client.[/b]
+[b]To update an existing client: shut it down, download [url=https://repo.e-hentai.org/hath/HentaiAtHome_1.6.4.zip]Hentai@Home 1.6.4[/url], extract the archive, copy the jar files over the existing ones, then restart the client.[/b]
 
 [b]The full source code for H@H is available and licensed under the GNU General Public License v3, and can be downloaded [url=https://repo.e-hentai.org/hath/HentaiAtHome_1.6.3_src.zip]here[/url]. Building it from source only requires OpenJDK 8 or newer.[/b]
 
 [b]For information on how to join Hentai@Home, check out [url=https://forums.e-hentai.org/index.php?showtopic=19795]The Hentai@Home Project FAQ[/url].[/b]
-
-[b]Other download options can be found at [url=https://e-hentai.org/hentaiathome.php]the usual place[/url].[/b]
 
 */
 
@@ -196,7 +196,7 @@ public class HentaiAtHomeClient implements Runnable {
 
 		System.gc();
 
-		Out.info("H@H initialization completed successfully. Starting normal operation");
+		Out.info("Startup completed successfully. Starting normal operation");
 
 		while(!shutdown) {
 			// this toggle prevents the thread from calling interrupt on itself in case an error triggers a shutdown from the main thread, which could interfere with interruptable filechannel operations when saving cachehandler state

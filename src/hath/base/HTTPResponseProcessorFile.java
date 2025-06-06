@@ -27,21 +27,37 @@ import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.nio.channels.FileChannel;
+import java.security.MessageDigest;
 
-// this class provides provides a buffered interface to read a file in chunks
+// this class provides a buffered interface to read a file in chunks
 
 public class HTTPResponseProcessorFile extends HTTPResponseProcessor {
+	private HTTPSession session;
 	private HVFile requestedHVFile;
 	private FileChannel fileChannel;
 	private ByteBuffer fileBuffer;
+	private MessageDigest sha1Digest = null;
 	private int readoff = 0;
+	private boolean verifyFileIntegrity = false;
 
-	public HTTPResponseProcessorFile(HVFile requestedHVFile) {
+	public HTTPResponseProcessorFile(HTTPSession session, HVFile requestedHVFile, boolean verifyFileIntegrity) {
+		this.session = session;
 		this.requestedHVFile = requestedHVFile;
+		this.verifyFileIntegrity = verifyFileIntegrity;
 	}
 
 	public int initialize() {
 		int responseStatusCode = 0;
+
+		if(verifyFileIntegrity) {
+			//Out.debug("Reading file " + requestedHVFile.getFileid() + " with verifyFileIntegrity=" + verifyFileIntegrity);
+
+			try {
+				// the integrity check is done inline, which avoids most of the overhead, since we only need a small amount of extra CPU time to calculate the digest
+				// this will not prevent a corrupt file from being sent this time around, as the digest cannot be calculated until after the file has finished sending, but it helps prevent a buildup of bitrot
+				sha1Digest = MessageDigest.getInstance("SHA-1");
+			} catch(Exception e) {}
+		}
 
 		try {
 			fileChannel = FileChannel.open(requestedHVFile.getLocalFilePath(), StandardOpenOption.READ);
@@ -64,6 +80,20 @@ public class HTTPResponseProcessorFile extends HTTPResponseProcessor {
 			try {
 				fileChannel.close();
 			} catch(Exception e) {}
+		}
+
+		// if the remote client closed the connection before the file was fully read, parts of the preimage have not been update()'d into sha1Digest, and the digest will therefore obviously be wrong. in this case, skip checking the digest
+		// (if the size of the cached file did not match, we would not have attempted to read it in the first place)
+		if( (sha1Digest != null) && (readoff == getContentLength()) ) {
+			String sha1Hash = Tools.binaryToHex(sha1Digest.digest());
+
+			if(requestedHVFile.getHash().equals(sha1Hash)) {
+				Out.debug("Checked integrity of file " + requestedHVFile.getFileid() + ", found expected digest=" + sha1Hash);
+			}
+			else {
+				Out.warning("Checked integrity of file " + requestedHVFile.getFileid() + ", found mismatching digest=" + sha1Hash + "; corrupt file will be deleted from the cache");
+				session.getHTTPServer().getHentaiAtHomeClient().getCacheHandler().deleteFileFromCache(requestedHVFile);
+			}
 		}
 	}
 
@@ -101,6 +131,11 @@ public class HTTPResponseProcessorFile extends HTTPResponseProcessor {
 		tcpBuffer.limit(tcpBuffer.position() + readbytes);
 		fileBuffer.position(fileBuffer.position() + readbytes);
 		readoff += readbytes;
+
+		if(sha1Digest != null) {
+			// we use asReadOnlyBuffer to avoid it being consumed by the digest
+			sha1Digest.update(tcpBuffer.asReadOnlyBuffer());
+		}
 
 		return tcpBuffer;
 	}

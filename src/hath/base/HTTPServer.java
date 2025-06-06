@@ -113,7 +113,13 @@ public class HTTPServer implements Runnable {
 			Out.info("Starting up the internal HTTP Server...");
 			SSLServerSocketFactory ssf = sslContext.getServerSocketFactory();
 			listener = (SSLServerSocket) ssf.createServerSocket(port);
-			listener.setEnabledProtocols(new String[]{"TLSv1.2", "TLSv1.1", "TLSv1"});
+
+			try {
+				listener.setEnabledProtocols(new String[]{"TLSv1.3", "TLSv1.2"});
+			}
+			catch(java.lang.IllegalArgumentException e) {
+				listener.setEnabledProtocols(new String[]{"TLSv1.2"});
+			}
 
 			Out.debug("Initialized SSLContext with cert " + certFile + " and protocol " + sslContext.getProtocol());
 			Out.debug("Supported ciphers: " + Arrays.toString(sslContext.getSupportedSSLParameters().getCipherSuites()));

@@ -291,7 +291,7 @@ public class ProxyFileDownloader implements Runnable {
 			if( !requestedHVFile.getHash().equals(sha1Hash) ) {
 				Out.debug("Proxy-downloaded file " + fileid + " is corrupt, and will not be stored. (digest=" + sha1Hash + ")");
 			}
-			else if(client.getCacheHandler().importFile(tempFile, requestedHVFile)) {
+			else if(client.getCacheHandler().importFileToCache(tempFile, requestedHVFile)) {
 				Out.debug("Proxy-downloaded file " + fileid + " was successfully stored in cache.");
 			}
 			else {

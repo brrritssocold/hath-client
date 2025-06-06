@@ -36,13 +36,13 @@ import java.util.List;
 import java.util.Hashtable;
 
 public class CacheHandler {
-	private static final int MEMORY_TABLE_ELEMENTS = 1048576;
+	private static final int LRU_CACHE_SIZE = 1048576;
 	private Hashtable<String, Long> staticRangeOldest = null;
 	private HentaiAtHomeClient client = null;
 	private File cachedir = null;
 	private short[] lruCacheTable = null;
 	private int cacheCount = 0, lruClearPointer = 0, lruSkipCheckCycle = 0, pruneAggression = 1;
-	private long cacheSize = 0;
+	private long cacheSize = 0, lastFileVerification = 0;
 	private boolean cacheLoaded = false;
 
 	public CacheHandler(HentaiAtHomeClient client) throws java.io.IOException {
@@ -98,14 +98,11 @@ public class CacheHandler {
 
 			// this is a map with the static ranges in the cache as key and the oldest lastModified file timestamp for every range as value. this is used to find old files to delete if the cache fills up.
 			staticRangeOldest = new Hashtable<String,Long>((int) (Settings.getStaticRangeCount() * 1.5));
-
-			if(!Settings.isUseLessMemory()) {
-				lruCacheTable = new short[MEMORY_TABLE_ELEMENTS];
-			}
+			lruCacheTable = new short[LRU_CACHE_SIZE];
 
 			// scan the cache to calculate the total filecount and size, as well as initialize the LRU cache based on the lastModified timestamps.
 			// this verifies that the files are the correct size and in an assigned static range, and optionally verifies the SHA-1 hash.
-			// the staticRangeOldest hashtable of static ranges and the oldest file timestamp in that range will also be built here. 
+			// the staticRangeOldest hashtable of static ranges and the oldest file timestamp in that range will also be built here.
 			startupInitCache();
 			System.gc();
 		}
@@ -215,15 +212,19 @@ public class CacheHandler {
 				Out.info("CacheHandler: All persistent fields found, loading remaining objects");
 
 				staticRangeOldest = (Hashtable<String,Long>) readCacheObject(getPersistentAgesFile(), agesHash);
-				Out.info("CacheHandler: Loaded static range ages");
 
-				if(!Settings.isUseLessMemory()) {
+				if(staticRangeOldest.size() > Settings.getStaticRangeCount()) {
+					Out.info("CacheHandler: The count of cached static range ages is higher than the current static range count; forcing rescan to prevent orphaned ranges");
+				}
+				else {
+					Out.info("CacheHandler: Loaded static range ages");
+
 					lruCacheTable = (short[]) readCacheObject(getPersistentLRUFile(), lruHash);
 					Out.info("CacheHandler: Loaded LRU cache");
-				}
 
-				updateStats();
-				success = true;
+					updateStats();
+					success = true;
+				}
 			}
 		}
 		catch(Exception e) {
@@ -242,31 +243,31 @@ public class CacheHandler {
 
 		try {
 			String agesHash = writeCacheObject(getPersistentAgesFile(), staticRangeOldest);
-			String lruHash = lruCacheTable == null ? "null" : writeCacheObject(getPersistentLRUFile(), lruCacheTable);
+			String lruHash = writeCacheObject(getPersistentLRUFile(), lruCacheTable);
 			Tools.putStringFileContents(getPersistentInfoFile(), "cacheCount=" + cacheCount + "\ncacheSize=" + cacheSize + "\nlruClearPointer=" + lruClearPointer + "\nagesHash=" + agesHash + "\nlruHash=" + lruHash);
 		}
 		catch(java.io.IOException e) {
 			e.printStackTrace();
 		}
 	}
-	
+
 	private Object readCacheObject(File file, String expectedHash) throws java.io.IOException, java.lang.ClassNotFoundException {
 		if(!file.exists()) {
 			Out.warning("CacheHandler: Missing " + file + ", forcing rescan");
 			throw new java.io.IOException("Missing file");
 		}
-		
+
 		if(!Tools.getSHA1String(file).equals(expectedHash)) {
 			Out.warning("CacheHandler: Incorrect file hash while reading " + file + ", forcing rescan");
 			throw new java.io.IOException("Incorrect file hash");
 		}
-		
+
 		ObjectInputStream objectReader = new ObjectInputStream(new FileInputStream(file));
 		Object object = objectReader.readObject();
 		objectReader.close();
 		return object;
 	}
-	
+
 	private String writeCacheObject(File file, Object object) throws java.io.FileNotFoundException, java.io.IOException {
 		Out.debug("Writing cache object " + file);
 		ObjectOutputStream objectWriter = new ObjectOutputStream(new FileOutputStream(file));
@@ -303,14 +304,12 @@ public class CacheHandler {
 		Out.info("CacheHandler: Cache cleanup pass..");
 
 		File[] l1dirs = Tools.listSortedFiles(cachedir);
-		
+
 		if(l1dirs == null) {
 			client.dieWithError("CacheHandler: Unable to access " + cachedir + "; check permissions and I/O errors.");
 		}
 
-		// this sanity check can be tightened up when 1.2.6 is EOL and everyone have upgraded to the two-level cache tree
-		//if(l1dirs.length > Settings.getStaticRangeCount()) {
-		if(l1dirs.length > 5 && Settings.getStaticRangeCount() == 0) {
+		if(l1dirs.length > Settings.getStaticRangeCount()) {
 			Out.warning("WARNING: There are " + l1dirs.length + " directories in the cache directory, but the server has only assigned us " + Settings.getStaticRangeCount() + " static ranges.");
 			Out.warning("If this is NOT expected, please close H@H with Ctrl+C or Program -> Shutdown H@H before this timeout expires.");
 			Out.warning("Waiting 30 seconds before proceeding with cache cleanup...");
@@ -330,14 +329,14 @@ public class CacheHandler {
 		for(File l1dir : l1dirs) {
 			// time to take out the trash
 			System.gc();
-			
+
 			if(!l1dir.isDirectory()) {
 				l1dir.delete();
 				continue;
 			}
 
 			File[] l2dirs = Tools.listSortedFiles(l1dir);
-			
+
 			if(l2dirs == null) {
 				Out.warning("CacheHandler: Unable to access " + l1dir + "; check permissions and I/O errors.");
 				continue;
@@ -402,7 +401,7 @@ public class CacheHandler {
 			Out.info("CacheHandler: Loading cache...");
 			printFreq = 10000;
 		}
-		
+
 		long recentlyAccessedCutoff = System.currentTimeMillis() - 604800000;
 		int foundStaticRanges = 0;
 
@@ -411,7 +410,7 @@ public class CacheHandler {
 			if(!l1dir.isDirectory()) {
 				continue;
 			}
-			
+
 			File[] l2dirs = Tools.listSortedFiles(l1dir);
 
 			if(l2dirs == null) {
@@ -429,13 +428,15 @@ public class CacheHandler {
 				}
 
 				File[] files = Tools.listSortedFiles(l2dir);
-				
+
 				if(files == null) {
 					Out.warning("CacheHandler: Unable to access " + l2dir + "; check permissions and I/O errors.");
 					continue;
 				}
 
-				if(files.length == 0) {
+				int filesInDir = files.length;
+
+				if(filesInDir == 0) {
 					l2dir.delete();
 					continue;
 				}
@@ -452,10 +453,12 @@ public class CacheHandler {
 					if(hvFile == null) {
 						Out.debug("CacheHandler: The file " + cfile + " was corrupt.");
 						cfile.delete();
+						--filesInDir;
 					}
 					else if( !Settings.isStaticRange(hvFile.getFileid()) ) {
 						Out.debug("CacheHandler: The file " + cfile + " was not in an active static range.");
 						cfile.delete();
+						--filesInDir;
 					}
 					else {
 						addFileToActiveCache(hvFile);
@@ -474,11 +477,16 @@ public class CacheHandler {
 					}
 				}
 
-				String staticRange = l1dir.getName() + l2dir.getName();
-				staticRangeOldest.put(staticRange, oldestLastModified);
+				if(filesInDir < 1) {
+					l2dir.delete();
+				}
+				else {
+					String staticRange = l1dir.getName() + l2dir.getName();
+					staticRangeOldest.put(staticRange, oldestLastModified);
 
-				if(++foundStaticRanges % 100 == 0) {
-					Out.info("CacheHandler: Found " + foundStaticRanges + " static ranges with files so far...");
+					if(++foundStaticRanges % 100 == 0) {
+						Out.info("CacheHandler: Found " + foundStaticRanges + " static ranges with files so far...");
+					}
 				}
 			}
 		}
@@ -487,7 +495,7 @@ public class CacheHandler {
 		Out.info("CacheHandler: Found a total of " + foundStaticRanges + " static ranges with files");
 		updateStats();
 	}
-	
+
 	private long getCacheSizeWithOverhead() {
 		// on average, a file will have a wasted slack space (filesystem overhead) of half the blocksize of the storage device. this is assumed to be 4096 bytes but can be overriden with --filesystem-blocksize
 		// we *could* calculate this exactly but this would require additional logic and a cache rescan if the filesystem changes; this is very much close enough
@@ -561,7 +569,10 @@ public class CacheHandler {
 			Out.debug("CacheHandler: Trying to free " + bytesToFree + " bytes, currently scanning range " + pruneStaticRange);
 
 			if(!staticRangeDir.isDirectory()) {
-				Out.warning("CacheHandler: Expected static range directory " + staticRangeDir + " could not be accessed");
+				Out.warning("CacheHandler: Expected static range directory " + staticRangeDir + " could not be accessed.");
+
+				// we need to update this, or we will loop forever trying to access this directory
+				staticRangeOldest.put(pruneStaticRange, lruLastModifiedPruneCutoff);
 			}
 			else {
 				File[] files = staticRangeDir.listFiles();
@@ -630,7 +641,7 @@ public class CacheHandler {
 		return pruneAggression;
 	}
 
-	public synchronized void processBlacklist(long deltatime) {
+	public void processBlacklist(long deltatime) {
 		Out.info("CacheHandler: Retrieving list of blacklisted files...");
 		String[] blacklisted = client.getServerHandler().getBlacklist(deltatime);
 
@@ -670,7 +681,7 @@ public class CacheHandler {
 	}
 
 	// used to add proxied files to cache. this function assumes that tempFile has been validated
-	public boolean importFile(File tempFile, HVFile hvFile) {
+	public boolean importFileToCache(File tempFile, HVFile hvFile) {
 		if(moveFileToCacheDir(tempFile, hvFile)) {
 			addFileToActiveCache(hvFile);
 			markRecentlyAccessed(hvFile, true);
@@ -686,6 +697,24 @@ public class CacheHandler {
 		}
 
 		return false;
+	}
+
+	public void deleteFileFromCache(HVFile toRemove) {
+		try {
+			File file = toRemove.getLocalFileRef();
+
+			if(file.exists()) {
+				file.delete();
+				--cacheCount;
+				cacheSize -= toRemove.getSize();
+				updateStats();
+				Out.debug("CacheHandler: Deleted cached file " + toRemove.getFileid());
+			}
+		}
+		catch(Exception e) {
+			Out.error("CacheHandler: Failed to delete cache file");
+			client.dieWithError(e);
+		}
 	}
 
 	// will just move the file into its correct location. addFileToActiveCache must be called afterwards to add the file to the cache counters.
@@ -724,74 +753,50 @@ public class CacheHandler {
 		updateStats();
 	}
 
-	private void deleteFileFromCache(HVFile toRemove) {
-		try {
-			File file = toRemove.getLocalFileRef();
-
-			if(file.exists()) {
-				file.delete();
-				--cacheCount;
-				cacheSize -= toRemove.getSize();
-				updateStats();
-				Out.debug("CacheHandler: Deleted cached file " + toRemove.getFileid());
-			}
-		}
-		catch(Exception e) {
-			Out.error("CacheHandler: Failed to delete cache file");
-			client.dieWithError(e);
-		}
-	}
-
 	public void cycleLRUCacheTable() {
-		if(lruCacheTable != null) {
-			// this function is called every 10 seconds. clearing 17 of the shorts for each call means that each element will live up to a week (since 1048576 / (8640 * 7) is roughly 17).
-			// if --use-less-memory is set, the LRU cache will never have been created, and this does nothing.
+		// this function is called every 10 seconds. clearing 17 of the shorts for each call means that each element will live up to a week (since 1048576 / (8640 * 7) is roughly 17).
+		int clearUntil = Math.min(LRU_CACHE_SIZE, lruClearPointer + 17);
 
-			int clearUntil = Math.min(MEMORY_TABLE_ELEMENTS, lruClearPointer + 17);
+		//Out.debug("CacheHandler: Clearing lruCacheTable from " + lruClearPointer + " to " + clearUntil);
 
-			//Out.debug("CacheHandler: Clearing lruCacheTable from " + lruClearPointer + " to " + clearUntil);
+		while(lruClearPointer < clearUntil) {
+			lruCacheTable[lruClearPointer++] = 0;
+		}
 
-			while(lruClearPointer < clearUntil) {
-				lruCacheTable[lruClearPointer++] = 0;
-			}
-
-			if(clearUntil >= MEMORY_TABLE_ELEMENTS) {
-				lruClearPointer = 0;
-			}
+		if(clearUntil >= LRU_CACHE_SIZE) {
+			lruClearPointer = 0;
 		}
 	}
 
-	public void markRecentlyAccessed(HVFile hvFile) {
-		markRecentlyAccessed(hvFile, false);
+	public boolean markRecentlyAccessed(HVFile hvFile) {
+		return markRecentlyAccessed(hvFile, false);
 	}
 
-	public void markRecentlyAccessed(HVFile hvFile, boolean skipMetaUpdate) {
+	public boolean markRecentlyAccessed(HVFile hvFile, boolean skipMetaUpdate) {
+		// lruCacheTable can hold 16^5 = 1048576 shorts consisting of 16 bits each.
+		// we need to compute the array index and bitmask for this particular fileid. if the bit is set, we do nothing. if not, we update the timestamp and set the bit.
+		// when determening what bit to set, we skip the first four nibbles (bit 0-15) of the hash due to static range grouping
+		// we use the next five nibbles (bit 16-35) to get the index of the array, and the tenth nibble (bit 36-39) to determine which bit in the short to read/set.
+		// while collisions are not unlikely to occur due to the birthday paradox, they should not cause any major issues with files not having their timestamp updated.
+		// any impact of this will be negligible, as it will only cause the LRU mechanism to be slightly less efficient.
+		String fileid = hvFile.getFileid();
+
+		// bit 16-35
+		int arrayIndex = Integer.parseInt(fileid.substring(4, 9), 16);
+
+		// bit 36-39
+		short bitMask = (short) (1 << Short.parseShort(fileid.substring(9, 10), 16));
+
+		// will be true unless the file was marked as recently accessed in the LRU cache
 		boolean markFile = true;
 
-		if(lruCacheTable != null) {
-			// if --use-less-memory is not set, we use this as a first step in order to determine if the timestamp should be updated or not.
-			// lruCacheTable can hold 16^5 = 1048576 shorts consisting of 16 bits each.
-			// we need to compute the array index and bitmask for this particular fileid. if the bit is set, we do nothing. if not, we update the timestamp and set the bit.
-			// when determening what bit to set, we skip the first four nibbles (bit 0-15) of the hash due to static range grouping
-			// we use the next five nibbles (bit 16-35) to get the index of the array, and the tenth nibble (bit 36-39) to determine which bit in the short to read/set.
-			// while collisions are not unlikely to occur due to the birthday paradox, they should not cause any major issues with files not having their timestamp updated.
-			// any impact of this will be negligible, as it will only cause the LRU mechanism to be slightly less efficient.
-			String fileid = hvFile.getFileid();
-
-			// bit 16-35
-			int arrayIndex = Integer.parseInt(fileid.substring(4, 9), 16);
-
-			// bit 36-39
-			short bitMask = (short) (1 << Short.parseShort(fileid.substring(9, 10), 16));
-
-			if((lruCacheTable[arrayIndex] & bitMask) != 0) {
-				//Out.debug("LRU bit for " + fileid + " = " + arrayIndex + ":" + fileid.charAt(9) + " was set");
-				markFile = false;
-			}
-			else {
-				//Out.debug("Written bit for " + fileid + " = " + arrayIndex + ":" + fileid.charAt(9) + " was not set - marking");
-				lruCacheTable[arrayIndex] |= bitMask;
-			}
+		if((lruCacheTable[arrayIndex] & bitMask) != 0) {
+			//Out.debug("LRU bit for " + fileid + " = " + arrayIndex + ":" + fileid.charAt(9) + " was set");
+			markFile = false;
+		}
+		else {
+			//Out.debug("Written bit for " + fileid + " = " + arrayIndex + ":" + fileid.charAt(9) + " was not set - marking");
+			lruCacheTable[arrayIndex] |= bitMask;
 		}
 
 		if(markFile && !skipMetaUpdate) {
@@ -802,5 +807,19 @@ public class CacheHandler {
 				file.setLastModified(nowtime);
 			}
 		}
+
+		return markFile;
+	}
+
+	public boolean isFileVerificationOnCooldown() {
+		long nowtime = System.currentTimeMillis();
+
+		// only allow one file to be verified every two seconds, to avoid the possibility of introducing CPU spikes
+		if(lastFileVerification > nowtime - 2000) {
+			return true;
+		}
+
+		lastFileVerification = nowtime;
+		return false;
 	}
 }
