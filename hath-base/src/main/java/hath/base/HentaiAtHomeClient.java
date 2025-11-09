@@ -1,6 +1,6 @@
 /*
 
-Copyright 2008-2023 E-Hentai.org
+Copyright 2008-2024 E-Hentai.org
 https://forums.e-hentai.org/
 tenboro@e-hentai.org
 
@@ -17,32 +17,38 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with Hentai@Home.  If not, see <http://www.gnu.org/licenses/>.
+along with Hentai@Home.  If not, see <https://www.gnu.org/licenses/>.
 
 */
 
 /*
 
-1.6.2
+1.6.4
 
-- Fixed an issue on some setups where, when running a test against other clients, two competing threads could reach a lock in an unexpected order, which would make the client report a failure before it actually ran the test.
+- If the filesize of a cached file does not match the expected size, we now ignore it and perform a backend fetch instead.
 
-- Fixed an issue where, if the cache was moved without preserving file modification dates and the cache is full, the cache pruner could get stuck in a loop of not finding any files to prune.
+- To prevent long-term bitrot, we now occasionally verify the integrity of requested files as they are being served. This will check a particular file no more often than once per week, and it will check no more than one file every two seconds. This should cause no additional I/O or RAM usage, and should have negligble impact on CPU usage.
 
-- In very rare cases, when loading persistent cache data on startup, the internal Java object deserializer could get stuck in an infinite loop if the files had been corrupted by some software or hardware issue, which required manually deleting them. We now automatically delete those files on the next startup if this happens.
+- CPU-starved clients can disable the verification checking by starting the client with --disable-file-verification, but note that if the monitoring system detects corrupted files in your cache, your client will be flagged for a full cache verification on next startup, which can take a long time.
 
-- Added a way for the server to tell a client to shut down in case of persistent network configuration issues.
+- Partially because of the new file integrity checking, the LRU cache table is now created even if --use-less-memory is used. This will increase the memory requirements in this mode by about 2 MB.
 
-- Added some MIME types for possible future use.
+- Fixed an issue where if a directory chosen for cache pruning did not exist or was inaccessible (due to a file system or permission issue), the pruning mechanism would loop trying to prune said directory.
+
+- If the cached number of static ranges is higher than the number of static ranges returned by the server during startup, we now force a cache rescan to prevent files in removed ranges from clogging up the cache.
+
+- If a static range was removed, the range directory is now deleted on the first cache rescan. Previously it would delete the files, but leave the directory until the next rescan.
+
+- Re-enabled TLS 1.3, which among other things reduces the latency for establishing a HTTPS connection to the client. It was originally disabled due to a significantly higher failure rate compared to TLS 1.2 caused by broken proxies, filewalls and other network filtering devices, but since most things use it by now, those should not cause problems anymore.
+
+- TLS 1.0 and 1.1 were disabled as they are deprecated and insecure, with support being [url=https://techcommunity.microsoft.com/blog/windows-itpro-blog/tls-1-0-and-tls-1-1-soon-to-be-disabled-in-windows/3887947]dropped[/url] from modern operating systems. Everything that supports the current HTTPS certificate authority should also support TLS 1.2.
 
 
-[b]To update an existing client: shut it down, download [url=https://repo.e-hentai.org/hath/HentaiAtHome_1.6.2.zip]Hentai@Home 1.6.2[/url], extract the archive, copy the jar files over the existing ones, then restart the client.[/b]
+[b]To update an existing client: shut it down, download [url=https://repo.e-hentai.org/hath/HentaiAtHome_1.6.4.zip]Hentai@Home 1.6.4[/url], extract the archive, copy the jar files over the existing ones, then restart the client.[/b]
 
-[b]The full source code for H@H is available and licensed under the GNU General Public License v3, and can be downloaded [url=https://repo.e-hentai.org/hath/HentaiAtHome_1.6.2_src.zip]here[/url]. Building it from source only requires OpenJDK 8 or newer.[/b]
+[b]The full source code for H@H is available and licensed under the GNU General Public License v3, and can be downloaded [url=https://repo.e-hentai.org/hath/HentaiAtHome_1.6.3_src.zip]here[/url]. Building it from source only requires OpenJDK 8 or newer.[/b]
 
 [b]For information on how to join Hentai@Home, check out [url=https://forums.e-hentai.org/index.php?showtopic=19795]The Hentai@Home Project FAQ[/url].[/b]
-
-[b]Other download options can be found at [url=https://e-hentai.org/hentaiathome.php]the usual place[/url].[/b]
 
 */
 
@@ -97,9 +103,9 @@ public class HentaiAtHomeClient implements Runnable {
 
 		Out.startLoggers();
 		Out.info("Hentai@Home " + Settings.CLIENT_VERSION + " (Build " + Settings.CLIENT_BUILD + ") starting up\n");
-		Out.info("Copyright (c) 2008-2023, E-Hentai.org - all rights reserved.");
+		Out.info("Copyright (c) 2008-2024, E-Hentai.org - all rights reserved.");
 		Out.info("This software comes with ABSOLUTELY NO WARRANTY. This is free software, and you are welcome to modify and redistribute it under the GPL v3 license.\n");
-		
+
 		Stats.resetStats();
 		Stats.setProgramStatus("Logging in to main server...");
 
@@ -169,8 +175,8 @@ public class HentaiAtHomeClient implements Runnable {
 		}
 
 		if(cacheHandler.getCacheCount() < 1) {
-			Out.info("Important: Your cache does not yet contain any files. You won't see any traffic until the client has downloaded some.");
-			Out.info("For a brand new client, it can take several hours before you start seeing any real traffic.");
+			Out.info("IMPORTANT: Your cache does not yet contain any files. You will not see any traffic for some time.");
+			Out.info("For a brand new client, it can take several days to a few weeks before your client has any notable traffic.");
 		}
 
 		// check if we're in an active schedule
@@ -188,7 +194,7 @@ public class HentaiAtHomeClient implements Runnable {
 
 		System.gc();
 
-		Out.info("H@H initialization completed successfully. Starting normal operation");
+		Out.info("Startup completed successfully. Starting normal operation");
 
 		while(!shutdown) {
 			// this toggle prevents the thread from calling interrupt on itself in case an error triggers a shutdown from the main thread, which could interfere with interruptable filechannel operations when saving cachehandler state
@@ -196,10 +202,12 @@ public class HentaiAtHomeClient implements Runnable {
 			threadInterruptable = true;
 
 			try {
-				myThread.sleep(Math.max(1000, 10000 - lastThreadTime));
+				long sleeptime = Math.max(1000, Math.min(10000, 10000 - lastThreadTime));
+				Out.debug("Main thread sleeping with lastThreadTime=" + lastThreadTime + " sleeptime=" + sleeptime + ", memory total=" + runtime.totalMemory() / 1024 + "KiB free=" + runtime.freeMemory() / 1024 + "KiB max=" + runtime.maxMemory() / 1024 + "KiB");
+				myThread.sleep(sleeptime);
 			}
 			catch(java.lang.InterruptedException e) {
-				Out.debug("Master thread sleep interrupted");
+				Out.debug("Main thread sleep was interrupted");
 			}
 
 			// thread has left the sleep state and is no longer interruptable
@@ -208,6 +216,7 @@ public class HentaiAtHomeClient implements Runnable {
 			long startTime = System.currentTimeMillis();
 
 			if(!shutdown && suspendedUntil < System.currentTimeMillis()) {
+				Out.debug("Main thread starting cycle at startTime=" + startTime);
 				Stats.setProgramStatus("Running");
 
 				if(suspendedUntil > 0) {
@@ -252,6 +261,7 @@ public class HentaiAtHomeClient implements Runnable {
 					}
 				}
 				else if(threadSkipCounter % 11 == 0) {
+					//Out.debug("Running serverHandler.stillAliveTest");
 					serverHandler.stillAliveTest(false);
 				}
 
@@ -266,20 +276,30 @@ public class HentaiAtHomeClient implements Runnable {
 				}
 
 				if(threadSkipCounter % 6 == 2) {
+					//Out.debug("Running httpServer.pruneFloodControlTable");
 					httpServer.pruneFloodControlTable();
 				}
 				
 				if(threadSkipCounter % 1440 == 1439) {
+					//Out.debug("Running Settings.clearRPCServerFailure");
 					Settings.clearRPCServerFailure();
 				}
 
 				if(threadSkipCounter % 2160 == 2159) {
+					//Out.debug("Running cacheHandler.processBlacklist");
 					cacheHandler.processBlacklist(43200);
 				}
 
+				//Out.debug("Running cacheHandler.cycleLRUCacheTable");
 				cacheHandler.cycleLRUCacheTable();
+
+				//Out.debug("Running httpServer.nukeOldConnections");
 				httpServer.nukeOldConnections();
+
+				//Out.debug("Running Stats.shiftBytesSentHistory");
 				Stats.shiftBytesSentHistory();
+
+				//Out.debug("Running cacheHandler.recheckFreeDiskSpace");
 
 				for(int i = 0; i < cacheHandler.getPruneAggression(); i++) {				
 					if(!cacheHandler.recheckFreeDiskSpace()) {
@@ -289,9 +309,11 @@ public class HentaiAtHomeClient implements Runnable {
 				}
 
 				System.gc();
-				Out.debug("Memory total=" + runtime.totalMemory() / 1024 + "kB free=" + runtime.freeMemory() / 1024 + "kB max=" + runtime.maxMemory() / 1024 + "kB");
 
 				++threadSkipCounter;
+			}
+			else {
+				Out.debug("Main thread is inactive (suspendedUntil=" + suspendedUntil + " shutdown=" + shutdown + ")");
 			}
 
 			lastThreadTime = System.currentTimeMillis() - startTime;
@@ -356,6 +378,7 @@ public class HentaiAtHomeClient implements Runnable {
 		return clientAPI;
 	}
 
+	
 	// static crap
 
 	public static void dieWithError(Exception e) {
